@@ -57,7 +57,9 @@
 - 完全修飾名の無い要素(不正なモデルで出力されることがある)は、落とさず警告して除く(`INVALID_ELEMENT`)。
 - `verify` / `derive` / `refine` などの SysML 標準の要求間関係は**導出していない**(入れ子と `satisfy` のみ)。
 
-## 導出しない構成(黙って捨てず、必ず警告する)
+## 導出しない構成（警告するもの / まだ警告できないもの）
+
+警告する: port・connection・interface・flow・allocation（名前あり）・state・exhibit state（`UNSUPPORTED_CONSTRUCT`）。**まだ警告できない（既知の制約）**: `variation` の `variant`（すべて同時に存在する部品として導出される）、`derive`・`refine`・`verify`（要求が未カバーに見える）、名前なしの `allocate`（`INVALID_ELEMENT` と表示される）。
 
 | 構成 | 扱い | 警告コード |
 |---|---|---|

@@ -68,6 +68,11 @@ export function validateFaultTree(t: FaultTree): Issue[] {
   }
   checkNodes(t, byId, err, warn);
   checkReachability(t, byId, err, warn);
+  // 同じ故障ノード（failureId）を指す基本事象が複数あると、独立な事象として数えられ、単一点故障が隠れて確率が楽観的になる
+  const byFailure = new Map<string, string[]>();
+  for (const n of t.nodes) if (n.kind === "basic" && n.failureId !== undefined) byFailure.set(n.failureId, [...(byFailure.get(n.failureId) ?? []), n.id]);
+  for (const [fid, ids] of byFailure)
+    if (ids.length > 1) err("FT_DUPLICATE_FAILURE", `基本事象 ${ids.join("、")} が同じ故障ノード ${fid} を指しています。同じ事象は 1 つにまとめてください（独立な事象として数えると、単一点故障が隠れます）`, ids[0]);
   return issues;
 }
 

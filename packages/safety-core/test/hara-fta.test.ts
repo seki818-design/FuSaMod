@@ -179,3 +179,14 @@ describe("ISO 26262-3 Table 4(全 80 通り)を、式ではなく表そのもの
     expect(n).toBe(80);
   });
 });
+
+describe("同じ故障ノードを指す基本事象（ラウンド 10）", () => {
+  it("2 つの基本事象が同じ failureId を指すとエラー（独立とみなして単一点故障を隠さない）", () => {
+    const t = { id: "FT", name: "t", top: "G", nodes: [
+      { id: "G", label: "g", kind: "gate" as const, gate: "and" as const, inputs: ["A", "B"] },
+      { id: "A", label: "a", kind: "basic" as const, failureId: "F-1", probability: 1e-6 },
+      { id: "B", label: "b", kind: "basic" as const, failureId: "F-1", probability: 1e-6 },
+    ] };
+    expect(validateFaultTree(t).map((i) => `${i.severity}:${i.code}`)).toContain("error:FT_DUPLICATE_FAILURE");
+  });
+});

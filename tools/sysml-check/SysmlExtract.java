@@ -197,7 +197,7 @@ public class SysmlExtract {
                     if (own instanceof PartUsage || own instanceof PartDefinition) n.put("by", q(own));
                 }
                 satisfies.add(n);
-            } else if (o instanceof PerformActionUsage p) {
+            } else if (o instanceof PerformActionUsage p && !(o instanceof ExhibitStateUsage)) {
                 Map<String, Object> n = new LinkedHashMap<>();
                 n.put("performer", q(p.getOwningNamespace()));
                 n.put("performed", q(p.getPerformedAction()));

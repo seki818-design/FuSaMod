@@ -1,0 +1,44 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "ExhibitState",
+      "name": "ExhibitState"
+    },
+    {
+      "kind": "ActionDefinition",
+      "qualifiedName": "ExhibitState::S",
+      "name": "S",
+      "owner": "ExhibitState",
+      "parameters": []
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "ExhibitState::h2",
+      "name": "h2",
+      "owner": "ExhibitState"
+    },
+    {
+      "kind": "ExhibitStateUsage",
+      "qualifiedName": "ExhibitState::h2::st2",
+      "name": "st2",
+      "owner": "ExhibitState::h2",
+      "types": [
+        "ExhibitState::S"
+      ]
+    },
+    {
+      "kind": "StateUsage",
+      "qualifiedName": "ExhibitState::h2::st1",
+      "name": "st1",
+      "owner": "ExhibitState::h2",
+      "types": [
+        "ExhibitState::S"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [],
+  "performs": []
+}

@@ -142,4 +142,9 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準 JSON の elementId の安定
     const withComment = JSON.parse(await convertModel("// ここは SCDL の説明のみ。単位は 3 [RFC] のように書く\npackage C { part p; }", "json")) as unknown[];
     expect(withComment.length).toBe(plain.length);
   }, 600_000);
+  it("文字列内の // や行コメント内の /* があっても、本物の import SCDL と @Scdl* は取り込まれる（N15 の回帰）", async () => {
+    const text = '// generated from docs/*.md\npackage S5 {\n  part src { attribute u = "http://example.org/b"; }\n  private import SCDL::*;   /* end */\n  part p { @ScdlElement { title = "p"; } }\n}\n';
+    const list = JSON.parse(await convertModel(text, "json")) as { payload: { "@type": string } }[];
+    expect(list.some((r) => r.payload["@type"] === "MetadataDefinition")).toBe(true); // SCDL の定義が入っている
+  }, 600_000);
 });

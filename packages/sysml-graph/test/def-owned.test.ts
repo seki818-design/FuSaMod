@@ -24,3 +24,13 @@ describe("part def が所有する requirement と、その中の satisfy(N7)", 
     expect(codes).not.toContain("SATISFY_UNRESOLVED");
   });
 });
+
+describe("exhibit state（ラウンド 10）", () => {
+  it("状態の一種として警告され、機能（action）には導出されない", () => {
+    const eg = JSON.parse(readFileSync(resolve(__dirname, "../../../examples/sysml/exhibit-state.graph.json"), "utf8"));
+    const r = expandGraph(eg);
+    expect(r.issues.some((i) => i.code === "UNSUPPORTED_CONSTRUCT" && i.message.includes("exhibit state"))).toBe(true);
+    expect(r.graph.elements.some((e) => e.qualifiedName.endsWith("::st2"))).toBe(false);
+    expect((r.graph.performs ?? []).length).toBe(0);
+  });
+});

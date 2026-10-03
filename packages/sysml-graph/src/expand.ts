@@ -27,6 +27,7 @@ const UNSUPPORTED: Record<string, string> = {
   FlowConnectionUsage: "flow",
   AllocationUsage: "allocation",
   StateUsage: "state",
+  ExhibitStateUsage: "exhibit state",
 };
 const MAX_DEPTH = 64;
 

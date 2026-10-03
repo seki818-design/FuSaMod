@@ -46,7 +46,7 @@ public class SysmlExtract {
         return m;
     }
 
-    static Map<String, Object> extract(Element root) {
+    public static Map<String, Object> extract(Element root) {
         List<Object> elements = new ArrayList<>();
         List<Object> dependencies = new ArrayList<>();
         List<Object> metadata = new ArrayList<>();

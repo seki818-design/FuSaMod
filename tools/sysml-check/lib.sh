@@ -38,9 +38,9 @@ PY
     fi
     rm -f "$CACHE/$FILE" "$CACHE"/pkg-*.tar.zst
   fi
-  for c in PilotCheck SysmlExtract; do
+  for c in PilotCheck SysmlExtract SysmlServer; do
     if [ ! -f "$CACHE/$c.class" ] || [ "$HERE/$c.java" -nt "$CACHE/$c.class" ]; then
-      javac -cp "$JAR" -d "$CACHE" "$HERE/$c.java" 2>&1 | { grep -v JAVA_TOOL_OPTIONS || true; }
+      javac -cp "$JAR:$CACHE" -d "$CACHE" "$HERE/$c.java" 2>&1 | { grep -v JAVA_TOOL_OPTIONS || true; }
     fi
   done
 }

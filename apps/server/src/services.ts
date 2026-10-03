@@ -41,6 +41,8 @@ export class AnalysisService {
   private analysisCache = new Lru<ProjectAnalysis>(64);
   private lastUnavailable = 0;
   /** タイムアウトしたモデル（ハッシュ）→ いつまで再試行しないか。重いモデルを開くたびに共有の Java を長く占有しないため */
+  /** 解析中の同じモデル（ハッシュ）→ その解析。同時に同じモデルが来ても、Java へは 1 回だけ送る */
+  private inflight = new Map<string, Promise<{ result?: SysmlResult; error?: string; failure?: "timeout" | "unavailable" | "busy" }>>();
   private timedOut = new Map<string, { until: number; error: string }>();
 
   constructor(
@@ -54,6 +56,14 @@ export class AnalysisService {
 
   async parseModel(text: string, knownGraph?: ElementGraph): Promise<{ result?: SysmlResult; error?: string; failure?: "timeout" | "unavailable" | "busy" }> {
     const key = sha256(text);
+    const running = this.inflight.get(key);
+    if (running) return running;
+    const p = this.parseOnce(text, key, knownGraph).finally(() => this.inflight.delete(key));
+    this.inflight.set(key, p);
+    return p;
+  }
+
+  private async parseOnce(text: string, key: string, knownGraph?: ElementGraph): Promise<{ result?: SysmlResult; error?: string; failure?: "timeout" | "unavailable" | "busy" }> {
     const cached = this.sysmlCache.get(key);
     if (cached) return { result: cached };
     if (knownGraph) {

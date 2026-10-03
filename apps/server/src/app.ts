@@ -222,16 +222,29 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return view(id, p, out);
   });
 
-  // 保存せずに解析する(編集中のドラフト)
+  // 保存せずに解析する(編集中のドラフト)。共有の Java を 1 人が占有しないよう、利用者ごとの同時実行数を制限する（読み取り専用 1、編集者 2）
+  const analyzing = new Map<string, number>();
   app.post("/api/projects/:id/analyze", async (req) => {
+    const who = actorOf(req);
+    const limit = (req as FastifyRequest & { role?: string }).role === "viewer" ? 1 : 2;
+    if ((analyzing.get(who) ?? 0) >= limit) throw new HttpError(429, "同時に解析できる数の上限です。前の解析が終わってからやり直してください");
+    analyzing.set(who, (analyzing.get(who) ?? 0) + 1);
+    try {
+      return await analyzeDraft(req);
+    } finally {
+      analyzing.set(who, (analyzing.get(who) ?? 1) - 1);
+    }
+  });
+  const analyzeDraft = async (req: FastifyRequest) => {
     const { id } = idParam.parse(req.params);
     const body = z.object({ model: z.string().max(2_000_000).optional(), safety: z.unknown().optional() }).strict().parse(req.body ?? {});
     const p = await store.read(id);
     const model = body.model ?? p.model;
     const safety = body.safety !== undefined ? requireSafety(body.safety) : p.safety;
+    if ((req as FastifyRequest & { role?: string }).role === "viewer" && model !== p.model && Buffer.byteLength(model) > 200_000) throw new HttpError(413, "読み取り専用の利用者が解析できる、保存済みと異なるモデルの大きさの上限は 200KB です");
     const out = await analysis.analyze(model, safety, body.model === undefined ? p.graph : undefined);
     return view(id, { ...p, model, safety }, out);
-  });
+  };
 
   app.put("/api/projects/:id/model", async (req) => {
     const { id } = idParam.parse(req.params);
@@ -408,6 +421,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     await store.saveSafety(id, withProvenance, actor, `AI 提案を適用: ${proposal.title}`, p.revision);
     const done = await decide(id, pid, "applied", actor);
     await store.audit(id, { actor, action: "ai.apply", details: { proposal: pid, title: proposal.title, provider: proposal.provider, operations: proposal.operations.length } });
+    if (diff.length > 0)
+      await store.audit(id, { actor, action: "safety.diff", details: { via: "ai", proposal: pid, changes: diff.length, lowersRisk: lowering.length, confirmedRiskLowering: lowering.length > 0 && body.confirmRiskLowering === true, items: diff.slice(0, 30).map((c) => `${c.id}.${c.field}: ${c.from ?? "-"} → ${c.to ?? "-"}${c.lowersRisk ? " [リスク低下]" : ""}`) } });
     const fresh = await requireAnalysis(id);
     return { proposal: done, ...view(id, fresh.p, fresh.out) };
   });

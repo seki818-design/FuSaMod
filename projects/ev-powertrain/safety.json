@@ -1473,7 +1473,7 @@
       "goalIds": [
         "SG-1"
       ],
-      "rationale": "デモの仮定値。分類と DC は FMEDA で置き換えること(SM-1 の区分 medium の上限 90%)"
+      "rationale": "FMEDA-DEMO-001 表2 の想定値。SM-1 の区分 medium の上限 90%。実案件では FMEDA で置き換えること"
     },
     {
       "id": "HW-2",
@@ -1486,7 +1486,7 @@
       "goalIds": [
         "SG-1"
       ],
-      "rationale": "デモの仮定値。分類と DC は FMEDA で置き換えること(SM-1 の区分 medium の上限 90%)"
+      "rationale": "FMEDA-DEMO-001 表2 の想定値。SM-1 の区分 medium の上限 90%。実案件では FMEDA で置き換えること"
     },
     {
       "id": "HW-3",
@@ -1498,7 +1498,7 @@
       "goalIds": [
         "SG-1"
       ],
-      "rationale": "デモの仮定値。監視マイコンの自己診断(BIST)を想定。実際には担う安全機構を定義して mechanismId を指定すること"
+      "rationale": "FMEDA-DEMO-001 表3 の想定値。監視マイコンの自己診断(BIST)を想定。実案件では担う安全機構を定義して mechanismId を指定すること"
     }
   ]
 }

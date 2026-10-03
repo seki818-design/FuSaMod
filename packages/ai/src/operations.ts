@@ -123,15 +123,21 @@ function differ(): Differ {
       push(id, field, from, to, l);
     },
     text(id, field, from, to) {
-      // 記述の変更は、内容が変わったことを必ず記録する。弱める（消す・半分より短くする）変更はリスク低下の主張。
-      // 内容そのものは長いので差分には載せず、長さで示す
+      // 記述の変更は、内容が変わったことを必ず記録する（同じ長さの書き換えも）。弱める（消す・半分未満にする）変更はリスク低下の主張。
+      // 内容そのものは長いので差分には載せず、長さと内容の短い指紋で示す
       const a = (from ?? "").trim();
       const b = (to ?? "").trim();
       if (a === b) return;
-      const shown = (t: string) => (t ? `(記述あり ${t.length} 文字)` : undefined);
-      push(id, field, shown(a), shown(b), a !== "" && b.length < a.length / 2);
+      const shown = (t: string) => (t ? `(記述あり ${t.length} 文字 #${fingerprint(t)})` : undefined);
+      out.push({ id, field, from: shown(a), to: shown(b), lowersRisk: a !== "" && b.length < a.length / 2 });
     },
   };
+}
+/** 内容の短い指紋（差分の表示用。同じ長さの書き換えを区別する） */
+function fingerprint(t: string): string {
+  let h = 5381;
+  for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+  return h.toString(36).slice(0, 5);
 }
 const byId = <T extends { id: string }>(xs: T[]) => new Map(xs.map((x) => [x.id, x]));
 const dec = (a: number, b: number) => b < a;
@@ -164,6 +170,9 @@ function haraChanges(d: Differ, before: SafetyData, after: SafetyData) {
     d.num(e.id, "S", o.severity, e.severity, dec);
     d.num(e.id, "E", o.exposure, e.exposure, dec);
     d.num(e.id, "C", o.controllability, e.controllability, dec);
+    d.text(e.id, "hazard", o.hazard, e.hazard);
+    d.text(e.id, "situation", o.situation, e.situation);
+    d.text(e.id, "rationale", o.rationale, e.rationale);
   }
   const oldG = byId(before.hara.goals);
   for (const g of after.hara.goals) {
@@ -171,6 +180,8 @@ function haraChanges(d: Differ, before: SafetyData, after: SafetyData) {
     if (!o) continue;
     d.push(g.id, "goalAsil", o.asil, g.asil, (ASIL_RANK[g.asil] ?? 0) < (ASIL_RANK[o.asil] ?? 0));
     d.num(g.id, "ftti", o.ftti, g.ftti, inc); // FTTI を延ばすと、安全機構への要求がゆるむ
+    d.text(g.id, "text", o.text, g.text);
+    d.text(g.id, "safeState", o.safeState, g.safeState);
   }
   const oldT = byId(before.faultTrees);
   for (const t of after.faultTrees) {

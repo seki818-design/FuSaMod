@@ -177,5 +177,7 @@ export class JavaSysmlService implements SysmlService {
   async close(): Promise<void> {
     this.closed = true;
     this.kill();
+    // 進行中の要求は、プロセスを切り離した後は exit イベントで拒否されないので、ここで拒否する（終了を長引かせない）
+    this.failPending(new SysmlUnavailableError("SysML サービスを停止しました"));
   }
 }

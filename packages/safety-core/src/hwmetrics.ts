@@ -1,4 +1,4 @@
-import { asilRank, type Asil } from "./asil.js";
+import { asilRank, isSubstantial, type Asil } from "./asil.js";
 import type { Issue } from "./issues.js";
 
 /**
@@ -34,7 +34,7 @@ export const DC_CAP: Record<"low" | "medium" | "high", number> = { low: 0.6, med
 export interface HwContext {
   knownElements?: Set<string>;
   goals?: { id: string; asil: Asil }[];
-  mechanisms?: { id: string; diagnosticCoverage?: "low" | "medium" | "high"; asil?: Asil; paired?: boolean }[];
+  mechanisms?: { id: string; diagnosticCoverage?: "low" | "medium" | "high"; asil?: Asil; originAsil?: Asil; paired?: boolean }[];
 }
 
 export interface HwMetrics {
@@ -85,7 +85,7 @@ export function computeHwMetrics(modes: HardwareFailureMode[]): HwMetrics {
   };
 }
 
-const substantial = (t: string | undefined) => (t ?? "").trim().length >= 8;
+const substantial = (t: string | undefined) => isSubstantial((t ?? "").trim());
 
 type Emit = (severity: "error" | "warning", code: string, message: string, ref?: string) => void;
 
@@ -106,16 +106,22 @@ function checkDc(m: HardwareFailureMode, c: HwContext, emit: Emit) {
   if (m.mechanismId !== undefined && c.mechanisms && !mech) emit("error", "UNKNOWN_MECHANISM", `安全機構が存在しません: ${m.mechanismId}`, m.id);
   const dc = (m.type === "single" ? m.dcSpfRf : m.dcLatent) ?? 0;
   if (dc > 0 && m.mechanismId === undefined) emit("warning", "HW_DC_NO_MECHANISM", `診断カバレッジ ${dc} を主張していますが、担う安全機構(mechanismId)が未指定です`, m.id);
-  if (dc > 0 && mech) checkDcMechanism(m, dc, mech, emit);
+  if (dc > 0 && mech) checkDcMechanism(m, dc, mech, c, emit);
   if ((dc > 0 || (m.safeFraction ?? 0) > 0) && !substantial(m.rationale))
     emit("warning", "HW_NO_RATIONALE", "診断カバレッジまたは安全な故障の割合を主張していますが、根拠(rationale: FMEDA の出典など)がありません", m.id);
 }
 
 /** DC を担う安全機構: 区分の上限・QM でないこと・ペアになっていること。 */
-function checkDcMechanism(m: HardwareFailureMode, dc: number, mech: NonNullable<HwContext["mechanisms"]>[number], emit: Emit) {
+function checkDcMechanism(m: HardwareFailureMode, dc: number, mech: NonNullable<HwContext["mechanisms"]>[number], c: HwContext, emit: Emit) {
   const cap = mech.diagnosticCoverage ? DC_CAP[mech.diagnosticCoverage] : 0;
   if (dc > cap) emit("error", "HW_DC_EXCEEDS_MECHANISM", `診断カバレッジ ${dc} が、安全機構 ${mech.id} の区分(${mech.diagnosticCoverage ?? "未設定"}: 上限 ${cap})を超えています`, m.id);
   if ((mech.asil ?? "QM") === "QM") emit("error", "HW_DC_MECHANISM_QM", `診断カバレッジを担う安全機構 ${mech.id} が QM です。DC を主張するには、安全目標に応じた ASIL が必要です`, m.id);
+  // 機構の ASIL（分解の元 ASIL を含む）が、関係する安全目標の最大の ASIL 以上であること
+  const goals = (c.goals ?? []).filter((g) => !m.goalIds || m.goalIds.length === 0 || m.goalIds.includes(g.id));
+  const need = goals.reduce<Asil>((a, g) => (asilRank(g.asil) > asilRank(a) ? g.asil : a), "QM");
+  const have = mech.originAsil ?? mech.asil ?? "QM";
+  if ((mech.asil ?? "QM") !== "QM" && asilRank(have) < asilRank(need))
+    emit("error", "HW_DC_MECHANISM_BELOW_GOAL", `診断カバレッジを担う安全機構 ${mech.id} の ASIL（${have}）が、関係する安全目標の最大の ASIL（${need}）を下回っています`, m.id);
   if (mech.paired === false) emit("warning", "HW_DC_MECHANISM_UNPAIRED", `診断カバレッジを担う安全機構 ${mech.id} が、意図機能とペアになっていません`, m.id);
 }
 

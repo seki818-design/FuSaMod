@@ -48,3 +48,11 @@ Web UI の `assets/` はハッシュ付きなので長期キャッシュ(immutab
 - Docker: `docker build -t fusamod .` → `docker run -p 8787:8787 -e FUSAMOD_TOKENS='名前:16文字以上の乱数' -v fusamod-data:/data fusamod`。データは `/data`（プロジェクトと公式実装のキャッシュ）。**イメージのビルドは、この開発環境（Docker なし）では未検証で、CI の docker ジョブが初めての検証になる**。
 - オフライン: 公式 SysML 実装の jar（約 120MB）は初回に取得される。事前に `SYSML_PILOT_CACHE`（既定 `~/.cache/fusamod/sysml-pilot-0.62.0`）へ配置するか、`FUSAMOD_SYSML=snapshot`（保存済みグラフのみ）で使う。標準形式のエクスポートと、モデルの編集後の再解析には Java 21 と jar が必要。
 - 監査ログは大きくなりうる（ローテーションなし）。`GET /audit` は全体を読むため、数十 MB で遅くなる。定期的に外部へ転送して整理すること。
+
+## 解析の資源制御（共有の Java は 1 つ）
+- 公式 SysML 実装の JVM は 1 つで、解析は直列。受け付ける数は 8 件まで（超えると 429 `Retry-After`）。同じモデルの同時要求は 1 回の解析にまとめ、**タイムアウトしたモデルは 5 分間再解析しない**（モデルを変えれば再試行）。
+- `POST /analyze`（保存しない解析）は、利用者ごとの同時実行を **読み取り専用 1・編集者 2** に制限し、読み取り専用の利用者が保存済みと異なる 200KB 超のモデルを解析させることはできない（413）。
+- 解析・変換の失敗は HTTP の状態で区別する: タイムアウト **504**、Java 停止 **503**、待ち過多 **429**、モデルの誤り **409**。閲覧系（`GET project`・`PUT model`・`/analyze`）は 200 で返し、本文の `sysmlFailure`（`timeout`/`unavailable`/`busy`）と `sysmlError` で示す。
+- 停止（SIGTERM）は、先に Java を止めて進行中の解析を拒否してから HTTP を閉じる（長い解析の完了を待たない）。
+- 変換用の一時ディレクトリは `$TMPDIR/fusamod-<uid>/convert/`（0700）。起動時に 10 分より古いものだけ掃除する。
+- 品質の証跡（`docs/quality/evidence/*`）の再生成は `pnpm evidence`。`pnpm coverage` / `pnpm bench` は、`--write` を付けない限りファイルを書き換えない。

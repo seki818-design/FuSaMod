@@ -631,3 +631,27 @@ describe("プロジェクト ID の予約名", () => {
     expect((await h.app.inject({ method: "POST", url: "/api/projects", payload: { id: "console" } })).statusCode).toBe(201);
   });
 });
+
+describe("解析の占有（ラウンド 9）", () => {
+  it("viewer は同時に 1 件までしか /analyze できない。2 件目は 429。終われば再び受け付ける", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const sysml = () => ({ mode: "java" as const, close: async () => {}, analyze: async () => { await gate; return { ok: true, diagnostics: [], graph: { elements: [], dependencies: [], metadata: [], satisfies: [] } }; } });
+    const h2 = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" }, sysml });
+    const auth = { authorization: "Bearer tok-viewer-0123456789" };
+    const call = (n: number) => h2.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/analyze", headers: auth, payload: { model: `package P${n} {}` } });
+    const first = call(1);
+    await new Promise((r) => setTimeout(r, 50));
+    expect((await call(2)).statusCode).toBe(429);
+    release();
+    expect((await first).statusCode).toBe(200);
+    expect((await call(3)).statusCode).toBe(200);
+    await h2.close();
+  });
+  it("viewer が、保存済みと異なる 200KB 超のモデルを解析させることはできない（413）", async () => {
+    const h2 = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
+    const r = await h2.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/analyze", headers: { authorization: "Bearer tok-viewer-0123456789" }, payload: { model: "package P { }\n" + "// x\n".repeat(60_000) } });
+    expect(r.statusCode).toBe(413);
+    await h2.close();
+  });
+});

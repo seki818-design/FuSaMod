@@ -235,3 +235,22 @@ describe("riskChanges: 記述の書き換え(ラウンド 8)", () => {
     expect(riskChanges(before, after).find((x) => x.field === "independenceEvidence")?.lowersRisk).toBe(true);
   });
 });
+
+describe("riskChanges: 同じ長さの書き換えと HARA の文面(ラウンド 9)", () => {
+  it("同じ文字数の書き換え（PT-001 → PT-002）でも差分に出る", () => {
+    const before = structuredClone(safety());
+    const after = structuredClone(before);
+    after.pairs[0]!.independence = before.pairs[0]!.independence!.replace(/独立/, "従属");
+    expect(riskChanges(before, after).some((c) => c.id === "PAIR-1" && c.field === "independence")).toBe(true);
+  });
+  it("HARA の根拠・安全目標の文面と安全状態・ハザードの書き換えも差分に出る", () => {
+    const before = structuredClone(safety());
+    const after = structuredClone(before);
+    after.hara.events[0]!.rationale = "x";
+    after.hara.goals[0]!.text = "別の安全目標の文面に差し替え";
+    after.hara.goals[0]!.safeState = "別の安全状態";
+    after.hara.events[0]!.hazard = "別のハザード";
+    const f = riskChanges(before, after).map((c) => c.field);
+    expect(f).toEqual(expect.arrayContaining(["rationale", "text", "safeState", "hazard"]));
+  });
+});

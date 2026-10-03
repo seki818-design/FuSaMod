@@ -130,4 +130,16 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準 JSON の elementId の安定
     expect(before.size).toBeGreaterThan(0);
     for (const [id, req] of before) expect(after.get(id)).toBe(req);
   }, 600_000);
+  it("トップレベル（パッケージの外）に要素を足しても、既存の要素の ID の大半は変わらない（N11 の回帰）", async () => {
+    const text = readFileSync(resolve(DEMO, "../../examples/sysml/instance-paths.sysml"), "utf8");
+    const ids = async (m: string) => new Set((JSON.parse(await convertModel(m, "json")) as { payload: { elementId: string } }[]).map((r) => r.payload.elementId));
+    const before = await ids(text);
+    const after = await ids(`${text}\npart zzz;\n`);
+    expect([...before].filter((i) => after.has(i)).length / before.size).toBeGreaterThan(0.9);
+  }, 600_000);
+  it("コメントに「SCDL」と書いただけでは、SCDL ライブラリを取り込まない（N12 の回帰）", async () => {
+    const plain = JSON.parse(await convertModel("package C { part p; }", "json")) as unknown[];
+    const withComment = JSON.parse(await convertModel("// ここは SCDL の説明のみ。単位は 3 [RFC] のように書く\npackage C { part p; }", "json")) as unknown[];
+    expect(withComment.length).toBe(plain.length);
+  }, 600_000);
 });

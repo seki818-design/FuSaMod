@@ -167,13 +167,13 @@ function HardwareMetrics() {
     return <div className="muted" role="note">ハードウェアのメトリクス(SPFM/LFM)は、故障率を入れると算出されます(下の「ハードウェア故障モード」で入力)。</div>;
   const ng = (v: number | undefined, t: number | undefined) => v !== undefined && t !== undefined && v < t;
   const cls = (v: number | undefined, t: number | undefined) => (v === undefined ? "warn" : ng(v, t) ? "err" : "ok"); // 算出できない（故障率 0 など）は緑にしない
-  const perGoalNg = a.issues.some((i) => i.source === "hardware" && (i.code === "HW_SPFM_BELOW_TARGET" || i.code === "HW_LFM_BELOW_TARGET"));
+  const perGoalNg = a.issues.some((i) => i.source === "hardware" && (i.code === "HW_SPFM_BELOW_TARGET" || i.code === "HW_LFM_BELOW_TARGET" || i.code === "HW_METRICS_MISSING"));
   return (
     <div className="row" role="status" aria-label="ハードウェアメトリクス">
       <strong>ハードウェアメトリクス</strong>
       <span className={`badge ${perGoalNg && !ng(hw.spfm, hw.target?.spfm) ? "warn" : cls(hw.spfm, hw.target?.spfm)}`} title="単一点故障メトリクス = 1 − (単一点+残存故障の故障率) / 安全関連の故障率">SPFM {pct(hw.spfm)}{hw.spfm === undefined ? "(算出不可)" : ""}{hw.target ? `(目標 ${pct(hw.target.spfm)})` : ""}</span>
       <span className={`badge ${perGoalNg && !ng(hw.lfm, hw.target?.lfm) ? "warn" : cls(hw.lfm, hw.target?.lfm)}`} title="潜在故障メトリクス">LFM {pct(hw.lfm)}{hw.target ? `(目標 ${pct(hw.target.lfm)})` : ""}</span>
-      <span className="muted">最大 ASIL {hw.targetAsil}、安全関連 {hw.totalFit} FIT(全故障モードの合算。安全目標ごとの判定は「問題」タブ)。故障率は利用者の入力で、PMHF は算出しません。</span>
+      <span className="muted">最大 ASIL {hw.targetAsil}、安全関連 {hw.totalFit} FIT(全故障モードの合算。評価できていない安全目標があれば黄色。安全目標ごとの判定は「問題」タブ)。故障率は利用者の入力で、PMHF は算出しません。</span>
     </div>
   );
 }

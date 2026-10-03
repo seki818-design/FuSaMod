@@ -72,3 +72,23 @@ describe("HW メトリクスの欠落と DC の貸し出し元(ラウンド 8)",
     expect(unpaired.map((i) => `${i.severity}:${i.code}`)).toEqual(["warning:HW_DC_MECHANISM_UNPAIRED"]);
   });
 });
+
+describe("根拠の形式検査と DC を貸す機構の ASIL(ラウンド 9)", () => {
+  const mech = [{ id: "SM", diagnosticCoverage: "high" as const, asil: "A" as const, paired: true }];
+  it("HW の根拠も、形だけの文字列（xxxxxxxx・TODO TODO・12345678）は不十分", () => {
+    for (const t of ["xxxxxxxx", "TODO TODO", "12345678", "in-progress 2024-01", "to be defined 001"]) {
+      const r = validateHwModes([m({ id: "A", dcSpfRf: 0.5, mechanismId: "SM", rationale: t })], ["QM"], { mechanisms: [{ ...mech[0]!, asil: "B" }] });
+      expect(r.map((i) => i.code), t).toContain("HW_NO_RATIONALE");
+    }
+  });
+  it("語の一部（depending・sampled・仮想化）は弾かない", () => {
+    for (const t of ["depending on DFA-12 report", "sampled FMEDA-2024 sheet 3", "仮想化分離 DFA-12 §3"])
+      expect(validateHwModes([m({ id: "A", dcSpfRf: 0.5, mechanismId: "SM", rationale: t })], ["QM"], { mechanisms: [{ ...mech[0]!, asil: "B" }] }).map((i) => i.code), t).not.toContain("HW_NO_RATIONALE");
+  });
+  it("DC を貸す機構の ASIL（分解の元 ASIL を含む）が目標より低ければエラー", () => {
+    const goals = [{ id: "SG-1", asil: "D" as const }];
+    const mode = m({ id: "A", dcSpfRf: 0.5, mechanismId: "SM", goalIds: ["SG-1"], rationale: "FMEDA 2024-05 表 3" });
+    expect(validateHwModes([mode], ["D"], { goals, mechanisms: mech }).map((i) => i.code)).toContain("HW_DC_MECHANISM_BELOW_GOAL");
+    expect(validateHwModes([mode], ["D"], { goals, mechanisms: [{ ...mech[0]!, asil: "B", originAsil: "D" }] }).map((i) => i.code)).not.toContain("HW_DC_MECHANISM_BELOW_GOAL");
+  });
+});

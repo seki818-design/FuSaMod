@@ -280,5 +280,7 @@ describe("プレースホルダの根拠(ラウンド 5)", () => {
     [{ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: t }],
   ).map((i) => i.code);
   it.each(["see doc 12 later", "WIP 2024-05", "draft v0.1 / DFA", "none 000-111", "同上 DFA-001", "後述 12-34", "same as DFA-12"])("『%s』(後回し・作業中の表現)は警告", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
+  it.each(["in-progress DFA-12", "to follow 2024-05", "TO BE DEFINED 001", "not applicable 12-34", "作業中 DFA-12"])("『%s』は警告(ラウンド 9)", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
+  it.each(["depending on DFA-12 report", "sampled FMEDA-2024 sheet 3", "仮想化分離 DFA-12 §3", "DFA-1 todos"])("『%s』は正当な文字列として通す", (t) => expect(e(t)).not.toContain("DECOMP_EVIDENCE_WEAK"));
   it.each(["pending review", "TBC-001-xyz", "lorem ipsum 123", "未確認 DFA-1", "確認中 123-456"])("『%s』は警告", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
 });

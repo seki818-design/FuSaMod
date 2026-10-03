@@ -112,12 +112,15 @@ const EVIDENCE_MIN = 8;
  * 形だけの根拠を除く簡易な検査(内容の妥当性は人が判断する)。
  * 8 文字以上、6 種類以上の文字、数字だけでない、同じ語の繰り返しでない、プレースホルダ(TODO/TBD/XXX/WIP/draft/none/see…/ダミー/仮/後述/同上など)を含まない、数字か区切りを含む(「abcdabcd」「TODO TODO」「12345678」「asdfghjk」「DFA-XXX-000」「DFA TBD 1234」を除く)。
  */
-const isSubstantial = (t: string) =>
+export const isSubstantial = (t: string) =>
   t.length >= EVIDENCE_MIN &&
   new Set(t).size >= 6 &&
   !/^\d+$/.test(t) &&
   !/^(.{2,}?)\s*\1+$/.test(t) &&
-  !/(todo|tbd|tbc|n\/a|xxx|dummy|sample|lorem|ipsum|pending|placeholder|\bwip\b|\bdraft\b|\blater\b|\bnone\b|\bsee\s|\bditto\b|\bsame\s+as\b|(?:^|\s)n\.a\.?(?:\s|$)|\bin\s+progress\b|\btba\b|\bnot\s+yet\b|\bnot\s+done\b|未実施|未作成|未着手|検討予定|未定|未確認|確認中|検討中|あとで|ダミー|仮|なし|後述|別紙|同上|作成中|準備中|記載予定)/i.test(t) &&
+  // 英単語は語境界で判定する（sampled・depending・todos のような語の一部は弾かない）。日本語は部分一致
+  !/\b(?:todo|tbd|tbc|n\/a|xxx+|dummy|sample|lorem|ipsum|pending|placeholder|wip|draft|later|none|see|ditto|tba|same\s+as|as\s+above|in[\s-]progress|to\s+follow|to\s+be\s+(?:defined|determined|decided)|not\s+(?:yet|done|applicable|available))\b/i.test(t) &&
+  !/(?:^|\s)n\.a\.?(?:\s|$)/i.test(t) &&
+  !/(?:未実施|未作成|未着手|検討予定|未定|未確認|確認中|検討中|あとで|ダミー|仮(?!想)|なし|後述|別紙|同上|作成中|準備中|記載予定|作業中|対応中)/.test(t) &&
   /[\d\-_/:()（）\s]/.test(t); // 文書番号・区切りなど、参照らしい形(連打した文字列を除く)
 
 /** 分解の自己参照と循環(A → B + QM、B → A + … など)。 */

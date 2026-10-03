@@ -72,6 +72,8 @@ function sortBySignature(list: Rec[], byId: Map<string, Rec>): Rec[] {
 function labelOf(byId: Map<string, Rec>, p: Payload, depth = 2): string {
   const own = p.declaredName ?? p.name;
   if (own) return own;
+  // 名前の無い根の名前空間は、全トップレベル要素の名前を連結してしまい、トップレベルの編集で全 ID が動く。ラベルを持たせない
+  if (p["@type"] === "Namespace") return "";
   const parts: string[] = [];
   for (const r of [...(p.ownedRelatedElement ?? []), ...(p.target ?? []), ...(p.source ?? []), ...(p.ownedRelationship ?? [])]) {
     const q = r["@id"] ? byId.get(r["@id"])?.payload : undefined;

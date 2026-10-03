@@ -143,3 +143,26 @@ describe("AnalysisService: 重いモデルの再解析を抑える", () => {
     expect((await a.parseModel("light")).result?.ok).toBe(true);
   });
 });
+
+describe("解析の同一モデルの重複排除と停止（ラウンド 9）", () => {
+  it("同じモデルを同時に何度送っても、Java へは 1 回だけ。タイムアウトは全員に同じ失敗で返る", async () => {
+    const { AnalysisService } = await import("../src/services.js");
+    const { SysmlTimeoutError } = await import("../src/sysml/types.js");
+    let calls = 0;
+    const sysml = { mode: "java" as const, close: async () => {}, analyze: async () => { calls++; await new Promise((r) => setTimeout(r, 100)); throw new SysmlTimeoutError("t/o"); } };
+    const a = new AnalysisService(sysml);
+    const rs = await Promise.all(Array.from({ length: 5 }, () => a.parseModel("HEAVY")));
+    expect(calls).toBe(1);
+    expect(rs.every((r) => r.failure === "timeout")).toBe(true);
+  });
+  it("close() は進行中の解析をすぐに拒否する（長い解析の完了を待たない）", async () => {
+    const s = new JavaSysmlService({ command: process.execPath, args: [server], env: { FAKE_MODE: "hang" }, requestTimeoutMs: 30_000 });
+    const p = s.analyze("x");
+    await new Promise((r) => setTimeout(r, 300));
+    const t0 = Date.now();
+    const settled = p.then(() => "ok", () => "rejected");
+    await s.close();
+    expect(await settled).toBe("rejected");
+    expect(Date.now() - t0).toBeLessThan(3000);
+  });
+});

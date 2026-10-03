@@ -17,17 +17,19 @@ cd "$(dirname "$file")"
 # 標準ライブラリ(ScalarValues、単位系)と SCDL ステレオタイプは、変換器に「追加の入力」として同時に渡す。
 # 渡さないと、参照が名前のない Type になる(JSON の ID・XMI の href が不安定)、単位式や @Scdl* を含むモデルが変換できない(NPE)。
 # ライブラリの置き場には空白を含むパスがあり、変換器が扱えないため、空白のない作業ディレクトリへコピーする。
+# 判定はコメントと文字列を除いたテキストで行う（コメントに「SCDL」「[RFC]」と書いただけでライブラリを取り込まない）
+CODE="$(perl -0pe 's{/\*.*?\*/}{}gs; s{//[^\n]*}{}g; s{"(?:[^"\\]|\\.)*"}{""}g; s{\x27(?:[^\x27\\]|\\.)*\x27}{}g' "$file")"
 LIBDIR="$(dirname "$file")/lib"
 mkdir -p "$LIBDIR"
 KLIB="$KDIR/sysml.library"
 extra=()
 cp "$KLIB/Kernel Libraries/Kernel Data Type Library/ScalarValues.kerml" "$LIBDIR/"
 extra+=("$LIBDIR/ScalarValues.kerml")
-if grep -Eq '\b(ISQ[A-Za-z]*|SI|SIPrefixes|MeasurementReferences|Quantities|USCustomaryUnits|Time|[A-Za-z]*Calculations)\b *::|[0-9)] *\[ *[A-Za-z]' "$file"; then
+if grep -Eq '\b(ISQ[A-Za-z]*|SI|SIPrefixes|MeasurementReferences|Quantities|USCustomaryUnits|Time|[A-Za-z]*Calculations)\b *::|[0-9)] *\[ *[A-Za-z]' <<<"$CODE"; then
   cp "$KLIB/Domain Libraries/Quantities and Units/"*.sysml "$LIBDIR/"
   for f in "$LIBDIR"/*.sysml; do extra+=("$f"); done
 fi
-if grep -Eq '\bSCDL\b|@Scdl' "$file" && ! grep -Eq '^[[:space:]]*(library[[:space:]]+)?package[[:space:]]+SCDL\b' "$file"; then
+if grep -Eq '\bSCDL *::|\bimport +SCDL\b|@Scdl' <<<"$CODE" && ! grep -Eq '^[[:space:]]*(library[[:space:]]+)?package[[:space:]]+SCDL\b' "$file"; then
   # SCDL のステレオタイプ定義は、変換するファイルの先頭に取り込む。出力 JSON が自己完結になり(他ツールでも @Scdl* の定義を解決できる)、
   # 外部要素への参照(変換のたびに変わる ID)が残らない
   tmp="$(mktemp -p "$(dirname "$file")")"

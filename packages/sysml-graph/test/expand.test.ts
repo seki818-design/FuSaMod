@@ -187,3 +187,26 @@ describe("上限なしの多重度([0..*])", () => {
     expect(d.deriveIssues.some((i) => i.code === "MULTIPLICITY_IGNORED" && i.message.includes("spares") && i.message.includes("なし"))).toBe(true);
   });
 });
+
+describe("要求側の経路つき satisfy と、式・0・任意の多重度(公式実装の出力で確認)", () => {
+  const T = "RequirementPaths";
+  const d = deriveNet(ex("requirement-paths.graph.json"));
+  const sat = (r: string) => d.requirements.find((x) => x.id === `${T}::${r}`)?.satisfiedBy;
+  it("satisfy r1.subB.deep by v.front.brake は、r1 のインスタンスの要求に、front の brake だけを紐づける(定義側の要求・他の経路に付かない)", () => {
+    expect(sat("r1::subB::deep")).toEqual([`${T}::v::front::brake`]);
+    expect(sat("r2::subA")).toEqual([`${T}::v::rear::brake`]);
+    expect(sat("r2::subB::deep")).not.toContain(`${T}::v::front::brake`);
+    expect(d.requirements.map((r) => r.id).some((i) => i.startsWith(`${T}::ReqD`))).toBe(false); // 幽霊要求なし
+  });
+  it("[n](式)・[0]・[0..1](下限 0)も警告する", () => {
+    const m = d.deriveIssues.filter((i) => i.code === "MULTIPLICITY_IGNORED").map((i) => i.message).join("\n");
+    expect(m).toContain("式のため");
+    expect(m).toContain("多重度が 0");
+    expect(m).toContain("下限が 0");
+  });
+  it("定義側の多重度の警告は、使用ごとに重複しない", () => {
+    const g = ex("nested-definitions.graph.json");
+    const w = deriveNet(g).deriveIssues.filter((i) => i.code === "MULTIPLICITY_IGNORED" && i.message.includes("Pack::cells"));
+    expect(w).toHaveLength(1);
+  });
+});

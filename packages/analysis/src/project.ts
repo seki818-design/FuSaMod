@@ -149,6 +149,20 @@ const aiChange = z
   })
   .strict();
 
+/** ハードウェアの故障モード(SPFM/LFM の入力。故障率は利用者が与える) */
+const hardwareFailureMode = z
+  .object({
+    id,
+    name: text,
+    elementId: id.optional(),
+    fit: z.number().min(0).max(1e9),
+    safeFraction: z.number().min(0).max(1).optional(),
+    type: z.enum(["single", "multiple"]),
+    dcSpfRf: z.number().min(0).max(1).optional(),
+    dcLatent: z.number().min(0).max(1).optional(),
+  })
+  .strict();
+
 /** プロジェクトの安全分析データ(model.sysml に対応する safety.json)。 */
 export const SafetyDataSchema = z
   .object({
@@ -163,6 +177,8 @@ export const SafetyDataSchema = z
     decompositions: arr(decomposition),
     signalFlows: arr(signalFlow),
     faultTrees: arr(faultTree),
+    /** ハードウェアの故障モードと故障率(SPFM/LFM の算出。ISO 26262-5)。任意 */
+    hardwareFailureModes: arr(hardwareFailureMode).optional(),
     /** 要素 ID → 階層レベルの上書き(自動の階層レベルを変えたい場合のみ) */
     levelOverrides: z.record(z.enum(["system", "subsystem", "component", "detail"])).optional(),
     /** AIAG-VDA の Action Priority 表(ハンドブックの正式な表をユーザーが投入する。ADR-0004) */

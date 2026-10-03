@@ -1,7 +1,8 @@
-import { chmodSync, readdirSync } from "node:fs";
+import { chmodSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { resolve } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ConvertBusyError, ConvertError, convertModel } from "../src/sysml/convert.js";
 import { JavaSysmlService } from "../src/sysml/java-service.js";
 import { SysmlUnavailableError } from "../src/sysml/types.js";
@@ -9,7 +10,11 @@ import { SysmlUnavailableError } from "../src/sysml/types.js";
 const script = resolve(import.meta.dirname, "fakes/fake-convert.sh");
 const server = resolve(import.meta.dirname, "fakes/fake-sysml-server.mjs");
 chmodSync(script, 0o755);
-const tmpLeft = () => readdirSync(tmpdir()).filter((n) => n.startsWith("fusamod-convert-"));
+// テストごとに専用の一時ディレクトリを使う(OS 共通の tmp にある他の実行・他のプロセスの残りに影響されない)
+let root = "";
+beforeEach(() => { root = mkdtempSync(join(tmpdir(), "fusamod-test-conv-")); });
+afterEach(() => rmSync(root, { recursive: true, force: true }));
+const tmpLeft = () => readdirSync(root).filter((n) => n.startsWith("fusamod-convert-"));
 const withMode = async <T>(mode: string, f: () => Promise<T>): Promise<T> => {
   const old = process.env["FAKE_MODE"];
   process.env["FAKE_MODE"] = mode;
@@ -23,13 +28,13 @@ const withMode = async <T>(mode: string, f: () => Promise<T>): Promise<T> => {
 
 describe("convertModel(代役のスクリプトで、Java なしに挙動を確認)", () => {
   it("成功: JSON / XMI の中身を返し、一時ディレクトリを残さない", async () => {
-    expect(await convertModel("package P {}", "json", { script })).toContain("PartUsage");
-    expect((await convertModel("package P {}", "xmi", { script })).startsWith("<?xml")).toBe(true);
+    expect(await convertModel("package P {}", "json", { script, tempRoot: root })).toContain("PartUsage");
+    expect((await convertModel("package P {}", "xmi", { script, tempRoot: root })).startsWith("<?xml")).toBe(true);
     expect(tmpLeft()).toEqual([]);
   });
   it("空の出力・終了コード非 0 は ConvertError(内部のパスを含まない)", async () => {
-    await expect(withMode("empty", () => convertModel("x", "json", { script }))).rejects.toBeInstanceOf(ConvertError);
-    const err = await withMode("fail", () => convertModel("x", "json", { script })).catch((e) => e);
+    await expect(withMode("empty", () => convertModel("x", "json", { script, tempRoot: root }))).rejects.toBeInstanceOf(ConvertError);
+    const err = await withMode("fail", () => convertModel("x", "json", { script, tempRoot: root })).catch((e) => e);
     expect(err).toBeInstanceOf(ConvertError);
     expect(String(err.message)).not.toContain("secret");
     expect(String(err.message)).not.toContain("fusamod-convert-");
@@ -37,15 +42,15 @@ describe("convertModel(代役のスクリプトで、Java なしに挙動を確�
   });
   it("タイムアウトは SysmlUnavailableError。子プロセスも残さず、一時ディレクトリを消す", async () => {
     const t0 = Date.now();
-    await expect(withMode("spawn-child", () => convertModel("x", "json", { script, timeoutMs: 800 }))).rejects.toBeInstanceOf(SysmlUnavailableError);
+    await expect(withMode("spawn-child", () => convertModel("x", "json", { script, timeoutMs: 800, tempRoot: root }))).rejects.toBeInstanceOf(SysmlUnavailableError);
     expect(Date.now() - t0).toBeLessThan(10_000);
     expect(tmpLeft()).toEqual([]);
   });
   it("起動できない(スクリプトが無い)ときは SysmlUnavailableError", async () => {
-    await expect(convertModel("x", "json", { script: "/nonexistent/convert.sh" })).rejects.toBeInstanceOf(SysmlUnavailableError);
+    await expect(convertModel("x", "json", { script: "/nonexistent/convert.sh", tempRoot: root })).rejects.toBeInstanceOf(SysmlUnavailableError);
   });
   it("同時実行の上限(実行 2 + 待ち 4): 7 件目以降は ConvertBusyError", async () => {
-    const rs = await withMode("slow", () => Promise.allSettled(Array.from({ length: 9 }, () => convertModel("x", "json", { script, timeoutMs: 700 }))));
+    const rs = await withMode("slow", () => Promise.allSettled(Array.from({ length: 9 }, () => convertModel("x", "json", { script, timeoutMs: 700, tempRoot: root }))));
     const busy = rs.filter((r) => r.status === "rejected" && r.reason instanceof ConvertBusyError).length;
     expect(busy).toBe(3); // 2 実行 + 4 待ち = 6 件が受理され、残り 3 件が断られる
     expect(tmpLeft()).toEqual([]);

@@ -91,6 +91,8 @@ function assertAiChangesUnchanged(current: unknown[] | undefined, incoming: unkn
     throw new HttpError(422, "AI の適用履歴(aiChanges)は、サーバーが記録するもので、保存の際に追加・削除・書き換えはできません");
 }
 
+const EXPORT_NAMES = new Set(["model.sysml", "fmea.csv", "trace.csv", "issues.csv", "report.md", "scdl.sysml", "model.json", "model.xmi", "analysis.json"]);
+
 const idParam = z.object({ id: z.string() });
 const revParam = z.object({ id: z.string(), rev: z.coerce.number().int().min(1) });
 
@@ -265,8 +267,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
   app.post("/api/projects/:id/history/:rev/restore", async (req) => {
     const { id, rev } = revParam.parse(req.params);
+    const beforeSafety = (await store.read(id)).safety;
     const meta = await store.restore(id, rev, actorOf(req));
     const { p, out } = await requireAnalysis(id);
+    // 復元でも、差分(リスクを下げうる変更の件数つき)を監査ログに残す
+    const diff = riskChanges(beforeSafety, p.safety);
+    if (diff.length > 0)
+      await store.audit(id, { actor: actorOf(req), action: "safety.diff", details: { via: "restore", from: rev, revision: meta.revision, changes: diff.length, lowersRisk: diff.filter((c) => c.lowersRisk).length, items: diff.slice(0, 30).map((c) => `${c.id}.${c.field}: ${c.from ?? "-"} → ${c.to ?? "-"}${c.lowersRisk ? " [リスク低下]" : ""}`) } });
     return { restored: meta, ...view(id, p, out) };
   });
   app.get("/api/projects/:id/audit", async (req) => {
@@ -284,6 +291,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params);
     const q = z.object({ element: z.string().optional() }).parse(req.query);
     store.dir(id);
+    if (!EXPORT_NAMES.has(name)) throw new HttpError(404, "不明な出力です"); // 許可リストにない名前は、監査に書く前に拒否する
     await store.read(id); // 存在確認(無ければ 404)。監査の書き込みより前に行う
     // 同じ人の同じ書き出しは、1 分に 1 回だけ監査に残す(閲覧だけでログが増え続けないように)
     const auditKey = `${id}|${actorOf(req)}|${name}`;

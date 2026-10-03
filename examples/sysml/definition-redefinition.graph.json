@@ -96,7 +96,8 @@
       "types": [
         "DefRedefinition::Cell"
       ],
-      "multiplicityUpper": -1
+      "multiplicityUpper": -1,
+      "multiplicityLower": 0
     },
     {
       "kind": "RequirementDefinition",

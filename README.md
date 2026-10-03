@@ -22,6 +22,10 @@ pnpm install && pnpm build && pnpm start   # http://127.0.0.1:8787
 
 初期データ: `projects/ev-powertrain`(EV パワートレインの例)。設定は [`.env.example`](.env.example)。
 
+## 運用・設定
+- 設定は環境変数（`.env.example`）。認証は `FUSAMOD_TOKENS`、AI は `FUSAMOD_AI_PROVIDER`、公式 SysML 実装は Java 21 が必要（無ければ保存済みのモデルのみ解析）。
+- Docker: `Dockerfile` を同梱（未検証。docs/operations.md）。セキュリティの考え方は [docs/security.md](docs/security.md)。
+
 ## 開発
 
 ```sh

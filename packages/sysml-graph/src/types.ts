@@ -27,7 +27,9 @@ export interface GraphElement {
   redefines?: boolean;
   /** 再定義している特徴(完全修飾名)。定義側の同名の使用の中身を引き継ぐために使う */
   redefinedFeatures?: string[];
-  /** 多重度の上限(`Cell[4]` なら 4、`[0..*]` のように上限なしなら -1)。解析では 1 つのインスタンスとして扱い、警告する */
+  /** 多重度の下限(`[0..4]` なら 0)。リテラルでなければ無い */
+  multiplicityLower?: number;
+  /** 多重度の上限(`Cell[4]` なら 4、`[0..*]` のように上限なしなら -1、`[n]` のような式なら -2)。解析では 1 つのインスタンスとして扱い、警告する */
   multiplicityUpper?: number;
   /** `ref part`(参照。構造の入れ子ではない) */
   isRef?: boolean;
@@ -52,6 +54,8 @@ export interface GraphSatisfy {
   by: string | null;
   /** `car.front.rotor` のような連鎖の、途中も含む特徴の完全修飾名(先頭がインスタンスの起点) */
   byChain?: string[];
+  /** 満たされる要求の側の連鎖(`r1.subB.deep` なら [r1, ReqD::subB, ReqD::subB::deep])。連鎖でなければ無い */
+  requirementChain?: string[];
 }
 
 /** `perform` 宣言: performer(part)が performed(action)を実施する。 */

@@ -331,7 +331,7 @@ export function validateElementAsil(
   functions: IntendedFunction[],
   mechanisms: SafetyMechanism[],
   reqs: SafetyRequirement[],
-  opts: { hasAsilGoal?: boolean } = {},
+  opts: { goals?: { id: string; asil: Asil }[] } = {},
 ): Issue[] {
   const issues: Issue[] = [];
   const byId = new Map(reqs.map((r) => [r.id, r]));
@@ -343,9 +343,17 @@ export function validateElementAsil(
         issues.push({ code: "ELEMENT_ASIL_BELOW_REQ", severity: "error", message: `${kind} ${x.id} の ASIL(${own})が、紐づく要求 ${r.id}(ASIL ${r.asil})より低くなっています`, ref: x.id });
     if (x.originAsil !== undefined && !linked.some((r) => (r.originAsil ?? r.asil) === x.originAsil && r.originAsil !== undefined))
       issues.push({ code: "DECOMP_ORPHAN", severity: "error", message: `${kind} ${x.id} は元 ASIL(${x.originAsil})の表記を持ちますが、同じ元 ASIL を持つ要求(分解先)に紐づいていません`, ref: x.id });
-    if (own === "QM" && linked.length === 0 && x.originAsil === undefined)
-      // ASIL の付いた安全目標があるのに、要求に紐づかない QM の意図機能は、ASIL を黙って外している疑いがある(エラー)。安全機構は警告
-      issues.push({ code: "ELEMENT_QM_UNLINKED", severity: opts.hasAsilGoal && kind === "意図機能" ? "error" : "warning", message: `${kind} ${x.id} は QM で、紐づく要求もありません。ASIL の付いた安全目標・要求との関係を確認してください`, ref: x.id });
+    const asilGoals = new Map((opts.goals ?? []).filter((g) => g.asil !== "QM").map((g) => [g.id, g]));
+    // 紐づく要求が ASIL の付いた安全目標までたどれるか(QM のダミー要求だけに紐づけても、ASIL を外したことにならない)
+    const tracesToGoal = linked.some((r) => asilGoals.has(goalIdOfRequirement(reqs, r.id) ?? ""));
+    for (const r of linked) {
+      const g = asilGoals.get(goalIdOfRequirement(reqs, r.id) ?? "");
+      if (g && asilRank(x.originAsil ?? own) < asilRank(g.asil))
+        issues.push({ code: "ELEMENT_BELOW_GOAL_ASIL", severity: "error", message: `${kind} ${x.id} の ASIL(${x.originAsil ? `${own}(${x.originAsil})` : own})が、紐づく安全目標 ${g.id}(ASIL ${g.asil})を下回っています`, ref: x.id });
+    }
+    if (own === "QM" && x.originAsil === undefined && !tracesToGoal && (linked.length === 0 || asilGoals.size > 0))
+      // ASIL の付いた安全目標があるのに、そこへつながらない QM の意図機能は、ASIL を黙って外している疑いがある(エラー)。安全機構は警告
+      issues.push({ code: "ELEMENT_QM_UNLINKED", severity: asilGoals.size > 0 && kind === "意図機能" ? "error" : "warning", message: `${kind} ${x.id} は QM で、紐づく要求もありません。ASIL の付いた安全目標・要求との関係を確認してください`, ref: x.id });
   };
   for (const f of functions) check("意図機能", f);
   for (const m of mechanisms) check("安全機構", m);

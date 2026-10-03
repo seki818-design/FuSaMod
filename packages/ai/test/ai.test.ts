@@ -142,3 +142,46 @@ describe("riskChanges: リスクを下げうる変更の分類(ラウンド 5)",
     expect(c.every((x) => !x.lowersRisk)).toBe(true);
   });
 });
+
+describe("riskChanges: 追加の分類(ラウンド 6)", () => {
+  const base = () => structuredClone(safety());
+  const lowered = (mutate: (s: ReturnType<typeof base>) => void) => {
+    const a = base(); const b = base(); mutate(b);
+    return riskChanges(a, b).filter((c) => c.lowersRisk).map((c) => c.field);
+  };
+  it("安全要求の ASIL を QM に降格", () => expect(lowered((s) => { s.safetyRequirements[0]!.asil = "QM"; })).toContain("asil"));
+  it("安全機構の ASIL・安全状態の削除・診断カバレッジの向上の主張", () => {
+    expect(lowered((s) => { s.mechanisms[0]!.asil = "QM"; })).toContain("asil");
+    expect(lowered((s) => { delete s.mechanisms[0]!.safeState; })).toContain("safeState");
+    expect(lowered((s) => { s.mechanisms[0]!.diagnosticCoverage = "high"; s.mechanisms[0]!.coversFailureIds!.push("FM-NEW"); })).toEqual(expect.arrayContaining(["coversFailureIds"]));
+  });
+  it("対象の故障を減らす/診断カバレッジを下げるのは、リスクを上げる方向(低下ではない)", () => {
+    expect(lowered((s) => { s.mechanisms[0]!.coversFailureIds = []; })).not.toContain("coversFailureIds");
+  });
+  it("AP 表を全部 L にすると、H の件数の減少としてリスク低下", () => {
+    const a = base(); const b = base();
+    b.apTable = [{ s: [1, 10], o: [1, 10], d: [1, 10], ap: "L" }];
+    expect(riskChanges(a, b).some((c) => c.id === "apTable" && c.lowersRisk)).toBe(true);
+  });
+  it("FTA: OR → AND、入力の削除、基本事象の付け替えをリスク低下として分類", () => {
+    const a = base();
+    a.faultTrees = [{ id: "FT", name: "t", top: "G", nodes: [{ id: "G", label: "g", kind: "gate", gate: "or", inputs: ["a", "b"] }, { id: "a", label: "a", kind: "basic", failureId: "F1" }, { id: "b", label: "b", kind: "basic" }] }];
+    const b = structuredClone(a);
+    b.faultTrees[0]!.nodes[0] = { id: "G", label: "g", kind: "gate", gate: "and", inputs: ["a"] };
+    b.faultTrees[0]!.nodes[1] = { id: "a", label: "a", kind: "basic", failureId: "F2" };
+    const f = riskChanges(a, b).filter((c) => c.lowersRisk).map((c) => c.field);
+    expect(f).toEqual(expect.arrayContaining(["gate", "inputs", "failureId"]));
+  });
+});
+
+describe("riskChanges: ハードウェア故障モード", () => {
+  it("診断カバレッジの向上・故障率の低下・削除は、メトリクスを良く見せる変更としてリスク低下", () => {
+    const a = structuredClone(safety());
+    const b = structuredClone(a);
+    b.hardwareFailureModes![0]!.dcSpfRf = 0.999;
+    b.hardwareFailureModes![1]!.fit = 1;
+    b.hardwareFailureModes!.pop();
+    const f = riskChanges(a, b).filter((c) => c.lowersRisk).map((c) => c.field);
+    expect(f).toEqual(expect.arrayContaining(["dcSpfRf", "fit", "削除(ハードウェア故障モード)"]));
+  });
+});

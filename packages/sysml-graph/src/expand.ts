@@ -56,6 +56,23 @@ class Expander {
     for (const e of g.elements) if (e.owner) append(this.children, e.owner, e);
   }
 
+  private readonly warnedMult = new Set<string>();
+
+  /** 多重度の警告(1 つの使用につき 1 回。インスタンスの経路ではなく、モデル上の使用を示す)。 */
+  private warnMultiplicity(m: GraphElement) {
+    const up = m.multiplicityUpper;
+    const lo = m.multiplicityLower;
+    if (this.warnedMult.has(m.qualifiedName)) return;
+    let why: string | undefined;
+    if (up === -2) why = "多重度の上限が式のため解析できません(1 つのインスタンスとして扱います)";
+    else if (up === 0) why = "多重度が 0 です(インスタンスは作られませんが、1 つとして扱います)";
+    else if (up !== undefined && (up > 1 || up === -1)) why = `多重度(上限 ${up === -1 ? "なし(*)" : up})は解析の対象外です。1 つのインスタンスとして扱います`;
+    else if (lo === 0) why = "下限が 0 の多重度(任意)です。常に存在するものとして扱います";
+    if (!why) return;
+    this.warnedMult.add(m.qualifiedName);
+    this.warn("MULTIPLICITY_IGNORED", `${why}: ${m.qualifiedName}`, m.qualifiedName);
+  }
+
   private warn(code: string, message: string, ref?: string) {
     this.issues.push({ code, severity: "warning", message, ...(ref ? { ref } : {}) });
   }
@@ -96,14 +113,13 @@ class Expander {
     this.warnUnsupported();
     const kept = this.g.elements.filter((e) => !this.insideDefinition(e) && !UNSUPPORTED[e.kind] && !e.isRef);
     const typed = kept.some((e) => USAGES.has(e.kind) && (e.types?.some((t) => this.isDefinition(t)) || e.supertypes?.length || e.redefinedFeatures?.length));
-    if (!typed && !this.g.elements.some((e) => DEFINITIONS.has(e.kind))) return { graph: { ...this.g, elements: kept }, issues: this.issues };
+    if (!typed && !this.g.elements.some((e) => DEFINITIONS.has(e.kind))) {
+      for (const e of kept) if (USAGES.has(e.kind)) this.warnMultiplicity(e);
+      return { graph: { ...this.g, elements: kept }, issues: this.issues };
+    }
 
-    const warnedTop = new Set<string>();
     for (const e of kept) {
-      if (e.multiplicityUpper !== undefined && (e.multiplicityUpper > 1 || e.multiplicityUpper === -1) && USAGES.has(e.kind) && !warnedTop.has(e.qualifiedName)) {
-        warnedTop.add(e.qualifiedName);
-        this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${e.multiplicityUpper === -1 ? "なし(*)" : e.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${e.qualifiedName}`, e.qualifiedName);
-      }
+      if (USAGES.has(e.kind)) this.warnMultiplicity(e);
       let el = e;
       if (e.kind === "ActionUsage" && !e.parameters?.length) el = { ...e, parameters: this.parametersOf(e) };
       // requirement def の本文は、型付きの requirement が自身の本文を持たなければ引き継ぐ
@@ -210,8 +226,7 @@ class Expander {
           this.warn("UNSUPPORTED_CONSTRUCT", `定義の中の ref part(参照)は構造に入れません: ${m.qualifiedName}`, m.qualifiedName);
           continue;
         }
-        if (m.multiplicityUpper !== undefined && (m.multiplicityUpper > 1 || m.multiplicityUpper === -1))
-          this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${m.multiplicityUpper === -1 ? "なし(*)" : m.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${m.qualifiedName}`, m.qualifiedName);
+        this.warnMultiplicity(m);
         names.add(lastName(m));
         this.instantiateMember(inst, m, depth, [...defStack, d]);
       }
@@ -258,22 +273,32 @@ class Expander {
     const ids = new Set(this.out.map((e) => e.qualifiedName));
     for (const s of this.g.satisfies) {
       const by = s.by ? this.byQn.get(s.by) : undefined;
+      // 満たされる要求の側が経路(r1.subB.deep)なら、その要求インスタンス 1 つに付け替える
+      let requirement = s.requirement;
+      if (s.requirementChain && s.requirementChain.length > 1) {
+        const rid = this.resolveChain(s.requirementChain, ids);
+        if (rid) requirement = rid;
+        else {
+          this.warn("SATISFY_UNRESOLVED", `satisfy の要求(${s.requirementChain.map((c) => c.split("::").pop()).join(".")})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
+          continue;
+        }
+      }
       if (s.byChain && s.byChain.length > 1) {
         // インスタンスの経路が分かっている: その 1 つだけに紐づける
         const target = this.resolveChain(s.byChain, ids);
-        if (target) out.push({ requirement: s.requirement, by: target });
+        if (target) out.push({ requirement, by: target });
         else this.warn("SATISFY_UNRESOLVED", `satisfy の対象(${s.byChain.map((c) => c.split("::").pop()).join(".")})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
         continue;
       }
       if (!s.by || !by || !this.insideDefinition(by)) {
-        out.push(s.byChain ? { requirement: s.requirement, by: s.by } : s);
+        out.push(s.byChain || requirement !== s.requirement ? { requirement, by: s.by } : s);
         continue;
       }
       // 定義側の特徴を直接指している: 定義のすべてのインスタンスが満たすことになる
       const copies = this.copiesOf.get(s.by) ?? [];
       if (copies.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、使われていない定義の中の要素です", s.requirement ?? undefined);
       if (copies.length > 1) this.warn("SATISFY_AMBIGUOUS", `satisfy が定義側の要素を直接指しているため、${copies.length} 個のインスタンスすべてに紐づけました(特定するには car.front のような経路で書いてください)`, s.requirement ?? undefined);
-      for (const c of copies) out.push({ requirement: s.requirement, by: c });
+      for (const c of copies) out.push({ requirement, by: c });
     }
     return out;
   }

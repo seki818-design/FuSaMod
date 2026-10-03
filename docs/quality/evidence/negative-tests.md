@@ -41,3 +41,15 @@
 
 ## 信頼性(`apps/server/test/store-crash.test.ts`)
 壊れた meta.json、途中で落ちた保存、履歴の食い違い、壊れた proposals.json、監査ログの改ざん・削除・同時書き込み。
+
+## 追加（第 6 回レビューへの対応）
+| 誤り・攻撃 | 期待 | テスト |
+|---|---|---|
+| 分解の追加、管理策の記述の削除、HARA の低下、FTA の構造変更、AP 表の全 L 化、診断カバレッジ向上の主張、ハードウェア故障率の低下 | `riskChanges` が「リスク低下」と分類 | ai/test |
+| 人の保存・履歴の復元 | 差分が `safety.diff`（監査ログ）に残る | server/test/api.test.ts |
+| 安全機構の `requirementIds` を空にして FTTI を延ばす | ペアの意図機能の要求から目標の FTTI を照合してエラー | analysis/test |
+| QM のダミー要求だけに紐づけた QM の意図機能 | `ELEMENT_QM_UNLINKED`（エラー） | analysis/test |
+| SPFM/LFM が目標に届かない | `HW_SPFM_BELOW_TARGET` / `HW_LFM_BELOW_TARGET`（エラー）。手計算と一致 | safety-core/test/hwmetrics.test.ts |
+| 解析のタイムアウト後・プロセス死亡後の次の要求 | サーバーが落ちない（EPIPE を握りつぶさず例外で返る） | server/test/fake-processes.test.ts |
+| 未知のエクスポート名 | 404、監査に書かない | api.test.ts |
+| Windows の予約名のプロジェクト ID | 400 | api.test.ts |

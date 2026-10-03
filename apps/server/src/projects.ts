@@ -5,6 +5,8 @@ import { emptySafetyData, parseSafetyData, type SafetyData } from "@fusamod/anal
 import type { ElementGraph } from "@fusamod/sysml-graph";
 
 export const PROJECT_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+/** Windows の予約名(ディレクトリ名にすると問題を起こす)と、本ツールが内部で使う名前 */
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/;
 
 export class HttpError extends Error {
   constructor(readonly status: number, message: string, readonly details?: unknown) {
@@ -52,7 +54,7 @@ export class ProjectStore {
 
   /** ID を検証し、ルート配下の絶対パスを返す(パストラバーサル対策)。 */
   dir(id: string): string {
-    if (!PROJECT_ID.test(id)) throw new HttpError(400, "プロジェクト ID は英小文字・数字・ハイフンで、64 文字以内です");
+    if (!PROJECT_ID.test(id) || RESERVED.test(id)) throw new HttpError(400, "プロジェクト ID は英小文字・数字・ハイフンで、64 文字以内です(con、aux、nul など OS の予約名は使えません)");
     const p = resolve(this.root, id);
     if (!p.startsWith(resolve(this.root) + sep)) throw new HttpError(400, "不正なプロジェクト ID です");
     return p;

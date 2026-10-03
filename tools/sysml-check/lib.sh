@@ -18,6 +18,12 @@ JAVA_OPTS_UTF8="-Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -Dfile.encoding=
 NOISE='^Reading |JAVA_TOOL_OPTIONS|^log4j'
 
 ensure_pilot() {
+  # 同時に複数のプロセスが取得・展開・コンパイルを始めて壊し合わないよう、排他ロックを取る(flock が無ければ省略)
+  mkdir -p "$(dirname "$CACHE")"
+  if command -v flock >/dev/null 2>&1; then
+    exec 9>"$CACHE.lock"
+    flock 9
+  fi
   if [ ! -f "$JAR" ]; then
     mkdir -p "$CACHE"
     echo "パイロット実装を取得します: $URL" >&2
@@ -43,4 +49,5 @@ PY
       javac -cp "$JAR:$CACHE" -d "$CACHE" "$HERE/$c.java" 2>&1 | { grep -v JAVA_TOOL_OPTIONS || true; }
     fi
   done
+  if command -v flock >/dev/null 2>&1; then flock -u 9; fi
 }

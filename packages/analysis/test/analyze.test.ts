@@ -371,3 +371,56 @@ describe("ラウンド 5 の指摘(ISO)への回帰", () => {
     expect(issues.find((i) => i.code === "ELEMENT_QM_UNLINKED")?.severity).toBe("error");
   });
 });
+
+describe("ラウンド 6 の指摘(ISO): 迂回の封じ込め", () => {
+  const run = (mutate: (s: ReturnType<typeof demoSafety>) => void) => {
+    const s = structuredClone(demoSafety());
+    mutate(s);
+    return analyzeProject(demoGraph(), s).issues;
+  };
+  it("機構の requirementIds を空にしても、ペアの意図機能の要求から目標の FTTI と照合される", () => {
+    const issues = run((s) => { s.mechanisms[0]!.requirementIds = []; s.mechanisms[0]!.ftti = 5000; });
+    expect(issues.find((i) => i.code === "MECH_FTTI_EXCEEDS_GOAL")?.severity).toBe("error");
+  });
+  it("QM のダミー要求だけに紐づけた QM の意図機能は、ASIL D の目標につながらないのでエラー", () => {
+    const issues = run((s) => {
+      s.safetyRequirements.push({ id: "DUMMY", text: "d", level: "fsr", asil: "QM" });
+      const f = s.intendedFunctions[0]!; f.asil = "QM"; delete f.originAsil; f.requirementIds = ["DUMMY"];
+    });
+    expect(issues.some((i) => i.code === "ELEMENT_QM_UNLINKED" && i.severity === "error")).toBe(true);
+  });
+  it("目標につながる要求より低い元 ASIL の意図機能はエラー", () => {
+    const issues = run((s) => { const f = s.intendedFunctions[0]!; f.asil = "A"; f.originAsil = "B"; });
+    expect(issues.map((i) => i.code)).toEqual(expect.arrayContaining(["ELEMENT_BELOW_GOAL_ASIL"]));
+  });
+});
+
+describe("ハードウェアメトリクス(SPFM/LFM)の統合", () => {
+  it("サンプルのデモ値から SPFM/LFM が算出される(ASIL D の目標に対する判定つき)", () => {
+    const a = analyzeProject(demoGraph(), demoSafety());
+    expect(a.hardware).toBeDefined();
+    expect(a.hardware!.targetAsil).toBe("D");
+    expect(a.hardware!.target).toEqual({ spfm: 0.99, lfm: 0.9 });
+    // 手計算: 総 170 FIT、単一+残存 = 20×0.03 + 50×0.005 = 0.85、潜在 = 100×0.08 = 8
+    expect(a.hardware!.totalFit).toBe(170);
+    expect(a.hardware!.spfm).toBeCloseTo(1 - 0.85 / 170, 9);
+    expect(a.hardware!.lfm).toBeCloseTo(1 - 8 / (170 - 0.85), 9);
+    expect(a.issues.some((i) => i.source === "hardware")).toBe(false); // SPFM 99.5% ≥ 99%、LFM 95.3% ≥ 90%
+  });
+  it("故障率の入力が無ければ、メトリクスは出ず、指摘も出ない", () => {
+    const s = structuredClone(demoSafety()); delete s.hardwareFailureModes;
+    const a = analyzeProject(demoGraph(), s);
+    expect(a.hardware).toBeUndefined();
+    expect(a.issues.some((i) => i.source === "hardware")).toBe(false);
+  });
+});
+
+describe("ハードウェアメトリクスが目標に届かないとき", () => {
+  it("DC を下げると SPFM が ASIL D の目標を下回り、エラーになる", () => {
+    const s = structuredClone(demoSafety());
+    s.hardwareFailureModes![0]!.dcSpfRf = 0.5;
+    const a = analyzeProject(demoGraph(), s);
+    expect(a.issues.find((i) => i.code === "HW_SPFM_BELOW_TARGET")?.severity).toBe("error");
+    expect(a.issues.find((i) => i.source === "hardware")?.viewpoint).toBe("safety");
+  });
+});

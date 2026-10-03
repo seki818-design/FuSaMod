@@ -5,7 +5,9 @@
   "version": "0.1.0",
   "description": "SysML v2 ベースのシステムモデリング・機能安全分析ツール",
   "packageManager": "pnpm@10.28.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "pnpm --filter @fusamod/web build",
     "start": "pnpm --filter @fusamod/server start",
@@ -17,7 +19,8 @@
     "coverage": "node tools/quality/coverage.mjs",
     "bench": "node --import tsx tools/quality/bench.ts",
     "sysml:check": "tools/sysml-check/run.sh",
-    "quality": "pnpm typecheck && pnpm lint && pnpm test && pnpm coverage && pnpm bench"
+    "quality": "pnpm typecheck && pnpm lint && pnpm test && pnpm coverage && pnpm bench",
+    "shots": "SHOTS=1 pnpm --filter @fusamod/web e2e shots"
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",

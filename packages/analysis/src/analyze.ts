@@ -5,12 +5,17 @@ import {
   validateAsilInheritance,
   validateElementAsil,
   goalIdOfRequirement,
+  computeHwMetrics,
+  validateHwModes,
+  HW_TARGETS,
+  asilRank,
   validateDecompositions,
   validateFaultTree,
   validateHara,
   validateNet,
   validatePairing,
   type ApLookup,
+  type Asil,
   type ElementId,
   type FmeaView,
   type Issue,
@@ -59,6 +64,8 @@ export interface ProjectAnalysis {
   /** 機能を持つ構造要素ごとの FMEA(ネットの射影) */
   fmea: Record<ElementId, FmeaView>;
   apAvailable: boolean;
+  /** ハードウェアメトリクス(hardwareFailureModes があるときのみ) */
+  hardware?: { totalFit: number; singleResidualFit: number; latentFit: number; spfm: number | undefined; lfm: number | undefined; targetAsil: Asil; target: { spfm: number; lfm: number } | undefined };
   /** AP 表の状態: none=未設定 / declared=出典あり / unofficial=非公式のサンプル / unknown=出典が未記入 */
   apStatus: "none" | "declared" | "unofficial" | "unknown";
   puzzle: Puzzle;
@@ -152,7 +159,7 @@ function makeLocator(net: SafetyNet, derived: DerivedNet, s: SafetyData): Locate
 
 const DEFAULT_VIEWPOINT: Record<string, Viewpoint> = {
   derive: "behavior", net: "safety", consistency: "behavior", hara: "safety", pairing: "safety",
-  decomposition: "safety", "safety-req": "requirements", fta: "safety", fmea: "safety", scdl: "safety", trace: "requirements",
+  decomposition: "safety", hardware: "safety", "safety-req": "requirements", fta: "safety", fmea: "safety", scdl: "safety", trace: "requirements",
 };
 
 /** 階層をまたいだ整合性(構造・振る舞い・要求): 機能の分解、機能の無い要素、満たされない要求。 */
@@ -218,10 +225,14 @@ function coverageConsistencyIssues(net: SafetyNet, s: SafetyData): Issue[] {
 /** 安全機構の FTTI が、紐づく安全目標の FTTI を超えていないか(超えると、故障を許容時間内に安全状態へ移せない)。 */
 function mechanismFttiIssues(s: SafetyData): Issue[] {
   const goals = new Map(s.hara.goals.map((g) => [g.id, g]));
+  const fnById = new Map(s.intendedFunctions.map((f) => [f.id, f]));
   const out: Issue[] = [];
   for (const m of s.mechanisms) {
     if (m.ftti === undefined) continue;
-    for (const rid of m.requirementIds ?? []) {
+    // 安全機構の要求に加えて、ペアになっている意図機能の要求も、目標への経路として使う
+    const paired = s.pairs.filter((p) => p.mechanismId === m.id).map((p) => fnById.get(p.intendedFunctionId)).filter((f): f is NonNullable<typeof f> => f !== undefined);
+    const reqIds = [...(m.requirementIds ?? []), ...paired.flatMap((f) => [f.id, ...(f.requirementIds ?? [])])];
+    for (const rid of reqIds) {
       const g = goals.get(goalIdOfRequirement(s.safetyRequirements, rid) ?? "");
       if (g?.ftti !== undefined && m.ftti > g.ftti) {
         out.push({ code: "MECH_FTTI_EXCEEDS_GOAL", severity: "error", message: `安全機構 ${m.id} の FTTI(${m.ftti} ms)が、安全目標 ${g.id} の FTTI(${g.ftti} ms)を超えています`, ref: m.id });
@@ -296,6 +307,11 @@ function faultTreeIssues(net: SafetyNet, s: SafetyData): Issue[] {
     out.push(...list.map((i) => (i.ref !== undefined && t.nodes.some((n) => n.id === i.ref) ? { ...i, ref: t.id } : i)));
   }
   return out;
+}
+
+function hardwareSummary(modes: NonNullable<SafetyData["hardwareFailureModes"]>, goalAsils: Asil[]): NonNullable<ProjectAnalysis["hardware"]> {
+  const top = goalAsils.reduce<Asil>((a, b) => (asilRank(b) > asilRank(a) ? b : a), "QM");
+  return { ...computeHwMetrics(modes), targetAsil: top, target: HW_TARGETS[top] };
 }
 
 function apStatusOf(s: SafetyData, available: boolean): ProjectAnalysis["apStatus"] {
@@ -390,10 +406,13 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   push("pairing", [...refs.pairing, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
   push("safety-req", [...refs.safetyReq, ...duplicateIdIssues(s)]);
   push("pairing", coverageConsistencyIssues(net, s));
+  const hwModes = s.hardwareFailureModes ?? [];
+  const goalAsils = s.hara.goals.map((g) => g.asil);
+  push("hardware", validateHwModes(hwModes, goalAsils, new Set(net.elements.map((e) => e.id))));
   push("decomposition", [
     ...validateDecompositions(s.safetyRequirements, s.decompositions),
     ...validateAsilInheritance(s.safetyRequirements, s.decompositions, s.hara.goals),
-    ...validateElementAsil(s.intendedFunctions, s.mechanisms, s.safetyRequirements, { hasAsilGoal: s.hara.goals.some((g) => g.asil !== "QM") }),
+    ...validateElementAsil(s.intendedFunctions, s.mechanisms, s.safetyRequirements, { goals: s.hara.goals }),
     ...mechanismFttiIssues(s),
     ...decompositionAllocationIssues(net, s),
   ]);
@@ -420,6 +439,7 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   return {
     net, derived, levelOf, issues, fmea,
     apAvailable: ap !== undefined,
+    ...(hwModes.length > 0 ? { hardware: hardwareSummary(hwModes, goalAsils) } : {}),
     apStatus: apStatusOf(s, ap !== undefined),
     puzzle: buildPuzzle({ net, levelOf, issues, derived }, s),
     trace,

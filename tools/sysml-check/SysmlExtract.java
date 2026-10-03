@@ -63,20 +63,28 @@ public class SysmlExtract {
         return out;
     }
 
-    /** 多重度の上限(`[4]` や `[0..4]` なら 4)。リテラルでない・無限(*)・宣言なしなら null。 */
+    /** 多重度の上限(`[4]` や `[0..4]` なら 4)。上限なし(*)は -1、リテラルでない式(`[n]`)は -2、宣言なしは null。 */
     static Integer multiplicityUpper(Feature f) {
         Multiplicity m = f.getMultiplicity();
         if (!(m instanceof MultiplicityRange mr)) return null;
+        if (mr.getOwnedElement().isEmpty() && mr.getUpperBound() == null) return null; // 宣言なし(継承された既定)
         Expression ub = mr.getUpperBound();
         if (ub == null) {
             for (Element c : mr.getOwnedElement()) {
                 if (c instanceof LiteralInteger li) return li.getValue();
                 if (c instanceof LiteralInfinity) return -1;
             }
-            return null;
+            return -2;
         }
         if (ub instanceof LiteralInfinity) return -1; // 上限なし(*)
-        return ub instanceof LiteralInteger li ? li.getValue() : null;
+        return ub instanceof LiteralInteger li ? li.getValue() : -2;
+    }
+
+    /** 多重度の下限(`[0..4]` なら 0)。リテラルでなければ null。 */
+    static Integer multiplicityLower(Feature f) {
+        Multiplicity m = f.getMultiplicity();
+        if (m instanceof MultiplicityRange mr && mr.getLowerBound() instanceof LiteralInteger li) return li.getValue();
+        return null;
     }
 
     /** 宣言された型(`: Def`)の完全修飾名。 */
@@ -124,6 +132,8 @@ public class SysmlExtract {
         if (f instanceof PartUsage pu && f.getOwningType() != null && pu.isReference()) n.put("isRef", true);
         Integer upper = multiplicityUpper(f);
         if (upper != null) n.put("multiplicityUpper", upper);
+        Integer lower = multiplicityLower(f);
+        if (lower != null) n.put("multiplicityLower", lower);
         return n;
     }
 
@@ -175,6 +185,12 @@ public class SysmlExtract {
                 // `car.front` のような連鎖は、途中の経路も出力する(定義側の特徴だけでは、どのインスタンスか分からないため)
                 List<String> chain = chainOf(s);
                 if (!chain.isEmpty()) n.put("byChain", chain);
+                // 満たされる要求の側も、`r1.subB.deep` のような連鎖なら途中の経路を出力する
+                List<String> reqChain = new ArrayList<>();
+                for (Relationship rel : s.getOwnedRelationship())
+                    if (rel instanceof ReferenceSubsetting rs && rs.getReferencedFeature() != null)
+                        for (Feature cf : rs.getReferencedFeature().getChainingFeature()) reqChain.add(q(cf));
+                if (!reqChain.isEmpty()) n.put("requirementChain", reqChain);
                 // `by` を省略した satisfy(part の中で書く)は、その part が満たす
                 if (by == null || n.get("by") == null) {
                     Element own = s.getOwningNamespace();

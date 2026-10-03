@@ -3,6 +3,7 @@ import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { REPO_ROOT } from "../config.js";
+import { stabilizeJsonIds } from "./stable-ids.js";
 import { SysmlUnavailableError } from "./types.js";
 
 export type ConvertFormat = "json" | "xmi";
@@ -33,11 +34,11 @@ function release() {
 }
 
 /** 前回の異常終了で残った一時ディレクトリを掃除する(起動時と、変換の前に呼ぶ)。 */
-export async function sweepConvertTemp(maxAgeMs = 10 * 60_000): Promise<void> {
+export async function sweepConvertTemp(maxAgeMs = 10 * 60_000, root: string = tmpdir()): Promise<void> {
   try {
-    for (const n of await readdir(tmpdir())) {
+    for (const n of await readdir(root)) {
       if (!n.startsWith(PREFIX)) continue;
-      const p = join(tmpdir(), n);
+      const p = join(root, n);
       const st = await stat(p).catch(() => undefined);
       if (st && Date.now() - st.mtimeMs > maxAgeMs) await rm(p, { recursive: true, force: true });
     }
@@ -82,11 +83,12 @@ function run(script: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: 
  * 同時に 2 件まで(待ちは 4 件まで。超えると ConvertBusyError)。Java が無い・タイムアウトは SysmlUnavailableError、
  * モデルが原因の失敗は ConvertError。
  */
-export async function convertModel(text: string, format: ConvertFormat, opts: { cacheDir?: string; timeoutMs?: number; script?: string } = {}): Promise<string> {
+export async function convertModel(text: string, format: ConvertFormat, opts: { cacheDir?: string; timeoutMs?: number; script?: string; tempRoot?: string } = {}): Promise<string> {
   await acquire();
-  const dir = await mkdtemp(join(tmpdir(), PREFIX));
+  const root = opts.tempRoot ?? tmpdir();
+  const dir = await mkdtemp(join(root, PREFIX));
   try {
-    void sweepConvertTemp();
+    void sweepConvertTemp(10 * 60_000, root);
     const input = join(dir, "model.sysml");
     await writeFile(input, text, "utf8");
     const script = opts.script ?? resolve(REPO_ROOT, "tools/sysml-check/convert.sh");
@@ -97,7 +99,7 @@ export async function convertModel(text: string, format: ConvertFormat, opts: { 
     // 変換器は、モデルに誤りがあっても部分的な出力や空の出力を返すことがある。成功の条件は「終了コード 0 かつ中身がある」
     if (code !== 0 || !out || out.trim().length < 3 || out.trim() === "[]")
       throw new ConvertError(`このモデルは公式の変換器で ${format === "json" ? "JSON" : "XMI"} に変換できませんでした(モデルの誤り、または変換器が対応していない記述(単位式など)の可能性があります)`);
-    return out;
+    return format === "json" ? stabilizeJsonIds(out) : out;
   } finally {
     await rm(dir, { recursive: true, force: true });
     release();

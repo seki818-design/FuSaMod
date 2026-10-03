@@ -1460,5 +1460,31 @@
       "ap": "H"
     }
   ],
-  "apTableSource": "非公式のデモ用の表(AIAG-VDA の表ではなく、正式な表との照合もしていません)。S・O・D を 4 区分にして合計で H/M/L を決め、S が 9〜10 のときは O か D が 4 以上で H にしただけの玩具です"
+  "apTableSource": "非公式のデモ用の表(AIAG-VDA の表ではなく、正式な表との照合もしていません)。S・O・D を 4 区分にして合計で H/M/L を決め、S が 9〜10 のときは O か D が 4 以上で H にしただけの玩具です",
+  "hardwareFailureModes": [
+    {
+      "id": "HW-1",
+      "name": "インバータのパワー素子の短絡(デモの故障率)",
+      "elementId": "EvPowertrainDemo::vehicle::powertrain::inverter::powerStage",
+      "fit": 20,
+      "type": "single",
+      "dcSpfRf": 0.97
+    },
+    {
+      "id": "HW-2",
+      "name": "ゲートドライバの出力固着(デモの故障率)",
+      "elementId": "EvPowertrainDemo::vehicle::powertrain::inverter::gateDriver",
+      "fit": 50,
+      "type": "single",
+      "dcSpfRf": 0.995
+    },
+    {
+      "id": "HW-3",
+      "name": "監視マイコンの診断機能の故障(潜在・デモの故障率)",
+      "elementId": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
+      "fit": 100,
+      "type": "multiple",
+      "dcLatent": 0.92
+    }
+  ]
 }

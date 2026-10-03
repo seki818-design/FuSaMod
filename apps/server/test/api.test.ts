@@ -586,7 +586,8 @@ describe("ラウンド 5 の指摘への回帰(server)", () => {
     const p = json(await h.app.inject("/api/projects/ev-powertrain"));
     await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/model", payload: { text: p.model + "\n// 変更\n" } });
     const r = await h.app.inject("/api/projects/ev-powertrain/export/model.xmi");
-    expect(r.statusCode).toBe(409);
+    // 解析できないモデル: 診断(モデルの誤り)があれば 409、解析自体ができない(Java が無く保存済みグラフも無い)なら 503。部分的な出力は返さない
+    expect([409, 503]).toContain(r.statusCode);
   });
   it("同じ書き出しの監査は 1 分に 1 回だけ(閲覧でログが増え続けない)", async () => {
     h = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
@@ -610,5 +611,23 @@ describe("人の保存でも差分が監査ログに残る(ラウンド 5)", () 
     const ev = json(await h.app.inject("/api/projects/ev-powertrain/audit")).events.find((e: { action: string }) => e.action === "safety.diff");
     expect(ev.details.lowersRisk).toBeGreaterThanOrEqual(2);
     expect(ev.details.items.join("\n")).toContain(`${f.id}.severity: ${old} → 1 [リスク低下]`);
+  });
+});
+
+describe("エクスポート名の許可リスト(ラウンド 6)", () => {
+  it("未知の名前は 404 で、監査ログを増やさない(名前を変えて間引きを回避できない)", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
+    const auth = { authorization: "Bearer tok-viewer-0123456789" };
+    for (let i = 0; i < 30; i++) expect((await h.app.inject({ url: `/api/projects/ev-powertrain/export/x${i}.csv`, headers: auth })).statusCode).toBe(404);
+    const ev = json(await h.app.inject({ url: "/api/projects/ev-powertrain/audit", headers: auth })).events;
+    expect(ev.filter((e: { action: string }) => e.action === "export")).toHaveLength(0);
+  });
+});
+
+describe("プロジェクト ID の予約名", () => {
+  it("OS の予約名（con、aux、nul、com1 など）は作れない", async () => {
+    h = await harness();
+    for (const id of ["con", "aux", "nul", "prn", "com1", "lpt9"]) expect((await h.app.inject({ method: "POST", url: "/api/projects", payload: { id } })).statusCode).toBe(400);
+    expect((await h.app.inject({ method: "POST", url: "/api/projects", payload: { id: "console" } })).statusCode).toBe(201);
   });
 });

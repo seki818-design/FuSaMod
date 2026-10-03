@@ -1,0 +1,159 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "RequirementPaths",
+      "name": "RequirementPaths"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "RequirementPaths::Axle",
+      "name": "Axle",
+      "owner": "RequirementPaths"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "RequirementPaths::Axle::brake",
+      "name": "brake",
+      "owner": "RequirementPaths::Axle"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "RequirementPaths::Vehicle",
+      "name": "Vehicle",
+      "owner": "RequirementPaths"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "RequirementPaths::Vehicle::front",
+      "name": "front",
+      "owner": "RequirementPaths::Vehicle",
+      "types": [
+        "RequirementPaths::Axle"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "RequirementPaths::Vehicle::rear",
+      "name": "rear",
+      "owner": "RequirementPaths::Vehicle",
+      "types": [
+        "RequirementPaths::Axle"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "RequirementPaths::v",
+      "name": "v",
+      "owner": "RequirementPaths",
+      "types": [
+        "RequirementPaths::Vehicle"
+      ]
+    },
+    {
+      "kind": "RequirementDefinition",
+      "qualifiedName": "RequirementPaths::ReqD",
+      "name": "ReqD",
+      "owner": "RequirementPaths"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "RequirementPaths::ReqD::subA",
+      "name": "subA",
+      "owner": "RequirementPaths::ReqD"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "RequirementPaths::ReqD::subB",
+      "name": "subB",
+      "owner": "RequirementPaths::ReqD"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "RequirementPaths::ReqD::subB::deep",
+      "name": "deep",
+      "owner": "RequirementPaths::ReqD::subB"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "RequirementPaths::r1",
+      "name": "r1",
+      "owner": "RequirementPaths",
+      "types": [
+        "RequirementPaths::ReqD"
+      ]
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "RequirementPaths::r2",
+      "name": "r2",
+      "owner": "RequirementPaths",
+      "types": [
+        "RequirementPaths::ReqD"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "RequirementPaths::wheels",
+      "name": "wheels",
+      "owner": "RequirementPaths",
+      "types": [
+        "RequirementPaths::Axle"
+      ],
+      "multiplicityUpper": -2
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "RequirementPaths::none",
+      "name": "none",
+      "owner": "RequirementPaths",
+      "types": [
+        "RequirementPaths::Axle"
+      ],
+      "multiplicityUpper": 0
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "RequirementPaths::opt",
+      "name": "opt",
+      "owner": "RequirementPaths",
+      "types": [
+        "RequirementPaths::Axle"
+      ],
+      "multiplicityUpper": 1,
+      "multiplicityLower": 0
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [
+    {
+      "requirement": "RequirementPaths::ReqD::subB::deep",
+      "by": "RequirementPaths::Axle::brake",
+      "byChain": [
+        "RequirementPaths::v",
+        "RequirementPaths::Vehicle::front",
+        "RequirementPaths::Axle::brake"
+      ],
+      "requirementChain": [
+        "RequirementPaths::r1",
+        "RequirementPaths::ReqD::subB",
+        "RequirementPaths::ReqD::subB::deep"
+      ]
+    },
+    {
+      "requirement": "RequirementPaths::ReqD::subA",
+      "by": "RequirementPaths::Axle::brake",
+      "byChain": [
+        "RequirementPaths::v",
+        "RequirementPaths::Vehicle::rear",
+        "RequirementPaths::Axle::brake"
+      ],
+      "requirementChain": [
+        "RequirementPaths::r2",
+        "RequirementPaths::ReqD::subA"
+      ]
+    }
+  ],
+  "performs": []
+}

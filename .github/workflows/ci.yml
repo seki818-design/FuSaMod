@@ -21,6 +21,13 @@ jobs:
       - run: pnpm audit --prod
       - run: pnpm build
       - run: pnpm --filter @fusamod/server build
+      - name: バンドルの煙試験（起動して health を確認）
+        run: |
+          T=$(mktemp -d); cp -r projects/ev-powertrain $T/
+          FUSAMOD_PROJECTS=$T FUSAMOD_SYSML=snapshot PORT=8899 node apps/server/dist/server.mjs & PID=$!
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8899/api/health && break; sleep 1; done
+          curl -fs http://127.0.0.1:8899/api/projects | grep -q ev-powertrain
+          kill $PID
       - name: E2E (Chromium)
         working-directory: apps/web
         run: npx playwright install --with-deps chromium && pnpm e2e
@@ -39,6 +46,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/fusamod
+          key: sysml-pilot-0.62.0
       - run: sudo apt-get update && sudo apt-get install -y unzip zstd
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:integration

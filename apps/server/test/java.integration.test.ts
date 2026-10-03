@@ -66,11 +66,24 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準形式への変換(公式実�
   }, 300_000);
   it("同時実行の上限: 多数を同時に投げても、待ちを超えたものは ConvertBusyError で断られ、一時ディレクトリは残らない", async () => {
     const { ConvertBusyError } = await import("../src/sysml/convert.js");
-    const { readdirSync } = await import("node:fs");
+    const { mkdtempSync, readdirSync, rmSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
-    const rs = await Promise.allSettled(Array.from({ length: 10 }, () => convertModel(model, "json")));
+    const { join } = await import("node:path");
+    const root = mkdtempSync(join(tmpdir(), "fusamod-it-conv-")); // この試験専用(他の実行の残りに影響されない)
+    const rs = await Promise.allSettled(Array.from({ length: 10 }, () => convertModel(model, "json", { tempRoot: root })));
     expect(rs.filter((r) => r.status === "fulfilled").length).toBeLessThanOrEqual(6);
     expect(rs.filter((r) => r.status === "rejected" && r.reason instanceof ConvertBusyError).length).toBeGreaterThanOrEqual(4);
-    expect(readdirSync(tmpdir()).filter((n) => n.startsWith("fusamod-convert-"))).toEqual([]);
+    expect(readdirSync(root)).toEqual([]);
+    rmSync(root, { recursive: true, force: true });
+  }, 600_000);
+});
+
+describe.skipIf(!process.env["FUSAMOD_IT"])("標準 JSON の elementId の安定化(公式実装・統合)", () => {
+  it("同じモデルを 2 回変換すると、elementId の集合が一致する(完全に対称な要素の割り当てだけが入れ替わりうる)", async () => {
+    const model = readFileSync(resolve(DEMO, "model.sysml"), "utf8");
+    const ids = async () => (JSON.parse(await convertModel(model, "json")) as { payload: { elementId: string } }[]).map((r) => r.payload.elementId).sort();
+    const [a, b] = [await ids(), await ids()];
+    expect(a.length).toBeGreaterThan(100);
+    expect(a).toEqual(b);
   }, 600_000);
 });

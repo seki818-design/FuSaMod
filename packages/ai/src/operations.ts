@@ -173,15 +173,88 @@ function haraChanges(d: Differ, before: SafetyData, after: SafetyData) {
       if (on) d.num(`${t.id}/${n.id}`, "probability", on.probability, n.probability, dec);
     }
   }
+}
+
+const DC_RANK: Record<string, number> = { low: 1, medium: 2, high: 3 };
+
+/** 安全機構・意図機能・安全要求(ASIL、診断カバレッジ、対象の故障、安全状態)。 */
+function conceptChanges(d: Differ, before: SafetyData, after: SafetyData) {
+  const asilDown = (a: string | undefined, b: string | undefined) => (ASIL_RANK[b ?? "QM"] ?? 0) < (ASIL_RANK[a ?? "QM"] ?? 0);
   const oldM = byId(before.mechanisms);
   for (const m of after.mechanisms) {
     const o = oldM.get(m.id);
     if (!o) continue;
     d.num(m.id, "ftti", o.ftti, m.ftti, inc);
+    // 対象の故障が増える・診断カバレッジが上がるのは、「より守れている」という主張の変更(リスク低下の主張)。減るのは逆
     const was = (o.coversFailureIds ?? []).length;
     const now = (m.coversFailureIds ?? []).length;
-    d.push(m.id, "coversFailureIds", was, now, now < was);
+    d.push(m.id, "coversFailureIds", was, now, now > was);
+    d.push(m.id, "diagnosticCoverage", o.diagnosticCoverage, m.diagnosticCoverage, (DC_RANK[m.diagnosticCoverage ?? ""] ?? 0) > (DC_RANK[o.diagnosticCoverage ?? ""] ?? 0));
+    d.text(m.id, "safeState", o.safeState, m.safeState);
+    d.push(m.id, "asil", o.asil, m.asil, asilDown(o.asil, m.asil));
   }
+  const oldI = byId(before.intendedFunctions);
+  for (const f of after.intendedFunctions) {
+    const o = oldI.get(f.id);
+    if (o) d.push(f.id, "asil", o.asil, f.asil, asilDown(o.asil, f.asil));
+  }
+  const oldR = byId(before.safetyRequirements);
+  for (const r of after.safetyRequirements) {
+    const o = oldR.get(r.id);
+    if (!o) continue;
+    d.push(r.id, "asil", o.asil, r.asil, asilDown(o.asil, r.asil));
+    d.push(r.id, "originAsil", o.originAsil, r.originAsil, r.originAsil !== undefined && o.originAsil === undefined);
+  }
+}
+
+/** ハードウェアの故障モード(故障率・診断カバレッジ・安全な故障の割合)。故障率の低下・カバレッジの向上・削除は、SPFM/LFM を良く見せる変更。 */
+function hardwareChanges(d: Differ, before: SafetyData, after: SafetyData) {
+  const old = byId(before.hardwareFailureModes ?? []);
+  for (const m of after.hardwareFailureModes ?? []) {
+    const o = old.get(m.id);
+    if (!o) continue;
+    d.num(m.id, "fit", o.fit, m.fit, dec);
+    d.num(m.id, "safeFraction", o.safeFraction, m.safeFraction, inc);
+    d.num(m.id, "dcSpfRf", o.dcSpfRf, m.dcSpfRf, inc);
+    d.num(m.id, "dcLatent", o.dcLatent, m.dcLatent, inc);
+    d.push(m.id, "type", o.type, m.type, o.type === "single" && m.type === "multiple");
+  }
+  const now = new Set((after.hardwareFailureModes ?? []).map((m) => m.id));
+  for (const m of before.hardwareFailureModes ?? []) if (!now.has(m.id)) d.push(m.id, "削除(ハードウェア故障モード)", "あり", undefined, true);
+}
+
+function countH(rules: NonNullable<SafetyData["apTable"]> | undefined): number {
+  let n = 0;
+  for (const r of rules ?? []) if (r.ap === "H") n += (r.s[1] - r.s[0] + 1) * (r.o[1] - r.o[0] + 1) * (r.d[1] - r.d[0] + 1);
+  return n;
+}
+
+/** FTA の構造(ゲートの種類・入力・基本事象の対応)と、AP 表。 */
+function structuralRiskChanges(d: Differ, before: SafetyData, after: SafetyData) {
+  const oldT = byId(before.faultTrees);
+  for (const t of after.faultTrees) {
+    const o = oldT.get(t.id);
+    if (!o) continue;
+    const oldN = byId(o.nodes);
+    d.push(t.id, "top", o.top, t.top, true);
+    for (const n of t.nodes) {
+      const on = oldN.get(n.id);
+      if (!on) continue;
+      const path = `${t.id}/${n.id}`;
+      d.push(path, "gate", on.gate, n.gate, on.gate === "or" && n.gate === "and"); // OR → AND は頂上事象の起きにくさを主張する
+      const was = new Set(on.inputs ?? []);
+      const now = new Set(n.inputs ?? []);
+      const dropped = [...was].filter((x) => !now.has(x)).length;
+      if (dropped > 0 || was.size !== now.size) d.push(path, "inputs", was.size, now.size, dropped > 0);
+      d.push(path, "failureId", on.failureId, n.failureId, true);
+    }
+    const nowIds = new Set(t.nodes.map((n) => n.id));
+    for (const n of o.nodes) if (!nowIds.has(n.id)) d.push(`${t.id}/${n.id}`, "削除(ノード)", "あり", undefined, true);
+  }
+  const hb = countH(before.apTable);
+  const ha = countH(after.apTable);
+  if (JSON.stringify(before.apTable ?? []) !== JSON.stringify(after.apTable ?? [])) d.push("apTable", "H の件数", hb, ha, ha < hb);
+  d.push("apTable", "出典", before.apTableSource, after.apTableSource, false);
 }
 
 /** 追加(QM の意図機能・安全機構、ASIL を下げる分解)と、削除(リスクの情報が消える)。 */
@@ -215,6 +288,9 @@ export function riskChanges(before: SafetyData, after: SafetyData): DataChange[]
   const d = differ();
   fmeaChanges(d, before, after);
   haraChanges(d, before, after);
+  conceptChanges(d, before, after);
+  hardwareChanges(d, before, after);
+  structuralRiskChanges(d, before, after);
   structureChanges(d, before, after);
   return d.out;
 }

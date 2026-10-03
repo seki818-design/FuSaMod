@@ -43,3 +43,8 @@ Web UI の `assets/` はハッシュ付きなので長期キャッシュ(immutab
 ## ビルドと配布
 - `pnpm build`(Web UI)と `pnpm --filter @fusamod/server build`(サーバーを `apps/server/dist/server.mjs` の 1 ファイルにまとめる。実行時に `tsx` は不要。`fastify` と `@fastify/static` のみ外部依存)。`node apps/server/dist/server.mjs` で起動。`FUSAMOD_WEB_DIST` で Web UI の配置先を変えられる。
 - `Dockerfile` を同梱(Java 21 + Node 22。依存は `pnpm deploy` でロックファイルの版に固定。公式 SysML 実装の取得に初回ネットワークが必要)。CI に `docker build` と起動確認のジョブを追加した(まだ実ランナーで実行されていない)。**このリポジトリの開発環境では Docker デーモンが無く、イメージのビルドは未検証**。使う前に `docker build` と `/api/health` の確認を行うこと。
+
+## Docker とオフライン環境
+- Docker: `docker build -t fusamod .` → `docker run -p 8787:8787 -e FUSAMOD_TOKENS='名前:16文字以上の乱数' -v fusamod-data:/data fusamod`。データは `/data`（プロジェクトと公式実装のキャッシュ）。**イメージのビルドは、この開発環境（Docker なし）では未検証で、CI の docker ジョブが初めての検証になる**。
+- オフライン: 公式 SysML 実装の jar（約 120MB）は初回に取得される。事前に `SYSML_PILOT_CACHE`（既定 `~/.cache/fusamod/sysml-pilot-0.62.0`）へ配置するか、`FUSAMOD_SYSML=snapshot`（保存済みグラフのみ）で使う。標準形式のエクスポートと、モデルの編集後の再解析には Java 21 と jar が必要。
+- 監査ログは大きくなりうる（ローテーションなし）。`GET /audit` は全体を読むため、数十 MB で遅くなる。定期的に外部へ転送して整理すること。

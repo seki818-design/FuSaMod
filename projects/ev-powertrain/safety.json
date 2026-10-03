@@ -327,7 +327,7 @@
       "asil": "B",
       "originAsil": "D",
       "ftti": 100,
-      "diagnosticCoverage": "high",
+      "diagnosticCoverage": "medium",
       "safeState": "ゲート遮断によりトルク 0",
       "coversFailureIds": [
         "FM-VCU-1",

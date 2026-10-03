@@ -373,3 +373,53 @@ describe("SCDL の書き出し", () => {
     expect(r.statusCode).toBe(409);
   });
 });
+
+describe("認証・役割は、URL の書き方によらず同じ規則で働く(表駆動)", () => {
+  const spellings = [
+    "/api/projects",
+    "/%61pi/projects",
+    "/a%70i/projects",
+    "/%41PI/projects",
+    "/api/%70rojects",
+    "//api/projects",
+    "/./api/projects",
+    "/api/./projects",
+    "/api/projects/",
+    "/api/projects?x=/analyze",
+    "/%2561pi/projects",
+  ];
+  it("トークンなしでは、どの書き方でも API に到達できない(401/404/400 のいずれか。200/201 は不可)", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:tok-alice-0123456789" } });
+    for (const method of ["GET", "POST", "PUT", "DELETE"] as const) {
+      for (const u of spellings) {
+        const r = await h.app.inject({ method, url: u, ...(method === "POST" || method === "PUT" ? { payload: { id: "evil1" } } : {}) });
+        expect([method, u, r.statusCode < 200 || r.statusCode >= 300]).toEqual([method, u, true]);
+      }
+    }
+    // 悪用の結果、プロジェクトが作られていない
+    const ok = await h.app.inject({ url: "/api/projects", headers: { authorization: "Bearer tok-alice-0123456789" } });
+    expect(JSON.stringify(json(ok))).not.toContain("evil1");
+  });
+  it("viewer は、どの書き方でも書き込めない", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
+    const auth = { authorization: "Bearer tok-viewer-0123456789" };
+    for (const u of spellings) {
+      for (const method of ["POST", "PUT", "DELETE"] as const) {
+        const r = await h.app.inject({ method, url: u, headers: auth, payload: { id: "evil2" } });
+        expect([method, u, r.statusCode < 200 || r.statusCode >= 300]).toEqual([method, u, true]);
+      }
+    }
+    const list = json(await h.app.inject({ url: "/api/projects", headers: auth }));
+    expect(JSON.stringify(list)).not.toContain("evil2");
+  });
+  it("認証の失敗は、書き方を変えても同じ制限(429)にかかる", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:tok-alice-0123456789" } });
+    const codes: number[] = [];
+    for (let i = 0; i < 14; i++) codes.push((await h.app.inject({ url: i % 2 ? "/%61pi/projects" : "/api/projects", headers: { authorization: `Bearer wrong-${i}` } })).statusCode);
+    expect(codes.slice(10).every((c) => c === 429)).toBe(true);
+  });
+  it("health だけは認証なしで見られる", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:tok-alice-0123456789" } });
+    expect((await h.app.inject("/api/health")).statusCode).toBe(200);
+  });
+});

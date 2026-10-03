@@ -23,7 +23,7 @@ function javaAvailable(): boolean {
 function makeSysml(c: Config) {
   const snapshot = new SnapshotSysmlService((h) => store.findGraphByModelHash(h));
   if (c.sysmlMode === "snapshot") return snapshot;
-  const java = new JavaSysmlService({ log });
+  const java = new JavaSysmlService({ log, env: { SYSML_PILOT_CACHE: c.sysmlCacheDir } });
   if (c.sysmlMode === "java") return java;
   if (!javaAvailable()) {
     log("Java が見つかりません。保存済みのモデルのみ解析できます(スナップショット方式)");

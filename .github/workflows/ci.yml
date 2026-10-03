@@ -51,6 +51,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -t fusamod .
       - run: |
-          docker run -d --name fusamod -p 8787:8787 -e FUSAMOD_TOKENS='ci:0123456789abcdef0123' -e FUSAMOD_SYSML=snapshot fusamod
-          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8787/api/health && exit 0; sleep 2; done
-          docker logs fusamod; exit 1
+          docker run -d --name fusamod -p 8787:8787 -e FUSAMOD_TOKENS='ci:0123456789abcdef0123' fusamod
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8787/api/health && break; sleep 2; done
+          # Java モード(公式 SysML 実装の取得・起動)まで通ることを確認する: 解析できれば modelOk になる
+          curl -fs -m 400 -H 'Authorization: Bearer 0123456789abcdef0123' -H 'Content-Type: application/json' -X POST http://127.0.0.1:8787/api/projects -d '{"id":"ci-check"}'
+          curl -fs -m 400 -H 'Authorization: Bearer 0123456789abcdef0123' -H 'Content-Type: application/json' -X POST http://127.0.0.1:8787/api/projects/ci-check/analyze -d '{"model":"package P { part a { part b; } }"}' | tee /tmp/analyze.json
+          grep -q '"modelOk":true' /tmp/analyze.json || { docker logs fusamod; exit 1; }

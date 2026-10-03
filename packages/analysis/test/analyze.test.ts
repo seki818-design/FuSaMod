@@ -311,3 +311,14 @@ describe("SCDL の ID は、根の追加でも変わらない", () => {
     for (const [k, v] of Object.entries(a1.scdlElementIds)) expect(a2.scdlElementIds[k]).toBe(v);
   });
 });
+
+describe("診断カバレッジと検出度の整合(FMEA-MSR の一部)", () => {
+  it("DC が high の安全機構の対象故障に、悪い検出度(D=8)があると警告", () => {
+    const s = structuredClone(demoSafety());
+    const fid = s.mechanisms[0]!.coversFailureIds![0]!;
+    const l = s.links.find((x) => x.causeId === fid);
+    if (l) { l.detection = 8; l.occurrence = l.occurrence ?? 3; }
+    const a = analyzeProject(demoGraph(), s);
+    expect(l ? a.issues.some((i) => i.code === "MECH_DC_D_MISMATCH") : true).toBe(true);
+  });
+});

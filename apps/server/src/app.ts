@@ -45,9 +45,28 @@ function authenticate(tokens: Config["tokens"], header: string | undefined): Con
 }
 
 /** 読み取り専用の役割でも使える操作(解析のみ。保存しない)。 */
-const pathOf = (url: string) => url.split("?")[0]!.split("#")[0]!;
-const readOnlyOk = (method: string, url: string) =>
-  method === "GET" || method === "HEAD" || (method === "POST" && /^\/api\/projects\/[^/]+\/analyze\/?$/.test(pathOf(url)));
+/**
+ * リクエストの URL を、ルーターが解釈するのと同じ形(パーセントエンコードを戻し、./ や // を畳んだパス)にする。
+ * 認証・役割の判定は、生の URL ではなく、この正規化したパスで行う(/%61pi/... で認証を回避されないように)。
+ * 解釈できない URL は null(拒否する)。
+ */
+export function normalizedPath(url: string): string | null {
+  try {
+    let path = new URL(url, "http://localhost").pathname;
+    for (let i = 0; i < 4; i++) {
+      const next = decodeURIComponent(path);
+      if (next === path) break;
+      path = next;
+    }
+    return path.replace(/\/{2,}/g, "/").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+const isApiPath = (path: string) => path === "/api" || path.startsWith("/api/");
+const isHealth = (path: string) => path === "/api/health" || path === "/api/health/";
+const readOnlyOk = (method: string, path: string) =>
+  method === "GET" || method === "HEAD" || (method === "POST" && /^\/api\/projects\/[^/]+\/analyze\/?$/.test(path));
 
 class RateLimiter {
   private hits = new Map<string, number[]>();
@@ -105,7 +124,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // --- 認証(トークンが設定されている場合) ---
   app.decorateRequest("actor", "local");
   app.addHook("onRequest", async (req, reply) => {
-    if (!req.url.startsWith("/api/") || req.url === "/api/health" || req.method === "OPTIONS") return;
+    const path = normalizedPath(req.url);
+    if (path === null) return reply.code(400).send({ error: "不正な URL です" });
+    // 既定は拒否: API(正規化したパス、またはルーターが選んだルートが /api 配下)は、health 以外すべて認証を通す
+    const routePattern = (req.routeOptions?.url ?? "").toLowerCase();
+    const api = isApiPath(path) || isApiPath(routePattern);
+    if (!api || isHealth(path) || req.method === "OPTIONS") return;
     const r = req as FastifyRequest & { actor: string };
     if (config.tokens.length > 0) {
       const found = authenticate(config.tokens, req.headers.authorization);
@@ -115,7 +139,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       }
       r.actor = found.user;
       (req as unknown as { role: string }).role = found.role;
-      if (found.role === "viewer" && !readOnlyOk(req.method, req.url)) return reply.code(403).send({ error: "この利用者は読み取り専用です" });
+      if (found.role === "viewer" && !readOnlyOk(req.method, path)) return reply.code(403).send({ error: "この利用者は読み取り専用です" });
     }
     if (!apiLimiter.allow(r.actor === "local" ? req.ip : r.actor)) return reply.code(429).header("Retry-After", "60").send({ error: "リクエストが多すぎます" });
   });
@@ -146,6 +170,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     sysmlMode: analysis.mode,
     diagnostics: out.diagnostics,
     modelOk: out.modelOk,
+    ...(p.notice ? { notice: p.notice } : {}),
     ...(out.sysmlError ? { sysmlError: out.sysmlError } : {}),
     analysis: out.analysis ?? null,
     /** 解析済みの要素グラフ(画面側で、編集中の安全データを即時に解析するために使う) */
@@ -189,6 +214,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.put("/api/projects/:id/model", async (req) => {
     const { id } = idParam.parse(req.params);
     const body = z.object({ text: z.string().max(2_000_000), baseRevision: z.number().int().optional(), message: z.string().max(200).optional() }).strict().parse(req.body);
+    if (Buffer.byteLength(body.text) > 2 * 1024 * 1024) throw new HttpError(413, "モデルが大きすぎます(2MB まで)");
     const p = await store.read(id);
     const out = await analysis.analyze(body.text, p.safety);
     // エラーがあっても下書きとして保存できる(グラフは正常に解析できたときだけ保存)

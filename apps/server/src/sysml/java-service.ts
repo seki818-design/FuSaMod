@@ -20,6 +20,8 @@ export interface JavaServiceOptions {
   /** 1 リクエストの待ち時間 [ms] */
   requestTimeoutMs?: number;
   log?: (msg: string) => void;
+  /** 子プロセスに足す環境変数(例: SYSML_PILOT_CACHE=公式実装の保存先) */
+  env?: Record<string, string>;
 }
 
 /**
@@ -45,13 +47,14 @@ export class JavaSysmlService implements SysmlService {
       startTimeoutMs: opts.startTimeoutMs ?? 180_000,
       requestTimeoutMs: opts.requestTimeoutMs ?? 60_000,
       log: opts.log ?? (() => {}),
+      env: opts.env ?? {},
     };
   }
 
   private start(): Promise<void> {
     if (this.ready) return this.ready;
     this.ready = new Promise<void>((resolveReady, rejectReady) => {
-      const proc = spawn(this.opts.command, this.opts.args, { stdio: ["pipe", "pipe", "pipe"] });
+      const proc = spawn(this.opts.command, this.opts.args, { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, ...this.opts.env } });
       this.proc = proc;
       let isReady = false;
       const startTimer = setTimeout(() => {

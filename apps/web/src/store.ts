@@ -135,6 +135,7 @@ function recompute(graph: ElementGraph | null, safety: SafetyData | undefined): 
 }
 
 function applyView(v: ProjectView, keepDrafts = false) {
+  if (v.notice) toast("error", v.notice);
   set((s) => {
     const draftSafety = keepDrafts && s.draftSafety ? s.draftSafety : v.safety;
     const draftModel = keepDrafts ? s.draftModel : v.model;

@@ -196,6 +196,23 @@ function duplicateIdIssues(s: SafetyData): Issue[] {
   return out;
 }
 
+/** 診断カバレッジ(DC)と、FMEA の検出度(D)の整合: DC が高いのに、対象の故障の検出度が悪い(大きい)のは矛盾。 */
+function coverageConsistencyIssues(net: SafetyNet, s: SafetyData): Issue[] {
+  const maxD = { high: 3, medium: 5 } as const;
+  const out: Issue[] = [];
+  for (const m of s.mechanisms) {
+    const limit = m.diagnosticCoverage === "high" ? maxD.high : m.diagnosticCoverage === "medium" ? maxD.medium : undefined;
+    if (limit === undefined) continue;
+    for (const fid of m.coversFailureIds ?? []) {
+      for (const l of net.links) {
+        if (l.causeId !== fid || l.detection === undefined || l.detection <= limit) continue;
+        out.push({ code: "MECH_DC_D_MISMATCH", severity: "warning", message: `安全機構 ${m.id} の診断カバレッジは「${m.diagnosticCoverage}」ですが、対象の故障 ${fid} の検出度(D)が ${l.detection} です(${limit} 以下が目安)。検出管理か診断カバレッジを見直してください`, ref: m.id });
+      }
+    }
+  }
+  return out;
+}
+
 function referenceIssues(net: SafetyNet, s: SafetyData, derived: DerivedNet): { pairing: Issue[]; safetyReq: Issue[] } {
   const sysmlReqs = new Set(derived.requirements.map((r) => r.id));
   const known = new Set(net.elements.map((e) => e.id));
@@ -353,6 +370,7 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   const refs = referenceIssues(net, s, derived);
   push("pairing", [...refs.pairing, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
   push("safety-req", [...refs.safetyReq, ...duplicateIdIssues(s)]);
+  push("pairing", coverageConsistencyIssues(net, s));
   push("decomposition", [
     ...validateDecompositions(s.safetyRequirements, s.decompositions),
     ...validateAsilInheritance(s.safetyRequirements, s.decompositions, s.hara.goals),

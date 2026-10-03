@@ -107,6 +107,21 @@ export class ProjectStore {
     return undefined;
   }
 
+  /** メタを読めない履歴のディレクトリ名。 */
+  private async brokenHistory(id: string): Promise<string[]> {
+    const hd = join(this.dir(id), ".history");
+    if (!(await this.exists(hd))) return [];
+    const out: string[] = [];
+    for (const n of (await readdir(hd)).filter((x) => /^\d{6}$/.test(x))) {
+      try {
+        JSON.parse(await readFile(join(hd, n, "meta.json"), "utf8"));
+      } catch {
+        out.push(n);
+      }
+    }
+    return out;
+  }
+
   async history(id: string): Promise<RevisionMeta[]> {
     const hd = join(this.dir(id), ".history");
     if (!(await this.exists(hd))) return [];
@@ -125,15 +140,17 @@ export class ProjectStore {
    * 現在のプロジェクト。保存は「履歴(確定)→現在のファイル」の順に書くので、途中で落ちて両者が食い違っていたら、
    * 確定済みの履歴の内容を返す(次の保存で現在のファイルも揃う)。
    */
-  async read(id: string): Promise<{ model: string; safety: SafetyData; revision: number; graph?: ElementGraph }> {
+  async read(id: string): Promise<{ model: string; safety: SafetyData; revision: number; graph?: ElementGraph; notice?: string }> {
     const d = this.dir(id);
     if (!(await this.exists(join(d, "model.sysml")))) throw new HttpError(404, `プロジェクトが見つかりません: ${id}`);
     const meta = await this.latestMeta(id);
     let src = d;
+    let notice: string | undefined;
     let model = await readFile(join(d, "model.sysml"), "utf8");
     let safetyText = (await this.exists(join(d, "safety.json"))) ? await readFile(join(d, "safety.json"), "utf8") : undefined;
     if (meta && (meta.modelSha256 !== sha(model) || (meta.safetySha256 !== undefined && safetyText !== undefined && meta.safetySha256 !== sha(safetyText)))) {
       src = join(d, ".history", String(meta.revision).padStart(6, "0"));
+      notice = `現在のファイルが、確定済みの履歴(リビジョン ${meta.revision})と一致しないため、履歴の内容を読み込みました。ファイルを直接書き換えた場合、その変更は反映されません`;
       model = await readFile(join(src, "model.sysml"), "utf8");
       safetyText = await readFile(join(src, "safety.json"), "utf8");
     }
@@ -156,7 +173,9 @@ export class ProjectStore {
     } catch {
       /* キャッシュなし */
     }
-    return { model, safety, revision: meta?.revision ?? 0, ...(graph ? { graph } : {}) };
+    const broken = await this.brokenHistory(id);
+    if (broken.length > 0) notice = `${notice ? `${notice}。` : ""}壊れた履歴があります(${broken.join("、")}): 最新の有効なリビジョンから続けます`;
+    return { model, safety, revision: meta?.revision ?? 0, ...(graph ? { graph } : {}), ...(notice ? { notice } : {}) };
   }
 
   async create(id: string, model: string, actor: string): Promise<void> {
@@ -365,9 +384,14 @@ export class ProjectStore {
     if (!(await this.exists(p))) return [];
     try {
       const v = JSON.parse(await readFile(p, "utf8")) as unknown;
-      return Array.isArray(v) ? (v as T[]) : [];
+      if (!Array.isArray(v)) throw new Error("not an array");
+      return v as T[];
     } catch {
-      throw new HttpError(500, "proposals.json が壊れています");
+      // 提案は承認前の一時的なデータなので、壊れていたら退避して空から続ける(保存済みの安全分析データには影響しない)
+      const moved = `${p}.corrupt-${Date.now()}`;
+      await rename(p, moved);
+      await this.audit(id, { actor: "system", action: "proposals.corrupt", details: { movedTo: moved.split(/[\\/]/).pop() } });
+      return [];
     }
   }
 

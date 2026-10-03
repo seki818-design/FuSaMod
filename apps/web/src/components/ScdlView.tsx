@@ -19,7 +19,7 @@ export function ScdlView() {
         </div>
       </div>
       <div className="diagram" role="region" style={{ minHeight: 200 }} tabIndex={0} aria-label="SCDL ビュー">
-        <svg viewBox={`0 0 ${d.width} ${d.height}`} style={{ width: Math.min(d.width, 920), height: "auto", display: "block" }} role="group" aria-label="SCDL ビュー">
+        <svg viewBox={`0 0 ${d.width} ${d.height}`} style={{ width: d.width, height: d.height, display: "block" }} role="group" aria-label="SCDL ビュー">
           <defs>
             <marker id="sc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--text)" /></marker>
             <marker id="sc-pair" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--accent)" /></marker>

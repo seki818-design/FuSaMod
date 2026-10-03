@@ -117,3 +117,27 @@ describe("履歴の回復と初回の保存", () => {
     expect(() => loadConfig({ PORT: "abc" })).toThrow(/PORT/);
   });
 });
+
+describe("回復の通知と壊れた提案ファイル", () => {
+  it("現在のファイルが履歴と食い違うとき、読み込みは履歴の内容と『注意』を返す", async () => {
+    const s = await mk();
+    await s.saveModel("p1", "package P { part saved; }", "t", "m", 1);
+    writeFileSync(join(dir, "p1", "model.sysml"), "package P { part handedited; }");
+    const r = await s.read("p1");
+    expect(r.model).toContain("saved");
+    expect(r.notice).toContain("履歴");
+  });
+  it("壊れた履歴があれば、注意に出る", async () => {
+    const s = await mk();
+    await s.saveModel("p1", "package P { part saved; }", "t", "m", 1);
+    writeFileSync(join(dir, "p1", ".history", "000002", "meta.json"), "{broken");
+    expect((await s.read("p1")).notice).toContain("壊れた履歴");
+  });
+  it("proposals.json が壊れていても、退避して空から続けられる(500 にならない)", async () => {
+    const s = await mk();
+    writeFileSync(join(dir, "p1", "proposals.json"), "{broken");
+    expect(await s.readProposals("p1")).toEqual([]);
+    expect(readdirSync(join(dir, "p1")).some((n) => n.startsWith("proposals.json.corrupt-"))).toBe(true);
+    expect((await s.readAudit("p1", 50)).some((e) => e.action === "proposals.corrupt")).toBe(true);
+  });
+});

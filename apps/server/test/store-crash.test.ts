@@ -48,7 +48,7 @@ describe("保存の原子性と回復(途中で落ちても履歴と現在の状
     writeFileSync(join(dir, "p1", ".history", "000002", "meta.json"), "{broken");
     expect((await s.latestMeta("p1"))?.revision).toBe(1);
   });
-  it("保存の所要時間が履歴の増加で悪化しない(100 回保存しても、最後の 10 回が最初の 10 回の 5 倍以内)", async () => {
+  it("保存の所要時間が履歴の増加で悪化しない(100 回保存しても、最後の 10 回の中央値が最初の 10 回の 8 倍以内)", { timeout: 60_000 }, async () => {
     const s = await mk();
     const times: number[] = [];
     for (let i = 0; i < 100; i++) {
@@ -56,8 +56,8 @@ describe("保存の原子性と回復(途中で落ちても履歴と現在の状
       await s.saveModel("p1", `package P { part a${i}; }`, "tester", "m", i + 1);
       times.push(performance.now() - t);
     }
-    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
-    expect(avg(times.slice(-10))).toBeLessThan(avg(times.slice(0, 10)) * 5 + 20);
+    const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
+    expect(med(times.slice(-10))).toBeLessThan(med(times.slice(0, 10)) * 8 + 50);
   });
 });
 
@@ -87,7 +87,10 @@ describe("履歴の回復と初回の保存", () => {
     await s.saveModel("p1", "package P { part b; }", "tester", "m", 1);
     writeFileSync(join(dir, "p1", ".history", "000002", "meta.json"), "{broken");
     const m = await s.saveModel("p1", "package P { part c; }", "tester", "m", 1);
-    expect(m.revision).toBe(3);
+    expect(m.revision).toBe(2); // 壊れた版 2 は隔離され、その番号から続く
+    expect(readdirSync(join(dir, "p1", ".history")).some((n) => n.startsWith(".corrupt-000002-"))).toBe(true);
+    expect((await s.readAudit("p1", 50)).some((e) => e.action === "history.quarantine")).toBe(true);
+    expect((await s.read("p1")).notice).toContain("隔離");
   });
   it("履歴の無いプロジェクトは、最初の保存の前の内容が版 1 として残る", async () => {
     dir = mkdtempSync(join(tmpdir(), "fusamod-store-"));

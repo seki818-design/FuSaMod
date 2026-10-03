@@ -100,8 +100,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: deps.logger ?? false,
     bodyLimit: config.bodyLimit,
+    trustProxy: config.trustProxy as never,
   });
   const aiLimiter = new RateLimiter(20, 60_000);
+  let authFailCount = 0;
   const authFailLimiter = new RateLimiter(10, 60_000); // 認証失敗(総当たり対策): 1 分に 10 回まで
   const apiLimiter = new RateLimiter(600, 60_000); // API 全体: 1 分に 600 回まで(利用者または接続元ごと)
 
@@ -111,7 +113,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     reply.header("X-Frame-Options", "DENY");
     reply.header("Referrer-Policy", "no-referrer");
     reply.header("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'");
-    if (req.url.startsWith("/api/")) reply.header("Cache-Control", "no-store");
+    const p = normalizedPath(req.url);
+    if (p === null || isApiPath(p)) reply.header("Cache-Control", "no-store");
     if (config.corsOrigin && req.headers.origin === config.corsOrigin) {
       reply.header("Access-Control-Allow-Origin", config.corsOrigin);
       reply.header("Vary", "Origin");
@@ -130,10 +133,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const routePattern = (req.routeOptions?.url ?? "").toLowerCase();
     const api = isApiPath(path) || isApiPath(routePattern);
     if (!api || isHealth(path) || req.method === "OPTIONS") return;
-    const r = req as FastifyRequest & { actor: string };
+    const r = req as unknown as { actor: string };
     if (config.tokens.length > 0) {
       const found = authenticate(config.tokens, req.headers.authorization);
       if (!found) {
+        authFailCount++;
+        if (authFailCount <= 20 || authFailCount % 100 === 0) await store.auditGlobal({ actor: "anonymous", action: "auth.fail", details: { ip: req.ip, method: req.method, path: path.slice(0, 200), count: authFailCount } });
         if (!authFailLimiter.allow(req.ip)) return reply.code(429).header("Retry-After", "60").send({ error: "認証の失敗が多すぎます。しばらくしてからやり直してください" });
         return reply.code(401).header("WWW-Authenticate", "Bearer").send({ error: "認証が必要です" });
       }
@@ -262,6 +267,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params);
     const q = z.object({ element: z.string().optional() }).parse(req.query);
     store.dir(id);
+    await store.audit(id, { actor: actorOf(req), action: "export", details: { name: name.slice(0, 50) } });
     switch (name) {
       case "model.sysml": return attachment(reply, `${id}.sysml`, "text/plain", (await store.read(id)).model);
       case "fmea.csv": return attachment(reply, `${id}-fmea.csv`, "text/csv", fmeaCsv(await needAnalysis(id), q.element));
@@ -363,7 +369,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       setHeaders: (res, path) => res.header("Cache-Control", /[\\/]assets[\\/]/.test(path) ? "public, max-age=31536000, immutable" : "no-cache"),
     });
     app.setNotFoundHandler((req, reply) => {
-      if (req.method === "GET" && !req.url.startsWith("/api/")) return reply.sendFile("index.html");
+      const p = normalizedPath(req.url);
+      if (req.method === "GET" && p !== null && !isApiPath(p)) return reply.sendFile("index.html");
       return reply.code(404).send({ error: "見つかりません" });
     });
   } else {

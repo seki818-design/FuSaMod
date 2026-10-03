@@ -107,6 +107,14 @@ export class ProjectStore {
     return undefined;
   }
 
+  /** メタを読めない履歴を `.corrupt-<名前>-<時刻>` に隔離する(削除はしない。原因調査用)。監査ログに残す。 */
+  private async quarantineBroken(id: string) {
+    const broken = await this.brokenHistory(id);
+    const hd = join(this.dir(id), ".history");
+    for (const n of broken) await rename(join(hd, n), join(hd, `.corrupt-${n}-${Date.now()}`));
+    if (broken.length > 0) await this.audit(id, { actor: "system", action: "history.quarantine", details: { dirs: broken } });
+  }
+
   /** メタを読めない履歴のディレクトリ名。 */
   private async brokenHistory(id: string): Promise<string[]> {
     const hd = join(this.dir(id), ".history");
@@ -174,6 +182,8 @@ export class ProjectStore {
       /* キャッシュなし */
     }
     const broken = await this.brokenHistory(id);
+    const quarantined = (await this.exists(join(d, ".history"))) ? (await readdir(join(d, ".history"))).filter((n) => n.startsWith(".corrupt-")).length : 0;
+    if (broken.length === 0 && quarantined > 0) notice = `${notice ? `${notice}。` : ""}隔離された壊れた履歴が ${quarantined} 件あります(.history/.corrupt-*。原因の調査後に削除してください)`;
     if (broken.length > 0) notice = `${notice ? `${notice}。` : ""}壊れた履歴があります(${broken.join("、")}): 最新の有効なリビジョンから続けます`;
     return { model, safety, revision: meta?.revision ?? 0, ...(graph ? { graph } : {}), ...(notice ? { notice } : {}) };
   }
@@ -201,6 +211,7 @@ export class ProjectStore {
     await this.ensureBaseline(id, m.kind);
     const hd = join(d, ".history");
     await mkdir(hd, { recursive: true });
+    await this.quarantineBroken(id);
     // 版番号は、メタが壊れていても衝突しないよう、ディレクトリ名の最大値から決める
     const maxDir = Math.max(0, ...(await readdir(hd)).filter((n) => /^\d{6}$/.test(n)).map(Number));
     const revision = Math.max(maxDir, (await this.latestMeta(id))?.revision ?? 0) + 1;
@@ -315,6 +326,17 @@ export class ProjectStore {
   async audit(id: string, e: Omit<AuditEvent, "ts" | "prev">): Promise<void> {
     await this.withLock(`${id}:audit`, async () => {
       const p = join(this.dir(id), "audit.jsonl");
+      const last = (await this.exists(p)) ? (await readFile(p, "utf8")).split("\n").filter(Boolean).at(-1) : undefined;
+      const line = JSON.stringify({ ts: new Date().toISOString(), ...e, prev: last ? sha(last) : GENESIS } satisfies AuditEvent);
+      await appendFile(p, line + "\n", "utf8");
+    });
+  }
+
+  /** サーバー全体の監査ログ(認証失敗など、プロジェクトに属さない出来事)。ハッシュ連鎖は project の audit と同じ。 */
+  async auditGlobal(e: Omit<AuditEvent, "ts" | "prev">): Promise<void> {
+    await this.withLock("_server:audit", async () => {
+      await mkdir(this.root, { recursive: true });
+      const p = join(this.root, "_server-audit.jsonl");
       const last = (await this.exists(p)) ? (await readFile(p, "utf8")).split("\n").filter(Boolean).at(-1) : undefined;
       const line = JSON.stringify({ ts: new Date().toISOString(), ...e, prev: last ? sha(last) : GENESIS } satisfies AuditEvent);
       await appendFile(p, line + "\n", "utf8");

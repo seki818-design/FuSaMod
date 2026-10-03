@@ -34,7 +34,7 @@ pnpm quality     # 型・lint・テスト・カバレッジ・性能
 
 ## ドキュメント
 
-- [利用ガイド](docs/user-guide.md) / [運用ガイド](docs/operations.md) / [安全規格上の位置づけ・制限](docs/safety-notes.md)
+- [利用ガイド](docs/user-guide.md) / [運用ガイド](docs/operations.md) / [セキュリティ](docs/security.md) / [安全規格上の位置づけ・制限](docs/safety-notes.md)
 - 品質評価: [ルーブリック](docs/quality/rubric.md)、[証跡](docs/quality/evidence/)
 - [アーキテクチャ](docs/architecture.md)
 - [開発体制・計画](docs/plan.md)

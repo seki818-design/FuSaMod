@@ -423,3 +423,64 @@ describe("認証・役割は、URL の書き方によらず同じ規則で働く
     expect((await h.app.inject("/api/health")).statusCode).toBe(200);
   });
 });
+
+describe("全ルート × 匿名 / viewer / editor(厳密な表)", () => {
+  type R = { method: "GET" | "POST" | "PUT"; url: string; payload?: unknown; write: boolean };
+  const routes = (safety: unknown): R[] => [
+    { method: "GET", url: "/api/me", write: false },
+    { method: "GET", url: "/api/projects", write: false },
+    { method: "POST", url: "/api/projects", payload: { id: "tbl-1" }, write: true },
+    { method: "GET", url: "/api/projects/ev-powertrain", write: false },
+    { method: "POST", url: "/api/projects/ev-powertrain/analyze", payload: { safety }, write: false },
+    { method: "PUT", url: "/api/projects/ev-powertrain/model", payload: { text: "package P { part a; }" }, write: true },
+    { method: "PUT", url: "/api/projects/ev-powertrain/safety", payload: { data: safety }, write: true },
+    { method: "GET", url: "/api/projects/ev-powertrain/refs", write: false },
+    { method: "GET", url: "/api/projects/ev-powertrain/history", write: false },
+    { method: "GET", url: "/api/projects/ev-powertrain/history/1", write: false },
+    { method: "POST", url: "/api/projects/ev-powertrain/history/1/restore", write: true },
+    { method: "GET", url: "/api/projects/ev-powertrain/audit", write: false },
+    { method: "GET", url: "/api/projects/ev-powertrain/export/fmea.csv", write: false },
+    { method: "POST", url: "/api/projects/ev-powertrain/ai/chat", payload: { message: "要約して" }, write: true },
+    { method: "GET", url: "/api/projects/ev-powertrain/ai/proposals", write: false },
+    { method: "POST", url: "/api/projects/ev-powertrain/ai/proposals/P-none/apply", write: true },
+    { method: "POST", url: "/api/projects/ev-powertrain/ai/proposals/P-none/reject", write: true },
+  ];
+  it("匿名は全ルートで 401(health だけ 200)、viewer は書き込み系が全て 403・読み取り系は 401/403 にならない、editor は 401/403 にならない", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "ed:tok-editor-0123456789,vera/viewer:tok-viewer-0123456789" } });
+    const ed = { authorization: "Bearer tok-editor-0123456789" };
+    const vw = { authorization: "Bearer tok-viewer-0123456789" };
+    const safety = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: ed })).safety;
+    expect((await h.app.inject("/api/health")).statusCode).toBe(200);
+    let i = 0;
+    for (const r of routes(safety)) {
+      const send = (headers: Record<string, string>) => h.app.inject({ method: r.method, url: r.url, headers, ...(r.payload ? { payload: r.payload as object } : {}) });
+      const anon = await send({});
+      // 認証の失敗は 1 分に 10 回まで 401、それを超えると 429(総当たり対策)。どちらも拒否
+      expect([r.method, r.url, "anon", anon.statusCode]).toEqual([r.method, r.url, "anon", i++ < 10 ? 401 : 429]);
+      expect(anon.headers["cache-control"]).toBe("no-store");
+      const v = await send(vw);
+      if (r.write) expect([r.method, r.url, "viewer", v.statusCode]).toEqual([r.method, r.url, "viewer", 403]);
+      else expect([r.method, r.url, "viewer", [401, 403].includes(v.statusCode)]).toEqual([r.method, r.url, "viewer", false]);
+    }
+    for (const r of routes(safety).filter((x) => !x.write || x.url.endsWith("/analyze"))) {
+      const e = await h.app.inject({ method: r.method, url: r.url, headers: ed, ...(r.payload ? { payload: r.payload as object } : {}) });
+      expect([r.method, r.url, "editor", [401, 403].includes(e.statusCode)]).toEqual([r.method, r.url, "editor", false]);
+    }
+  });
+  it("エンコードしたパスの応答にも no-store が付き、SPA のフォールバックに API が落ちない", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "ed:tok-editor-0123456789" } });
+    const r = await h.app.inject({ url: "/%61pi/projects" });
+    expect(r.headers["cache-control"]).toBe("no-store");
+    expect(r.statusCode).toBe(401);
+  });
+  it("認証の失敗と書き出しが監査ログに残る", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "ed:tok-editor-0123456789" } });
+    await h.app.inject({ url: "/api/projects", headers: { authorization: "Bearer wrong" } });
+    await h.app.inject({ url: "/api/projects/ev-powertrain/export/fmea.csv", headers: { authorization: "Bearer tok-editor-0123456789" } });
+    const audit = json(await h.app.inject({ url: "/api/projects/ev-powertrain/audit", headers: { authorization: "Bearer tok-editor-0123456789" } })).events;
+    expect(audit.some((e: { action: string; actor: string }) => e.action === "export" && e.actor === "ed")).toBe(true);
+    const { readFile } = await import("node:fs/promises");
+    const g = await readFile(`${h.root}/_server-audit.jsonl`, "utf8");
+    expect(g).toContain("auth.fail");
+  });
+});

@@ -38,7 +38,7 @@ const md = [
   "|---|---|---|---|",
   ...rows.map((r) => `| ${r.name} | ${pct(r.lines)} | ${pct(r.branches)} | ${pct(r.functions)} |`),
   "",
-  "- ウェブの画面コンポーネント(React)は、単体テストのカバレッジではなく、Playwright の E2E(20 件)で確認している。",
+  "- ウェブの画面コンポーネント(React)は、単体テストのカバレッジではなく、Playwright の E2E(`pnpm e2e`)で確認している。",
   "- `apps/server/src/main.ts`(起動処理)は計測の対象外。公式 SysML 実装との結合は `pnpm test:integration` で確認する。",
   "",
 ].join("\n");

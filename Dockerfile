@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile && pnpm --filter @fusamod/web build && pnpm -
 FROM eclipse-temurin:21-jdk-jammy
 # Node 22(公式 SysML 実装の取得・コンパイルに必要な unzip / python3 / curl も入れる)
 COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
-RUN apt-get update && apt-get install -y --no-install-recommends unzip python3 python3-pip zstd curl ca-certificates \
+RUN apt-get update && apt-get install -y --no-install-recommends unzip python3 zstd curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8787 FUSAMOD_PROJECTS=/data FUSAMOD_WEB_DIST=/app/apps/web/dist FUSAMOD_SYSML_CACHE=/data/.sysml-cache HOME=/data

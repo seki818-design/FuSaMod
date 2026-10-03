@@ -222,3 +222,16 @@ describe("riskChanges: 要求の付け替えによる ASIL の迂回(ラウン�
     expect(c?.lowersRisk).toBe(true);
   });
 });
+
+describe("riskChanges: 記述の書き換え(ラウンド 8)", () => {
+  it("記述あり → 別の記述あり でも差分に出る。短くするのはリスク低下、同程度の書き換えは記録のみ", () => {
+    const before = structuredClone(safety());
+    const after = structuredClone(before);
+    after.decompositions[0]!.independenceEvidence = "別の文書 DFA-999 に差し替え";
+    const c = riskChanges(before, after).filter((x) => x.field === "independenceEvidence");
+    expect(c).toHaveLength(1);
+    expect(c[0]!.lowersRisk).toBe(false);
+    after.decompositions[0]!.independenceEvidence = "x";
+    expect(riskChanges(before, after).find((x) => x.field === "independenceEvidence")?.lowersRisk).toBe(true);
+  });
+});

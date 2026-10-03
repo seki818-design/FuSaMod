@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ConvertBusyError, ConvertError, convertModel } from "../src/sysml/convert.js";
 import { JavaSysmlService } from "../src/sysml/java-service.js";
-import { SysmlUnavailableError } from "../src/sysml/types.js";
+import { SysmlTimeoutError, SysmlUnavailableError } from "../src/sysml/types.js";
 
 const script = resolve(import.meta.dirname, "fakes/fake-convert.sh");
 const server = resolve(import.meta.dirname, "fakes/fake-sysml-server.mjs");
@@ -40,9 +40,9 @@ describe("convertModel(代役のスクリプトで、Java なしに挙動を確�
     expect(String(err.message)).not.toContain("fusamod-convert-");
     expect(tmpLeft()).toEqual([]);
   });
-  it("タイムアウトは SysmlUnavailableError。子プロセスも残さず、一時ディレクトリを消す", async () => {
+  it("タイムアウトは SysmlTimeoutError。子プロセスも残さず、一時ディレクトリを消す", async () => {
     const t0 = Date.now();
-    await expect(withMode("spawn-child", () => convertModel("x", "json", { script, timeoutMs: 800, tempRoot: root }))).rejects.toBeInstanceOf(SysmlUnavailableError);
+    await expect(withMode("spawn-child", () => convertModel("x", "json", { script, timeoutMs: 800, tempRoot: root }))).rejects.toBeInstanceOf(SysmlTimeoutError);
     expect(Date.now() - t0).toBeLessThan(10_000);
     expect(tmpLeft()).toEqual([]);
   });
@@ -125,5 +125,21 @@ describe("JavaSysmlService(代役のサーバーで、プロトコルと回復�
     await s.analyze("package P {}");
     await s.close();
     await expect(s.analyze("x")).rejects.toBeInstanceOf(SysmlUnavailableError);
+  });
+});
+
+describe("AnalysisService: 重いモデルの再解析を抑える", () => {
+  it("タイムアウトしたモデルは、しばらく Java に送り直さない(共有の JVM を占有させない)。別のモデルは通常どおり", async () => {
+    const { AnalysisService } = await import("../src/services.js");
+    const { SysmlTimeoutError } = await import("../src/sysml/types.js");
+    const calls: string[] = [];
+    const sysml = { mode: "java" as const, close: async () => {}, analyze: async (t: string) => { calls.push(t); if (t.includes("HEAVY")) throw new SysmlTimeoutError("t/o"); return { ok: true, diagnostics: [], graph: { elements: [], dependencies: [], metadata: [], satisfies: [] } }; } };
+    const a = new AnalysisService(sysml);
+    const first = await a.parseModel("HEAVY");
+    const second = await a.parseModel("HEAVY");
+    expect(first.failure).toBe("timeout");
+    expect(second.failure).toBe("timeout");
+    expect(calls.filter((c) => c === "HEAVY")).toHaveLength(1);
+    expect((await a.parseModel("light")).result?.ok).toBe(true);
   });
 });

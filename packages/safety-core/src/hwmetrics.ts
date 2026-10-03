@@ -34,7 +34,7 @@ export const DC_CAP: Record<"low" | "medium" | "high", number> = { low: 0.6, med
 export interface HwContext {
   knownElements?: Set<string>;
   goals?: { id: string; asil: Asil }[];
-  mechanisms?: { id: string; diagnosticCoverage?: "low" | "medium" | "high" }[];
+  mechanisms?: { id: string; diagnosticCoverage?: "low" | "medium" | "high"; asil?: Asil; paired?: boolean }[];
 }
 
 export interface HwMetrics {
@@ -106,11 +106,17 @@ function checkDc(m: HardwareFailureMode, c: HwContext, emit: Emit) {
   if (m.mechanismId !== undefined && c.mechanisms && !mech) emit("error", "UNKNOWN_MECHANISM", `安全機構が存在しません: ${m.mechanismId}`, m.id);
   const dc = (m.type === "single" ? m.dcSpfRf : m.dcLatent) ?? 0;
   if (dc > 0 && m.mechanismId === undefined) emit("warning", "HW_DC_NO_MECHANISM", `診断カバレッジ ${dc} を主張していますが、担う安全機構(mechanismId)が未指定です`, m.id);
-  const cap = mech ? (mech.diagnosticCoverage ? DC_CAP[mech.diagnosticCoverage] : 0) : undefined;
-  if (dc > 0 && mech && cap !== undefined && dc > cap)
-    emit("error", "HW_DC_EXCEEDS_MECHANISM", `診断カバレッジ ${dc} が、安全機構 ${mech.id} の区分(${mech.diagnosticCoverage ?? "未設定"}: 上限 ${cap})を超えています`, m.id);
+  if (dc > 0 && mech) checkDcMechanism(m, dc, mech, emit);
   if ((dc > 0 || (m.safeFraction ?? 0) > 0) && !substantial(m.rationale))
     emit("warning", "HW_NO_RATIONALE", "診断カバレッジまたは安全な故障の割合を主張していますが、根拠(rationale: FMEDA の出典など)がありません", m.id);
+}
+
+/** DC を担う安全機構: 区分の上限・QM でないこと・ペアになっていること。 */
+function checkDcMechanism(m: HardwareFailureMode, dc: number, mech: NonNullable<HwContext["mechanisms"]>[number], emit: Emit) {
+  const cap = mech.diagnosticCoverage ? DC_CAP[mech.diagnosticCoverage] : 0;
+  if (dc > cap) emit("error", "HW_DC_EXCEEDS_MECHANISM", `診断カバレッジ ${dc} が、安全機構 ${mech.id} の区分(${mech.diagnosticCoverage ?? "未設定"}: 上限 ${cap})を超えています`, m.id);
+  if ((mech.asil ?? "QM") === "QM") emit("error", "HW_DC_MECHANISM_QM", `診断カバレッジを担う安全機構 ${mech.id} が QM です。DC を主張するには、安全目標に応じた ASIL が必要です`, m.id);
+  if (mech.paired === false) emit("warning", "HW_DC_MECHANISM_UNPAIRED", `診断カバレッジを担う安全機構 ${mech.id} が、意図機能とペアになっていません`, m.id);
 }
 
 /** 安全目標ごとに、その目標に関係する故障モードで SPFM/LFM を目標値と比べる(goalIds 省略 = すべての目標)。 */
@@ -123,6 +129,8 @@ function checkTargets(modes: HardwareFailureMode[], goalAsils: Asil[], c: HwCont
     if (!target) continue;
     const r = computeHwMetrics(modes.filter((m) => !m.goalIds || m.goalIds.length === 0 || m.goalIds.includes(g.id)));
     const where = g.id ? `安全目標 ${g.id}(ASIL ${g.asil})` : `ASIL ${g.asil}`;
+    if (r.spfm === undefined)
+      emit("warning", "HW_METRICS_MISSING", `${g.id ? `安全目標 ${g.id}` : "この安全目標"}(ASIL ${g.asil})に関係する故障率が 0 または未入力のため、SPFM/LFM を評価できていません`, g.id || undefined);
     if (r.spfm !== undefined && r.spfm < target.spfm) emit("error", "HW_SPFM_BELOW_TARGET", `SPFM ${pct(r.spfm)} が、${where} の目標値 ${pct(target.spfm)} を下回っています`, g.id || undefined);
     if (r.lfm !== undefined && r.lfm < target.lfm) emit("error", "HW_LFM_BELOW_TARGET", `LFM ${pct(r.lfm)} が、${where} の目標値 ${pct(target.lfm)} を下回っています`, g.id || undefined);
   }

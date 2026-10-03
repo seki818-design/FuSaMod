@@ -69,6 +69,7 @@ const md = [
   "SysML の解析(公式実装): 起動 約 6〜8 秒(1 回のみ)、その後の 1 回の解析は 0.2〜1 秒(`FUSAMOD_IT=1 pnpm test:integration` で確認)。",
   "",
 ].join("\n");
-writeFileSync(resolve(import.meta.dirname, "../../docs/quality/evidence/performance.md"), md);
+// 追跡ファイルを書き換えるのは --write のときだけ（通常の実行で作業ツリーを汚さない）
+if (process.argv.includes("--write")) writeFileSync(resolve(import.meta.dirname, "../../docs/quality/evidence/performance.md"), md);
 console.log(md);
 process.exit(over ? 1 : 0);

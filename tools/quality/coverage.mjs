@@ -42,7 +42,8 @@ const md = [
   "- `apps/server/src/main.ts`(起動処理)は計測の対象外。公式 SysML 実装との結合は `pnpm test:integration` で確認する。",
   "",
 ].join("\n");
-writeFileSync(resolve(root, "docs/quality/evidence/coverage.md"), md);
+// 追跡ファイルを書き換えるのは --write のときだけ（通常の実行で作業ツリーを汚さない）
+if (process.argv.includes("--write")) writeFileSync(resolve(root, "docs/quality/evidence/coverage.md"), md);
 console.log(md);
 const min = Math.min(...rows.map((r) => r.lines.pct));
 console.log(`最小の行カバレッジ: ${min}%`);

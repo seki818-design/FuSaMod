@@ -449,3 +449,12 @@ describe("空の安全データ(ラウンド 8)", () => {
     expect(analyzeProject(demoGraph(), demoSafety()).issues.some((i) => i.code === "SAFETY_DATA_EMPTY")).toBe(false);
   });
 });
+
+describe("モデルに書かれた @Scdl* の扱い(ラウンド 8)", () => {
+  it("SCDL ビューに反映されないことを警告する（黙って無視しない）", () => {
+    const g = demoGraph();
+    const withMd = { ...g, metadata: [...(g.metadata ?? []), { qualifiedName: "X::m", type: "ScdlElement", name: null, annotated: [], attributes: {} }] } as never;
+    expect(analyzeProject(withMd, demoSafety()).issues.some((i) => i.code === "SCDL_ANNOTATIONS_NOT_IMPORTED")).toBe(true);
+    expect(analyzeProject(demoGraph(), demoSafety()).issues.some((i) => i.code === "SCDL_ANNOTATIONS_NOT_IMPORTED")).toBe(false);
+  });
+});

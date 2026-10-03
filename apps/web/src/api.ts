@@ -17,6 +17,7 @@ export interface ProjectView {
   diagnostics: Diagnostic[];
   modelOk: boolean;
   sysmlError?: string;
+  sysmlFailure?: "timeout" | "unavailable" | "busy";
   /** サーバーからの注意(履歴の回復など) */
   notice?: string;
   analysis: ProjectAnalysis | null;

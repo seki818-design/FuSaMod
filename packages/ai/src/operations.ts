@@ -123,7 +123,13 @@ function differ(): Differ {
       push(id, field, from, to, l);
     },
     text(id, field, from, to) {
-      if ((from ?? "") !== (to ?? "")) push(id, field, from ? "(記述あり)" : undefined, to ? "(記述あり)" : undefined, !!from && (to ?? "").trim().length < from.trim().length / 2);
+      // 記述の変更は、内容が変わったことを必ず記録する。弱める（消す・半分より短くする）変更はリスク低下の主張。
+      // 内容そのものは長いので差分には載せず、長さで示す
+      const a = (from ?? "").trim();
+      const b = (to ?? "").trim();
+      if (a === b) return;
+      const shown = (t: string) => (t ? `(記述あり ${t.length} 文字)` : undefined);
+      push(id, field, shown(a), shown(b), a !== "" && b.length < a.length / 2);
     },
   };
 }

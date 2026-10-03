@@ -192,6 +192,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     modelOk: out.modelOk,
     ...(p.notice ? { notice: p.notice } : {}),
     ...(out.sysmlError ? { sysmlError: out.sysmlError } : {}),
+    /** 解析自体が失敗した理由（機械可読）。timeout | unavailable | busy。モデルの誤りのときは無い */
+    ...(out.sysmlFailure ? { sysmlFailure: out.sysmlFailure } : {}),
     analysis: out.analysis ?? null,
     /** 解析済みの要素グラフ(画面側で、編集中の安全データを即時に解析するために使う) */
     graph: out.graph ?? null,

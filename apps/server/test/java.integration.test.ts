@@ -103,4 +103,31 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準 JSON の elementId の安定
     const kept = [...before].filter((i) => after.has(i)).length;
     expect(kept / before.size).toBeGreaterThan(0.95);
   }, 600_000);
+  it("同梱の例すべてで、2 回の出力がバイト単位で一致する", async () => {
+    const { readdirSync } = await import("node:fs");
+    const dir = resolve(DEMO, "../../examples/sysml");
+    for (const f of readdirSync(dir).filter((x) => x.endsWith(".sysml"))) {
+      const text = readFileSync(resolve(dir, f), "utf8");
+      expect(await convertModel(text, "json"), f).toBe(await convertModel(text, "json"));
+    }
+  }, 900_000);
+  it("満たす関係(satisfy)の ID は、無関係な編集の前後で、同じ要求を指し続ける", async () => {
+    const model = readFileSync(resolve(DEMO, "model.sysml"), "utf8");
+    type R = { payload: { elementId: string; "@type": string; ownedRelationship?: { "@id": string }[]; target?: { "@id": string }[]; declaredName?: string } };
+    const map = async (m: string) => {
+      const list = JSON.parse(await convertModel(m, "json")) as R[];
+      const by = new Map(list.map((r) => [r.payload.elementId, r.payload]));
+      const out = new Map<string, string>();
+      for (const p of by.values()) {
+        if (p["@type"] !== "SatisfyRequirementUsage") continue;
+        const tgt = (p.ownedRelationship ?? []).map((c) => by.get(c["@id"])).flatMap((q) => q?.target ?? []).map((t) => by.get(t["@id"])?.declaredName);
+        out.set(p.elementId, tgt.join(","));
+      }
+      return out;
+    };
+    const before = await map(model);
+    const after = await map(model.replace(/\}\s*$/, "  part zzz;\n}\n"));
+    expect(before.size).toBeGreaterThan(0);
+    for (const [id, req] of before) expect(after.get(id)).toBe(req);
+  }, 600_000);
 });

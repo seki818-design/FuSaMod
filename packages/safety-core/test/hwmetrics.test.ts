@@ -34,7 +34,7 @@ describe("SPFM / LFM(ISO 26262-5 の定義に従う算出。手計算と一致)"
     expect(validateHwModes(ok, ["D"]).filter((i) => i.severity === "error")).toEqual([]);
   });
   it("DC を主張するのに機構・根拠が無ければ警告。機構の区分の上限を超えるとエラー", () => {
-    const mech = [{ id: "SM", diagnosticCoverage: "medium" as const }];
+    const mech = [{ id: "SM", diagnosticCoverage: "medium" as const, asil: "B" as const, paired: true }];
     const w = validateHwModes([m({ id: "A", dcSpfRf: 0.9 })], ["QM"], {}).map((i) => i.code);
     expect(w).toEqual(["HW_DC_NO_MECHANISM", "HW_NO_RATIONALE"]);
     const over = validateHwModes([m({ id: "A", dcSpfRf: 0.95, mechanismId: "SM", rationale: "FMEDA 2024-05 表 3" })], ["QM"], { mechanisms: mech });
@@ -45,12 +45,30 @@ describe("SPFM / LFM(ISO 26262-5 の定義に従う算出。手計算と一致)"
   it("安全目標ごとに評価する: goalIds で、その目標に関係する故障モードだけを使う", () => {
     const goals = [{ id: "SG-1", asil: "D" as const }, { id: "SG-2", asil: "B" as const }];
     const modes2 = [m({ id: "A", fit: 100, goalIds: ["SG-1"] }), m({ id: "B", fit: 100, dcSpfRf: 0.99, mechanismId: "SM", rationale: "FMEDA 2024-05 表 3", goalIds: ["SG-2"] })];
-    const r = validateHwModes(modes2, ["D", "B"], { goals, mechanisms: [{ id: "SM", diagnosticCoverage: "high" }] });
+    const r = validateHwModes(modes2, ["D", "B"], { goals, mechanisms: [{ id: "SM", diagnosticCoverage: "high", asil: "D", paired: true }] });
     expect(r.filter((i) => i.severity === "error").map((i) => `${i.code}@${i.ref}`)).toEqual(["HW_SPFM_BELOW_TARGET@SG-1"]); // SG-2 は B の 90% を満たす
   });
   it("入力の検証: 範囲外・重複・存在しない要素", () => {
     const bad = [m({ id: "A", fit: -1 }), m({ id: "A", dcSpfRf: 1.5 }), m({ id: "B", elementId: "nope" })];
     const codes = validateHwModes(bad, ["D"], new Set(["ok"])).map((i) => i.code);
     expect(codes).toEqual(expect.arrayContaining(["HW_RANGE", "DUP_ID", "UNKNOWN_ELEMENT"]));
+  });
+});
+
+describe("HW メトリクスの欠落と DC の貸し出し元(ラウンド 8)", () => {
+  const ev = "FMEDA 2024-05 表 3";
+  it("ASIL B 以上の目標に関係する故障モードが無い(または故障率 0)と、その目標が評価できていない旨の警告", () => {
+    const goals = [{ id: "SG-1", asil: "D" as const }, { id: "SG-3", asil: "C" as const }];
+    const r = validateHwModes([m({ id: "A", dcSpfRf: 0.99, goalIds: ["SG-1"], mechanismId: "SM", rationale: ev })], ["D", "C"], { goals, mechanisms: [{ id: "SM", diagnosticCoverage: "high", asil: "D", paired: true }] });
+    expect(r.map((i) => `${i.code}@${i.ref}`)).toContain("HW_METRICS_MISSING@SG-3");
+    const zero = validateHwModes([m({ id: "A", fit: 0 })], ["D"], { goals: [{ id: "SG-1", asil: "D" }] });
+    expect(zero.map((i) => i.code)).toContain("HW_METRICS_MISSING");
+  });
+  it("DC を担う機構が QM ならエラー、ペアになっていなければ警告", () => {
+    const mode = m({ id: "A", dcSpfRf: 0.5, mechanismId: "SM", rationale: ev });
+    const qm = validateHwModes([mode], ["QM"], { mechanisms: [{ id: "SM", diagnosticCoverage: "high", asil: "QM", paired: true }] });
+    expect(qm.map((i) => `${i.severity}:${i.code}`)).toEqual(["error:HW_DC_MECHANISM_QM"]);
+    const unpaired = validateHwModes([mode], ["QM"], { mechanisms: [{ id: "SM", diagnosticCoverage: "high", asil: "B", paired: false }] });
+    expect(unpaired.map((i) => `${i.severity}:${i.code}`)).toEqual(["warning:HW_DC_MECHANISM_UNPAIRED"]);
   });
 });

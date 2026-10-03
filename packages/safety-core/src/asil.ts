@@ -117,7 +117,7 @@ const isSubstantial = (t: string) =>
   new Set(t).size >= 6 &&
   !/^\d+$/.test(t) &&
   !/^(.{2,}?)\s*\1+$/.test(t) &&
-  !/(todo|tbd|tbc|n\/a|xxx|dummy|sample|lorem|ipsum|pending|placeholder|\bwip\b|\bdraft\b|\blater\b|\bnone\b|\bsee\s|\bditto\b|\bsame\s+as\b|未定|未確認|確認中|検討中|あとで|ダミー|仮|なし|後述|別紙|同上|作成中|準備中|記載予定)/i.test(t) &&
+  !/(todo|tbd|tbc|n\/a|xxx|dummy|sample|lorem|ipsum|pending|placeholder|\bwip\b|\bdraft\b|\blater\b|\bnone\b|\bsee\s|\bditto\b|\bsame\s+as\b|(?:^|\s)n\.a\.?(?:\s|$)|\bin\s+progress\b|\btba\b|\bnot\s+yet\b|\bnot\s+done\b|未実施|未作成|未着手|検討予定|未定|未確認|確認中|検討中|あとで|ダミー|仮|なし|後述|別紙|同上|作成中|準備中|記載予定)/i.test(t) &&
   /[\d\-_/:()（）\s]/.test(t); // 文書番号・区切りなど、参照らしい形(連打した文字列を除く)
 
 /** 分解の自己参照と循環(A → B + QM、B → A + … など)。 */

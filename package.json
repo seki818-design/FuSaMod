@@ -9,7 +9,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm --filter @fusamod/web build",
+    "build": "pnpm --filter @fusamod/web build && pnpm --filter @fusamod/server build",
     "start": "pnpm --filter @fusamod/server start",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
@@ -19,6 +19,7 @@
     "coverage": "node tools/quality/coverage.mjs",
     "bench": "node --import tsx tools/quality/bench.ts",
     "sysml:check": "tools/sysml-check/run.sh",
+    "evidence": "node tools/quality/coverage.mjs --write && node --import tsx tools/quality/bench.ts --write",
     "quality": "pnpm typecheck && pnpm lint && pnpm test && pnpm coverage && pnpm bench",
     "shots": "SHOTS=1 pnpm --filter @fusamod/web e2e shots"
   },

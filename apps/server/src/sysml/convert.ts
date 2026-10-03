@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { REPO_ROOT } from "../config.js";
 import { stabilizeJsonIds } from "./stable-ids.js";
-import { SysmlUnavailableError } from "./types.js";
+import { SysmlTimeoutError, SysmlUnavailableError } from "./types.js";
 
 export type ConvertFormat = "json" | "xmi";
 
@@ -67,7 +67,7 @@ function run(script: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: 
     };
     const timer = setTimeout(() => {
       killGroup();
-      fail(new SysmlUnavailableError("変換がタイムアウトしました"));
+      fail(new SysmlTimeoutError("変換がタイムアウトしました"));
     }, timeoutMs);
     proc.on("error", (e) => {
       clearTimeout(timer);

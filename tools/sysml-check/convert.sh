@@ -23,13 +23,16 @@ KLIB="$KDIR/sysml.library"
 extra=()
 cp "$KLIB/Kernel Libraries/Kernel Data Type Library/ScalarValues.kerml" "$LIBDIR/"
 extra+=("$LIBDIR/ScalarValues.kerml")
-if grep -Eq '\b(ISQ[A-Za-z]*|SI|SIPrefixes|MeasurementReferences|Quantities|USCustomaryUnits|Time|[A-Za-z]*Calculations)\b *::|\[ *[A-Za-z]+' "$file"; then
+if grep -Eq '\b(ISQ[A-Za-z]*|SI|SIPrefixes|MeasurementReferences|Quantities|USCustomaryUnits|Time|[A-Za-z]*Calculations)\b *::|[0-9)] *\[ *[A-Za-z]' "$file"; then
   cp "$KLIB/Domain Libraries/Quantities and Units/"*.sysml "$LIBDIR/"
   for f in "$LIBDIR"/*.sysml; do extra+=("$f"); done
 fi
-if grep -Eq '\bSCDL\b|@Scdl' "$file"; then
-  cp "$ROOT/libs/sysml/scdl/SCDL.sysml" "$LIBDIR/"
-  extra+=("$LIBDIR/SCDL.sysml")
+if grep -Eq '\bSCDL\b|@Scdl' "$file" && ! grep -Eq '^[[:space:]]*(library[[:space:]]+)?package[[:space:]]+SCDL\b' "$file"; then
+  # SCDL のステレオタイプ定義は、変換するファイルの先頭に取り込む。出力 JSON が自己完結になり(他ツールでも @Scdl* の定義を解決できる)、
+  # 外部要素への参照(変換のたびに変わる ID)が残らない
+  tmp="$(mktemp -p "$(dirname "$file")")"
+  cat "$ROOT/libs/sysml/scdl/SCDL.sysml" "$file" > "$tmp"
+  mv "$tmp" "$file"
 fi
 # shellcheck disable=SC2086
 java $JAVA_OPTS_UTF8 -cp "$JAR" "org.omg.sysml.xtext.util.$cls" "$file" "${extra[@]}" 2>&1 | grep -vE "$NOISE|log4j" >&2

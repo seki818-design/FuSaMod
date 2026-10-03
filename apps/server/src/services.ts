@@ -40,6 +40,8 @@ export class AnalysisService {
   private sysmlCache = new Lru<SysmlResult>(64);
   private analysisCache = new Lru<ProjectAnalysis>(64);
   private lastUnavailable = 0;
+  /** タイムアウトしたモデル（ハッシュ）→ いつまで再試行しないか。重いモデルを開くたびに共有の Java を長く占有しないため */
+  private timedOut = new Map<string, { until: number; error: string }>();
 
   constructor(
     private readonly sysml: SysmlService,
@@ -59,6 +61,8 @@ export class AnalysisService {
       this.sysmlCache.set(key, r);
       return { result: r };
     }
+    const bad = this.timedOut.get(key);
+    if (bad && Date.now() < bad.until) return { error: `${bad.error}(同じモデルは、しばらく再解析しません。モデルを変更すると再試行します)`, failure: "timeout" };
     try {
       const r = await this.sysml.analyze(text);
       if (r.ok) this.sysmlCache.set(key, r); // エラー結果はキャッシュしない
@@ -67,6 +71,10 @@ export class AnalysisService {
       const msg = e instanceof Error ? e.message : String(e);
       this.log(`SysML 解析に失敗: ${msg}`);
       if (e instanceof SysmlUnavailableError) this.lastUnavailable = Date.now();
+      if (e instanceof SysmlTimeoutError) {
+        this.timedOut.set(key, { until: Date.now() + 5 * 60_000, error: msg });
+        if (this.timedOut.size > 64) this.timedOut.delete(this.timedOut.keys().next().value as string);
+      }
       return { error: msg, failure: e instanceof SysmlTimeoutError ? "timeout" : e instanceof SysmlBusyError ? "busy" : "unavailable" };
     }
   }

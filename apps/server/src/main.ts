@@ -41,7 +41,7 @@ function makeAi(c: Config): AiProvider {
   return new RuleBasedProvider();
 }
 
-void sweepConvertTemp(0); // 前回の異常終了で残った変換の一時ディレクトリを掃除する
+void sweepConvertTemp(); // 前回の異常終了で残った変換の一時ディレクトリ（10 分より古いもの。同じ利用者の別インスタンスの変換中のものは消さない）を掃除する
 const sysml = makeSysml(config);
 const app = await buildApp({
   config,
@@ -52,8 +52,8 @@ const app = await buildApp({
 });
 
 const shutdown = async () => {
+  await sysml.close(); // 先に Java を止める（進行中の重い解析を待たずに、リクエストを失敗させて終了する）
   await app.close();
-  await sysml.close();
   process.exit(0);
 };
 process.on("SIGINT", shutdown);

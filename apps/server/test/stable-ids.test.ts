@@ -16,12 +16,13 @@ describe("標準 JSON の elementId を決定的にする", () => {
   it("ランダムな ID が違っても、同じモデルなら同じ出力になる", () => {
     expect(stabilizeJsonIds(a)).toBe(stabilizeJsonIds(b));
   });
-  it("参照も一緒に置き換わり、閉じている(置き換え後の参照先が存在する)。外部(ライブラリ)の参照はそのまま", () => {
+  it("参照も一緒に置き換わり、閉じている(置き換え後の参照先が存在する)。外部(出力に含まれない要素)への参照は決定的な ID になる", () => {
     const out = JSON.parse(stabilizeJsonIds(a)) as { payload: { elementId: string; owner?: { "@id": string }; ownedRelationship?: { "@id": string }[] } }[];
     const ids = new Set(out.map((r) => r.payload.elementId));
     expect(ids.size).toBe(4);
     for (const r of out) if (r.payload.owner) expect(ids.has(r.payload.owner["@id"])).toBe(true);
-    expect(stabilizeJsonIds(a)).toContain("11111111-1111-1111-1111-111111111111");
+    // 出力に含まれない要素（ライブラリなど）への参照は、変換のたびに変わるので、参照元から決めた ID に置き換える
+    expect(stabilizeJsonIds(a)).not.toContain("11111111-1111-1111-1111-111111111111");
     expect(stabilizeJsonIds(a)).not.toContain("a0000000");
   });
   it("同名・同種の兄弟は区別される(同じ ID にならない)", () => {

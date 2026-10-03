@@ -159,3 +159,23 @@ describe("故障ネットからのフォールトツリー導出", () => {
     expect(minimalCutSets(t).cutSets).toEqual([["x-sensor"], ["x-wind"]]);
   });
 });
+
+describe("ISO 26262-3 Table 4(全 80 通り)を、式ではなく表そのもので確認する", () => {
+  // 表を文字どおり書き写したもの(実装の式とは独立): S → E → [C1, C2, C3]
+  const TABLE: Record<number, Record<number, Asil[]>> = {
+    1: { 1: ["QM", "QM", "QM"], 2: ["QM", "QM", "QM"], 3: ["QM", "QM", "A"], 4: ["QM", "A", "B"] },
+    2: { 1: ["QM", "QM", "QM"], 2: ["QM", "QM", "A"], 3: ["QM", "A", "B"], 4: ["A", "B", "C"] },
+    3: { 1: ["QM", "QM", "A"], 2: ["QM", "A", "B"], 3: ["A", "B", "C"], 4: ["B", "C", "D"] },
+  };
+  it("S0〜3 × E0〜4 × C0〜3 の 80 通りすべてが表と一致する(0 を含むものは QM)", () => {
+    let n = 0;
+    for (let s = 0; s <= 3; s++)
+      for (let e = 0; e <= 4; e++)
+        for (let c = 0; c <= 3; c++) {
+          const expected: Asil = s === 0 || e === 0 || c === 0 ? "QM" : TABLE[s]![e]![c - 1]!;
+          expect([s, e, c, determineAsil(s as 0, e as 0, c as 0)]).toEqual([s, e, c, expected]);
+          n++;
+        }
+    expect(n).toBe(80);
+  });
+});

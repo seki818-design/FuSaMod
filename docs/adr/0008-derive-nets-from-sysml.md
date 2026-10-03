@@ -42,6 +42,7 @@
 - 公式実装は `satisfy r by car1.front` を定義側の特徴(`Car::front`)に解決する。そのため `SysmlExtract` は **連鎖の途中も含めて**(`byChain`: `[car1, Car::front]`)出力し、展開では**その経路のインスタンス 1 つだけ**に紐づける。経路を特定できないときは紐づけず `SATISFY_UNRESOLVED` で警告する。
 - 定義側の特徴を直接指す `satisfy`(経路なし)は、すべてのインスタンスに紐づけ、複数なら `SATISFY_AMBIGUOUS` で警告する。
 - `by` を省略した `satisfy`(part の中で書く)は、囲んでいる part が満たす。
+- **`part def` が所有する `requirement`**(と、その定義の中の `satisfy`)は、定義を使う part ごとに複製される(`c1::inCar`)。暗黙の subject(`satisfy inCar;`)はその part 自身、`satisfy inCar2 by front` は同じインスタンスの `front` の複製 1 つに付く。使用側から型の中身へ相対の経路(`satisfy extra by front.brake`)で指すこともできる。定義を使う part が無いときだけ `SATISFY_NO_INSTANCE` で警告する。
 - usage 側の特殊化(`part ax2 :> ax`)と再定義(`part :>> ax`)は、元の使用(と、その型)の中身を引き継ぐ。
 - `ref part` は構造の入れ子ではないので、構造に入れず警告する(`UNSUPPORTED_CONSTRUCT`)。
 - 入れ子の `requirement` は、親子を残す(`parentId`、トレースに「導出」リンク)。

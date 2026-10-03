@@ -110,14 +110,14 @@ export function validateDecompositions(
 const EVIDENCE_MIN = 8;
 /**
  * 形だけの根拠を除く簡易な検査(内容の妥当性は人が判断する)。
- * 8 文字以上、6 種類以上の文字、数字だけでない、同じ語の繰り返しでない、プレースホルダ(TODO/TBD/XXX/ダミー/仮など)を含まない、数字か区切りを含む(「abcdabcd」「TODO TODO」「12345678」「asdfghjk」「DFA-XXX-000」「DFA TBD 1234」を除く)。
+ * 8 文字以上、6 種類以上の文字、数字だけでない、同じ語の繰り返しでない、プレースホルダ(TODO/TBD/XXX/WIP/draft/none/see…/ダミー/仮/後述/同上など)を含まない、数字か区切りを含む(「abcdabcd」「TODO TODO」「12345678」「asdfghjk」「DFA-XXX-000」「DFA TBD 1234」を除く)。
  */
 const isSubstantial = (t: string) =>
   t.length >= EVIDENCE_MIN &&
   new Set(t).size >= 6 &&
   !/^\d+$/.test(t) &&
   !/^(.{2,}?)\s*\1+$/.test(t) &&
-  !/(todo|tbd|tbc|n\/a|xxx|dummy|sample|lorem|ipsum|pending|placeholder|未定|未確認|確認中|検討中|あとで|ダミー|仮)/i.test(t) &&
+  !/(todo|tbd|tbc|n\/a|xxx|dummy|sample|lorem|ipsum|pending|placeholder|\bwip\b|\bdraft\b|\blater\b|\bnone\b|\bsee\s|\bditto\b|\bsame\s+as\b|未定|未確認|確認中|検討中|あとで|ダミー|仮|なし|後述|別紙|同上|作成中|準備中|記載予定)/i.test(t) &&
   /[\d\-_/:()（）\s]/.test(t); // 文書番号・区切りなど、参照らしい形(連打した文字列を除く)
 
 /** 分解の自己参照と循環(A → B + QM、B → A + … など)。 */

@@ -319,6 +319,13 @@ class Expander {
     return out;
   }
 
+  /** 定義そのものが満たす側(暗黙の subject など): 要求と同じインスタンスならそれ、なければ定義を使うすべてのインスタンス。 */
+  private satisfyByDefinition(out: GraphSatisfy[], s: GraphSatisfy, requirement: string | null, ctx: string | undefined, by: GraphElement) {
+    const own = ctx !== undefined && this.typeChain.get(ctx)?.has(by.qualifiedName) ? [ctx] : this.performerInstances(by.qualifiedName);
+    if (own.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、どの part からも使われていない定義です(紐づけません)", s.requirement ?? undefined);
+    for (const c of own) out.push({ requirement, by: c });
+  }
+
   private remapOne(out: GraphSatisfy[], s: GraphSatisfy, requirement: string | null, ctx: string | undefined, ids: Set<string>, label: (c: string[]) => string) {
     const by = s.by ? this.byQn.get(s.by) : undefined;
     if (s.byChain && s.byChain.length > 1) {
@@ -328,25 +335,24 @@ class Expander {
       else this.warn("SATISFY_UNRESOLVED", `satisfy の対象(${label(s.byChain)})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
       return;
     }
-    if (s.by && by && DEFINITIONS.has(by.kind)) {
-      // 定義そのものが満たす側(暗黙の subject など): 要求と同じインスタンスならそれ、なければ定義を使うすべてのインスタンス
-      const own = ctx !== undefined && this.typeChain.get(ctx)?.has(by.qualifiedName) ? [ctx] : this.performerInstances(by.qualifiedName);
-      if (own.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、どの part からも使われていない定義です(紐づけません)", s.requirement ?? undefined);
-      for (const c of own) out.push({ requirement, by: c });
-      return;
-    }
+    if (s.by && by && DEFINITIONS.has(by.kind)) return this.satisfyByDefinition(out, s, requirement, ctx, by);
     if (!s.by || !by || !this.insideDefinition(by)) {
       out.push(s.byChain || requirement !== s.requirement ? { requirement, by: s.by } : s);
       return;
     }
+    this.satisfyByFeature(out, s, requirement, ctx, by);
+  }
+
+  /** 定義側の特徴を直接指している。 */
+  private satisfyByFeature(out: GraphSatisfy[], s: GraphSatisfy, requirement: string | null, ctx: string | undefined, by: GraphElement) {
     // 定義側の特徴を直接指している。要求が同じインスタンスの中にあれば、そのインスタンスの複製(1 つ)に紐づける
-    const within = ctx && this.insideDefinition(this.byQn.get(s.requirement ?? "") ?? by) ? this.copiesWithin(s.by, ctx) : [];
+    const within = ctx && this.insideDefinition(this.byQn.get(s.requirement ?? "") ?? by) ? this.copiesWithin(s.by!, ctx) : [];
     if (within.length > 0) {
       for (const c of within) out.push({ requirement, by: c });
       return;
     }
     // そうでなければ、定義のすべてのインスタンスが満たすことになる
-    const copies = this.copiesOf.get(s.by) ?? [];
+    const copies = this.copiesOf.get(s.by!) ?? [];
     if (copies.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、どの part からも使われていない定義の中の要素です(紐づけません)", s.requirement ?? undefined);
     if (copies.length > 1) this.warn("SATISFY_AMBIGUOUS", `satisfy が定義側の要素を直接指しているため、${copies.length} 個のインスタンスすべてに紐づけました(特定するには car.front のような経路で書いてください)`, s.requirement ?? undefined);
     for (const c of copies) out.push({ requirement, by: c });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeProject, impactOfRequirementChange, parseSafetyData, recomputePuzzle } from "../src/index.js";
+import { analyzeProject, emptySafetyData, impactOfRequirementChange, parseSafetyData, recomputePuzzle } from "../src/index.js";
 import { demoGraph, demoSafety, GD, INV, PT, SM, VCU, VEH } from "./helpers.js";
 
 describe("デモプロジェクトの解析", () => {
@@ -8,7 +8,7 @@ describe("デモプロジェクトの解析", () => {
   it("エラーは無く、警告は未設定の AP 表と未着手の機能だけ", () => {
     expect(a.issues.filter((i) => i.severity === "error")).toEqual([]);
     const codes = a.issues.map((i) => i.code).sort();
-    expect(codes).toEqual(["AP_TABLE_NOT_OFFICIAL", "FUNCTION_WITHOUT_FAILURE"]);
+    expect(codes).toEqual(["AP_TABLE_NOT_OFFICIAL", "FUNCTION_WITHOUT_FAILURE", "HW_DC_NO_MECHANISM"]);
     expect(a.issues.find((i) => i.code === "FUNCTION_WITHOUT_FAILURE")!.elementId).toBe(SM);
   });
 
@@ -317,9 +317,12 @@ describe("診断カバレッジと検出度の整合(FMEA-MSR の一部)", () =>
     const s = structuredClone(demoSafety());
     const fid = s.mechanisms[0]!.coversFailureIds![0]!;
     const l = s.links.find((x) => x.causeId === fid);
-    if (l) { l.detection = 8; l.occurrence = l.occurrence ?? 3; }
+    expect(l).toBeDefined(); // デモに、この故障を原因とするリンクがあること(無ければこの試験は意味を持たない)
+    l!.detection = 8;
     const a = analyzeProject(demoGraph(), s);
-    expect(l ? a.issues.some((i) => i.code === "MECH_DC_D_MISMATCH") : true).toBe(true);
+    const hit = a.issues.find((i) => i.code === "MECH_DC_D_MISMATCH");
+    expect(hit?.severity).toBe("warning");
+    expect(hit?.ref).toBe(s.mechanisms[0]!.id);
   });
 });
 
@@ -401,17 +404,31 @@ describe("ハードウェアメトリクス(SPFM/LFM)の統合", () => {
     expect(a.hardware).toBeDefined();
     expect(a.hardware!.targetAsil).toBe("D");
     expect(a.hardware!.target).toEqual({ spfm: 0.99, lfm: 0.9 });
-    // 手計算: 総 170 FIT、単一+残存 = 20×0.03 + 50×0.005 = 0.85、潜在 = 100×0.08 = 8
-    expect(a.hardware!.totalFit).toBe(170);
-    expect(a.hardware!.spfm).toBeCloseTo(1 - 0.85 / 170, 9);
-    expect(a.hardware!.lfm).toBeCloseTo(1 - 8 / (170 - 0.85), 9);
-    expect(a.issues.some((i) => i.source === "hardware")).toBe(false); // SPFM 99.5% ≥ 99%、LFM 95.3% ≥ 90%
+    // 手計算: 総 107 FIT、単一+残存 = (2+5)×0.1 = 0.7、潜在 = 100×0.1 = 10
+    expect(a.hardware!.totalFit).toBe(107);
+    expect(a.hardware!.spfm).toBeCloseTo(1 - 0.7 / 107, 9);
+    expect(a.hardware!.lfm).toBeCloseTo(1 - 10 / (107 - 0.7), 9);
+    // SPFM 99.35% ≥ 99%、LFM 90.6% ≥ 90% で目標を満たす。指摘は「HW-3 の DC を担う機構が未指定」の警告だけ
+    expect(a.issues.filter((i) => i.source === "hardware").map((i) => `${i.severity}:${i.code}`)).toEqual(["warning:HW_DC_NO_MECHANISM"]);
   });
-  it("故障率の入力が無ければ、メトリクスは出ず、指摘も出ない", () => {
+  it("ASIL B 以上の安全目標があるのに故障率の入力が無ければ、メトリクスは出ず、評価できていない旨の警告が出る", () => {
     const s = structuredClone(demoSafety()); delete s.hardwareFailureModes;
     const a = analyzeProject(demoGraph(), s);
     expect(a.hardware).toBeUndefined();
-    expect(a.issues.some((i) => i.source === "hardware")).toBe(false);
+    expect(a.issues.filter((i) => i.source === "hardware").map((i) => i.code)).toEqual(["HW_METRICS_MISSING"]);
+  });
+  it("DC を安全機構の区分(medium は 90% まで)より大きく主張すると、エラーになる", () => {
+    const s = structuredClone(demoSafety());
+    s.hardwareFailureModes![0]!.dcSpfRf = 0.97;
+    const a = analyzeProject(demoGraph(), s);
+    expect(a.issues.find((i) => i.code === "HW_DC_EXCEEDS_MECHANISM")?.severity).toBe("error");
+  });
+  it("存在しない安全目標・安全機構の指定はエラー", () => {
+    const s = structuredClone(demoSafety());
+    s.hardwareFailureModes![0]!.mechanismId = "SM-9";
+    s.hardwareFailureModes![1]!.goalIds = ["SG-9"];
+    const codes = analyzeProject(demoGraph(), s).issues.map((i) => i.code);
+    expect(codes).toEqual(expect.arrayContaining(["UNKNOWN_MECHANISM", "UNKNOWN_GOAL"]));
   });
 });
 
@@ -422,5 +439,13 @@ describe("ハードウェアメトリクスが目標に届かないとき", () =
     const a = analyzeProject(demoGraph(), s);
     expect(a.issues.find((i) => i.code === "HW_SPFM_BELOW_TARGET")?.severity).toBe("error");
     expect(a.issues.find((i) => i.source === "hardware")?.viewpoint).toBe("safety");
+  });
+});
+
+describe("空の安全データ(ラウンド 8)", () => {
+  it("何も入力されていないときは、指摘ゼロが「安全」と読まれないよう警告する", () => {
+    const a = analyzeProject(demoGraph(), emptySafetyData());
+    expect(a.issues.find((i) => i.code === "SAFETY_DATA_EMPTY")?.severity).toBe("warning");
+    expect(analyzeProject(demoGraph(), demoSafety()).issues.some((i) => i.code === "SAFETY_DATA_EMPTY")).toBe(false);
   });
 });

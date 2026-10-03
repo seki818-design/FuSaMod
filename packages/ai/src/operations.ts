@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SafetyDataSchema, parseSafetyData, type SafetyData } from "@fusamod/analysis";
+import { goalIdOfRequirement } from "@fusamod/safety-core";
 
 const S = SafetyDataSchema.shape;
 const id = z.string().min(1).max(600);
@@ -193,10 +194,26 @@ function conceptChanges(d: Differ, before: SafetyData, after: SafetyData) {
     d.text(m.id, "safeState", o.safeState, m.safeState);
     d.push(m.id, "asil", o.asil, m.asil, asilDown(o.asil, m.asil));
   }
+  // 紐づく要求の付け替えで、要求される ASIL(たどれる安全目標の最大の ASIL)が下がるのは、ASIL を下げる迂回
+  const goalAsil = (s: SafetyData, ids: string[] | undefined, own: string) => {
+    const gs = new Map(s.hara.goals.map((g) => [g.id, g.asil]));
+    return Math.max(0, ...[own, ...(ids ?? [])].map((i) => ASIL_RANK[gs.get(goalIdOfRequirement(s.safetyRequirements, i) ?? "") ?? "QM"] ?? 0));
+  };
+  const relink = (kind: string, x: { id: string; requirementIds?: string[] | undefined }, o: { requirementIds?: string[] | undefined }) => {
+    const was = (o.requirementIds ?? []).join(",");
+    const now = (x.requirementIds ?? []).join(",");
+    d.push(x.id, `requirementIds(${kind})`, was || undefined, now || undefined, was !== now && goalAsil(after, x.requirementIds, x.id) < goalAsil(before, o.requirementIds, x.id));
+  };
+  for (const m of after.mechanisms) {
+    const o = oldM.get(m.id);
+    if (o) relink("安全機構", m, o);
+  }
   const oldI = byId(before.intendedFunctions);
   for (const f of after.intendedFunctions) {
     const o = oldI.get(f.id);
-    if (o) d.push(f.id, "asil", o.asil, f.asil, asilDown(o.asil, f.asil));
+    if (!o) continue;
+    d.push(f.id, "asil", o.asil, f.asil, asilDown(o.asil, f.asil));
+    relink("意図機能", f, o);
   }
   const oldR = byId(before.safetyRequirements);
   for (const r of after.safetyRequirements) {
@@ -207,20 +224,51 @@ function conceptChanges(d: Differ, before: SafetyData, after: SafetyData) {
   }
 }
 
-/** ハードウェアの故障モード(故障率・診断カバレッジ・安全な故障の割合)。故障率の低下・カバレッジの向上・削除は、SPFM/LFM を良く見せる変更。 */
+/**
+ * ハードウェアの故障モード。SPFM/LFM を良く見せうる変更をリスク低下として示す:
+ * 故障率の低下、DC・安全な故障の割合の上昇(未設定 → 設定を含む)、高 DC のモードの追加や故障率の増加(分母が増えて指標が改善する)、
+ * 対象の安全目標の削減、モードの削除。
+ */
 function hardwareChanges(d: Differ, before: SafetyData, after: SafetyData) {
   const old = byId(before.hardwareFailureModes ?? []);
+  const up = (a: number | undefined, b: number | undefined) => (b ?? 0) > (a ?? 0);
   for (const m of after.hardwareFailureModes ?? []) {
     const o = old.get(m.id);
-    if (!o) continue;
-    d.num(m.id, "fit", o.fit, m.fit, dec);
-    d.num(m.id, "safeFraction", o.safeFraction, m.safeFraction, inc);
-    d.num(m.id, "dcSpfRf", o.dcSpfRf, m.dcSpfRf, inc);
-    d.num(m.id, "dcLatent", o.dcLatent, m.dcLatent, inc);
+    const dcOf = (x: typeof m) => (x.type === "single" ? x.dcSpfRf : x.dcLatent) ?? 0;
+    if (!o) {
+      // 追加: DC や安全な故障の割合を主張するモデルは、指標を良く見せうる
+      d.push(m.id, "追加(ハードウェア故障モード)", undefined, m.fit, dcOf(m) > 0 || (m.safeFraction ?? 0) > 0);
+      continue;
+    }
+    d.push(m.id, "fit", o.fit, m.fit, m.fit < o.fit || (m.fit > o.fit && dcOf(m) >= 0.9));
+    d.push(m.id, "safeFraction", o.safeFraction, m.safeFraction, up(o.safeFraction, m.safeFraction));
+    d.push(m.id, "dcSpfRf", o.dcSpfRf, m.dcSpfRf, up(o.dcSpfRf, m.dcSpfRf));
+    d.push(m.id, "dcLatent", o.dcLatent, m.dcLatent, up(o.dcLatent, m.dcLatent));
     d.push(m.id, "type", o.type, m.type, o.type === "single" && m.type === "multiple");
+    d.push(m.id, "mechanismId", o.mechanismId, m.mechanismId, false);
+    const goalsBefore = o.goalIds ?? [];
+    const goalsAfter = m.goalIds ?? [];
+    // 対象の安全目標を絞る(省略 = すべて)ほど、他の目標の指標から外れる
+    const narrowed = (goalsBefore.length === 0 && goalsAfter.length > 0) || goalsBefore.some((g) => goalsAfter.length > 0 && !goalsAfter.includes(g));
+    d.push(m.id, "goalIds", goalsBefore.join(",") || "(すべて)", goalsAfter.join(",") || "(すべて)", narrowed);
+    d.text(m.id, "rationale", o.rationale, m.rationale);
   }
   const now = new Set((after.hardwareFailureModes ?? []).map((m) => m.id));
   for (const m of before.hardwareFailureModes ?? []) if (!now.has(m.id)) d.push(m.id, "削除(ハードウェア故障モード)", "あり", undefined, true);
+}
+
+/** ペアの独立性の記述と、分解の独立性の根拠(弱める・消すとリスク低下の主張になる)。 */
+function independenceChanges(d: Differ, before: SafetyData, after: SafetyData) {
+  const oldP = byId(before.pairs);
+  for (const p of after.pairs) {
+    const o = oldP.get(p.id);
+    if (o) d.text(p.id, "independence", o.independence, p.independence);
+  }
+  const oldD = byId(before.decompositions);
+  for (const x of after.decompositions) {
+    const o = oldD.get(x.id);
+    if (o) d.text(x.id, "independenceEvidence", o.independenceEvidence, x.independenceEvidence);
+  }
 }
 
 function countH(rules: NonNullable<SafetyData["apTable"]> | undefined): number {
@@ -290,6 +338,7 @@ export function riskChanges(before: SafetyData, after: SafetyData): DataChange[]
   haraChanges(d, before, after);
   conceptChanges(d, before, after);
   hardwareChanges(d, before, after);
+  independenceChanges(d, before, after);
   structuralRiskChanges(d, before, after);
   structureChanges(d, before, after);
   return d.out;

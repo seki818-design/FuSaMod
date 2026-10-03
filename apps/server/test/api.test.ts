@@ -117,9 +117,9 @@ describe("保存・競合・履歴", () => {
     expect(v.modelOk).toBe(false);
     expect(v.sysmlError).toContain("Java");
     expect(v.analysis).toBeNull();
-    // エクスポートと AI は、解析できないモデルでは 409
-    expect((await h.app.inject("/api/projects/ev-powertrain/export/fmea.csv")).statusCode).toBe(409);
-    expect((await h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/ai/chat", payload: { message: "要約" } })).statusCode).toBe(409);
+    // エクスポートと AI は、解析サービスが使えないときは 503(モデルの誤りの 409 とは区別する)
+    expect((await h.app.inject("/api/projects/ev-powertrain/export/fmea.csv")).statusCode).toBe(503);
+    expect((await h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/ai/chat", payload: { message: "要約" } })).statusCode).toBe(503);
     // 元に戻せば解析できる
     const hist = json(await h.app.inject("/api/projects/ev-powertrain/history")).history;
     await h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/history/${hist[1].revision}/restore` });

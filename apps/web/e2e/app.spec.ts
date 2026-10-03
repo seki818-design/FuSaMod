@@ -263,6 +263,18 @@ test("レスポンシブ: 狭い画面でも横スクロールなしで全パネ
   for (const name of ["エクスプローラ", "ビュースペース", "分析", "AI との対話スペース", "パズルビュー"]) await expect(page.getByLabel(name, { exact: true }).first()).toBeAttached();
 });
 
+test("ハードウェア故障モードを入力でき、SPFM/LFM が即時に更新される。DC が機構の区分を超えるとエラーが出る", async ({ page }) => {
+  await open(page);
+  await tab(page, "安全コンセプト").click();
+  const banner = page.getByRole("status", { name: "ハードウェアメトリクス" });
+  await expect(banner).toContainText("SPFM 99.35%");
+  await page.getByText(/ハードウェア故障モードと故障率/).click();
+  await page.getByLabel("HW-1 の故障率(FIT)").fill("40");
+  await expect(banner).not.toContainText("SPFM 99.35%"); // 分母・分子が変わり、再計算される
+  await page.getByLabel("HW-1 の診断カバレッジ").fill("0.97"); // SM-1 は medium(上限 90%)
+  await expect(page.getByRole("row", { name: /HW-1/ })).toContainText("区分");
+});
+
 test("非公式の AP 表は、FMEA 画面で非公式と明示される", async ({ page }) => {
   await open(page);
   await expect(page.getByText(/AP は 非公式のサンプル表 による値です/)).toBeVisible();

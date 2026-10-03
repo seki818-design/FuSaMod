@@ -279,5 +279,6 @@ describe("プレースホルダの根拠(ラウンド 5)", () => {
     [req("P", "D"), req("A", "B", { originAsil: "D", parentId: "P" }), req("B", "B", { originAsil: "D", parentId: "P" })],
     [{ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: t }],
   ).map((i) => i.code);
+  it.each(["see doc 12 later", "WIP 2024-05", "draft v0.1 / DFA", "none 000-111", "同上 DFA-001", "後述 12-34", "same as DFA-12"])("『%s』(後回し・作業中の表現)は警告", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
   it.each(["pending review", "TBC-001-xyz", "lorem ipsum 123", "未確認 DFA-1", "確認中 123-456"])("『%s』は警告", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
 });

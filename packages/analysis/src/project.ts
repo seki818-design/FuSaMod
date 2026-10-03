@@ -160,6 +160,9 @@ const hardwareFailureMode = z
     type: z.enum(["single", "multiple"]),
     dcSpfRf: z.number().min(0).max(1).optional(),
     dcLatent: z.number().min(0).max(1).optional(),
+    rationale: z.string().max(2000).optional(),
+    goalIds: z.array(id).max(100).optional(),
+    mechanismId: id.optional(),
   })
   .strict();
 

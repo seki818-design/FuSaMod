@@ -406,9 +406,13 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   push("pairing", [...refs.pairing, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
   push("safety-req", [...refs.safetyReq, ...duplicateIdIssues(s)]);
   push("pairing", coverageConsistencyIssues(net, s));
+  if (s.hara.goals.length === 0 && s.hara.events.length === 0 && s.failures.length === 0)
+    push("safety-req", [{ code: "SAFETY_DATA_EMPTY", severity: "warning", message: "安全分析のデータがまだ空です(ハザード・安全目標・故障ノードがありません)。何も指摘が出ないのは、安全であることを意味しません" }]);
   const hwModes = s.hardwareFailureModes ?? [];
   const goalAsils = s.hara.goals.map((g) => g.asil);
-  push("hardware", validateHwModes(hwModes, goalAsils, new Set(net.elements.map((e) => e.id))));
+  push("hardware", validateHwModes(hwModes, goalAsils, { knownElements: new Set(net.elements.map((e) => e.id)), goals: s.hara.goals, mechanisms: s.mechanisms }));
+  if (goalAsils.some((a) => asilRank(a) >= asilRank("B")) && hwModes.length === 0)
+    push("hardware", [{ code: "HW_METRICS_MISSING", severity: "warning", message: "ASIL B 以上の安全目標がありますが、ハードウェア故障モード(hardwareFailureModes)が未入力のため、SPFM/LFM を評価できていません(ISO 26262-5)" }]);
   push("decomposition", [
     ...validateDecompositions(s.safetyRequirements, s.decompositions),
     ...validateAsilInheritance(s.safetyRequirements, s.decompositions, s.hara.goals),

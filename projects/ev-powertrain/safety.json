@@ -1466,17 +1466,27 @@
       "id": "HW-1",
       "name": "インバータのパワー素子の短絡(デモの故障率)",
       "elementId": "EvPowertrainDemo::vehicle::powertrain::inverter::powerStage",
-      "fit": 20,
+      "fit": 2,
       "type": "single",
-      "dcSpfRf": 0.97
+      "dcSpfRf": 0.9,
+      "mechanismId": "SM-1",
+      "goalIds": [
+        "SG-1"
+      ],
+      "rationale": "デモの仮定値。分類と DC は FMEDA で置き換えること(SM-1 の区分 medium の上限 90%)"
     },
     {
       "id": "HW-2",
       "name": "ゲートドライバの出力固着(デモの故障率)",
       "elementId": "EvPowertrainDemo::vehicle::powertrain::inverter::gateDriver",
-      "fit": 50,
+      "fit": 5,
       "type": "single",
-      "dcSpfRf": 0.995
+      "dcSpfRf": 0.9,
+      "mechanismId": "SM-1",
+      "goalIds": [
+        "SG-1"
+      ],
+      "rationale": "デモの仮定値。分類と DC は FMEDA で置き換えること(SM-1 の区分 medium の上限 90%)"
     },
     {
       "id": "HW-3",
@@ -1484,7 +1494,11 @@
       "elementId": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
       "fit": 100,
       "type": "multiple",
-      "dcLatent": 0.92
+      "dcLatent": 0.9,
+      "goalIds": [
+        "SG-1"
+      ],
+      "rationale": "デモの仮定値。監視マイコンの自己診断(BIST)を想定。実際には担う安全機構を定義して mechanismId を指定すること"
     }
   ]
 }

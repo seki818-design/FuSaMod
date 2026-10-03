@@ -107,6 +107,15 @@ describe("JavaSysmlService(代役のサーバーで、プロトコルと回復�
     expect(pids.length).toBe(2); // 最初の 1 つ(捨てた)+ 再起動した 1 つだけ
     expect(alive).toHaveLength(1);
   });
+  it("解析の待ちが上限を超えたら SysmlBusyError(待ちを無制限にためない)。処理が終われば受け付けを再開する", async () => {
+    const { SysmlBusyError } = await import("../src/sysml/types.js");
+    svc = new JavaSysmlService({ command: process.execPath, args: [server], env: { FAKE_MODE: "hang-on-HANG" }, requestTimeoutMs: 500, maxQueue: 2 });
+    const a = svc.analyze("HANG1");
+    const b = svc.analyze("HANG2");
+    await expect(svc.analyze("package P {}")).rejects.toBeInstanceOf(SysmlBusyError);
+    await Promise.allSettled([a, b]);
+    expect((await svc.analyze("package P {}")).ok).toBe(true);
+  });
   it("不正な出力の行は無視して続ける", async () => {
     const s = make("bad-line");
     expect((await s.analyze("package P {}")).ok).toBe(true);

@@ -1,7 +1,7 @@
 import { analyzeProject, parseSafetyData, type ProjectAnalysis, type SafetyData } from "@fusamod/analysis";
 import type { ElementGraph } from "@fusamod/sysml-graph";
 import { sha256 } from "./sysml/snapshot-service.js";
-import { SysmlTimeoutError, SysmlUnavailableError, type SysmlDiagnostic, type SysmlResult, type SysmlService } from "./sysml/types.js";
+import { SysmlBusyError, SysmlTimeoutError, SysmlUnavailableError, type SysmlDiagnostic, type SysmlResult, type SysmlService } from "./sysml/types.js";
 import { HttpError } from "./projects.js";
 
 class Lru<V> {
@@ -29,7 +29,7 @@ export interface AnalysisOutcome {
   /** SysML を解析できなかった(サービス停止など)ときの説明 */
   sysmlError?: string;
   /** 解析自体が失敗した(タイムアウト・サービス停止)。モデルの誤りではない */
-  sysmlFailure?: "timeout" | "unavailable";
+  sysmlFailure?: "timeout" | "unavailable" | "busy";
   graph?: ElementGraph;
   /** モデルが解析できたときのみ */
   analysis?: ProjectAnalysis;
@@ -50,7 +50,7 @@ export class AnalysisService {
     return this.sysml.mode;
   }
 
-  async parseModel(text: string, knownGraph?: ElementGraph): Promise<{ result?: SysmlResult; error?: string; failure?: "timeout" | "unavailable" }> {
+  async parseModel(text: string, knownGraph?: ElementGraph): Promise<{ result?: SysmlResult; error?: string; failure?: "timeout" | "unavailable" | "busy" }> {
     const key = sha256(text);
     const cached = this.sysmlCache.get(key);
     if (cached) return { result: cached };
@@ -67,7 +67,7 @@ export class AnalysisService {
       const msg = e instanceof Error ? e.message : String(e);
       this.log(`SysML 解析に失敗: ${msg}`);
       if (e instanceof SysmlUnavailableError) this.lastUnavailable = Date.now();
-      return { error: msg, failure: e instanceof SysmlTimeoutError ? "timeout" : "unavailable" };
+      return { error: msg, failure: e instanceof SysmlTimeoutError ? "timeout" : e instanceof SysmlBusyError ? "busy" : "unavailable" };
     }
   }
 

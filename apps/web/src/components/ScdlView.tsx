@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { layoutScdl } from "../lib/scdl-layout.js";
 import { exportFile, useStore } from "../store.js";
 import { fit } from "../ui.js";
@@ -7,6 +7,7 @@ import { fit } from "../ui.js";
 export function ScdlView() {
   const a = useStore((s) => s.analysis);
   const d = useMemo(() => (a ? layoutScdl(a.scdl) : undefined), [a]);
+  const [fitAll, setFitAll] = useState(true); // true = パネルの幅に収める(小さくなりすぎるときは原寸に切り替える)
   if (!a || !d) return <div className="empty">SCDL ビューを表示できません</div>;
   if (a.scdl.requirements.length === 0) return <div className="empty">要求(意図機能・安全機構・安全要求)が無いため、SCDL ビューを描けません。「安全コンセプト」で追加してください。</div>;
   const issues = a.issues.filter((i) => i.source === "scdl");
@@ -14,12 +15,13 @@ export function ScdlView() {
     <div className="stack" style={{ minHeight: 0 }}>
       <div className="row">
         <button className="btn small" onClick={() => void exportFile("scdl.sysml")}>SysML v2 として出力</button>
+        <button className="btn small" aria-pressed={fitAll} onClick={() => setFitAll(!fitAll)} title="図全体をパネルの幅に収めるか、原寸で表示してスクロールするかを切り替えます">{fitAll ? "原寸で表示" : "全体を表示"}</button>
         <div className="legend" aria-label="凡例">
           <span>┈ 破線の箱 = エレメント(右上の ASIL=重み付け)</span><span>▭ 実線の箱 = 要求</span><span>◯ = 要求グループ</span><span>⇠⇢ 破線の矢印 = ペアリング</span><span>◆— 制約条件</span><span>→ インタラクション</span>
         </div>
       </div>
       <div className="diagram" role="region" style={{ minHeight: 200 }} tabIndex={0} aria-label="SCDL ビュー">
-        <svg viewBox={`0 0 ${d.width} ${d.height}`} style={{ width: d.width, height: d.height, display: "block" }} role="group" aria-label="SCDL ビュー">
+        <svg viewBox={`0 0 ${d.width} ${d.height}`} style={fitAll ? { width: "100%", height: "auto", display: "block" } : { width: d.width, height: d.height, display: "block" }} role="group" aria-label="SCDL ビュー">
           <defs>
             <marker id="sc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--text)" /></marker>
             <marker id="sc-pair" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--accent)" /></marker>

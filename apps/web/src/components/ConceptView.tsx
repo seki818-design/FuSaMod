@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ASILS, isValidDecomposition, type Asil } from "@fusamod/safety-core";
 import { updateSafety, useStore } from "../store.js";
 import { AsilBadge, nextId } from "../ui.js";
+import { HardwareEditor } from "./HardwareEditor.js";
 
 const OPTIONS: Record<string, [Asil, Asil][]> = { D: [["D", "QM"], ["C", "A"], ["B", "B"]], C: [["C", "QM"], ["B", "A"]], B: [["B", "QM"], ["A", "A"]], A: [["A", "QM"]] };
 
@@ -16,7 +17,7 @@ export function ConceptView() {
   const issuesOf = (ref: string) => a.issues.filter((i) => i.ref === ref);
   const flag = (ref: string) => { const ix = issuesOf(ref); return ix.some((i) => i.severity === "error") ? <span className="badge err">✕ {ix.find((i) => i.severity === "error")!.message}</span> : ix.length ? <span className="badge warn">▲ {ix[0]!.message}</span> : <span className="badge ok">✓</span>; };
   return (
-    <div className="stack" style={{ minHeight: 0 }}>
+    <div className="stack scroll-stack" style={{ minHeight: 0 }}>
       <div className="row">
         {(["if", "sm", "pair", "dec"] as const).map((k) => <button key={k} className="btn small" aria-expanded={form === k} onClick={() => setForm(form === k ? "" : k)}>＋ {{ if: "意図機能", sm: "安全機構", pair: "ペア", dec: "ASIL 分解" }[k]}</button>)}
         <span className="muted">要素の識別子は SCDL の ID(vehicle/powertrain/vcu のように、名前をつないだもの)です。</span>
@@ -26,6 +27,7 @@ export function ConceptView() {
       {form === "pair" && <AddPair onDone={() => setForm("")} />}
       {form === "dec" && <AddDecomposition onDone={() => setForm("")} />}
       <HardwareMetrics />
+      <HardwareEditor />
       <div style={{ overflow: "auto" }} tabIndex={0} role="region" aria-label="意図機能と安全機構(スクロールできます)">
         <table className="grid" aria-label="意図機能と安全機構">
           <thead><tr><th>種別</th><th>ID</th><th>名称</th><th>階層・要素</th><th>ASIL</th><th>FTTI(ms)</th><th>状態</th></tr></thead>
@@ -155,21 +157,21 @@ function AddDecomposition({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** ハードウェアアーキテクチャのメトリクス(SPFM / LFM。ISO 26262-5)。故障率は「データ」タブの hardwareFailureModes に入れる。 */
+/** ハードウェアアーキテクチャのメトリクス(SPFM / LFM。ISO 26262-5)。故障率は下の入力欄(hardwareFailureModes)に入れる。 */
 function HardwareMetrics() {
   const a = useStore((s) => s.analysis);
   const hw = a?.hardware;
   if (!a) return null;
   const pct = (v: number | undefined) => (v === undefined ? "—" : `${(v * 100).toFixed(2)}%`);
   if (!hw)
-    return <div className="muted" role="note">ハードウェアのメトリクス(SPFM/LFM)は、故障率を入れると算出されます(「データ」タブの <code>hardwareFailureModes</code>)。</div>;
+    return <div className="muted" role="note">ハードウェアのメトリクス(SPFM/LFM)は、故障率を入れると算出されます(下の「ハードウェア故障モード」で入力)。</div>;
   const ng = (v: number | undefined, t: number | undefined) => v !== undefined && t !== undefined && v < t;
   return (
     <div className="row" role="status" aria-label="ハードウェアメトリクス">
       <strong>ハードウェアメトリクス</strong>
       <span className={`badge ${ng(hw.spfm, hw.target?.spfm) ? "err" : "ok"}`} title="単一点故障メトリクス = 1 − (単一点+残存故障の故障率) / 安全関連の故障率">SPFM {pct(hw.spfm)}{hw.target ? `(目標 ${pct(hw.target.spfm)})` : ""}</span>
       <span className={`badge ${ng(hw.lfm, hw.target?.lfm) ? "err" : "ok"}`} title="潜在故障メトリクス">LFM {pct(hw.lfm)}{hw.target ? `(目標 ${pct(hw.target.lfm)})` : ""}</span>
-      <span className="muted">ASIL {hw.targetAsil}、安全関連 {hw.totalFit} FIT。故障率は利用者の入力で、PMHF は算出しません。</span>
+      <span className="muted">最大 ASIL {hw.targetAsil}、安全関連 {hw.totalFit} FIT(安全目標ごとの判定は「問題」タブ)。故障率は利用者の入力で、PMHF は算出しません。</span>
     </div>
   );
 }

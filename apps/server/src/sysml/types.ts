@@ -26,3 +26,5 @@ export interface SysmlService {
 export class SysmlUnavailableError extends Error {}
 /** 解析がタイムアウトした(モデルの誤りではなく、大きさや負荷の問題)。 */
 export class SysmlTimeoutError extends Error {}
+/** 解析の待ちが多すぎる。呼び出し側は 429 で返す(Java の停止ではないので、保存済みグラフへの切り替えもしない) */
+export class SysmlBusyError extends Error {}

@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { resolve } from "node:path";
 import { REPO_ROOT } from "../config.js";
-import { SysmlTimeoutError, SysmlUnavailableError, type SysmlResult, type SysmlService } from "./types.js";
+import { SysmlBusyError, SysmlTimeoutError, SysmlUnavailableError, type SysmlResult, type SysmlService } from "./types.js";
 
 interface Pending {
   id: number;
@@ -19,6 +19,8 @@ export interface JavaServiceOptions {
   startTimeoutMs?: number;
   /** 1 リクエストの待ち時間 [ms] */
   requestTimeoutMs?: number;
+  /** 実行中を含めて、受け付ける解析の数(超えると SysmlBusyError)。既定 8 */
+  maxQueue?: number;
   log?: (msg: string) => void;
   /** 子プロセスに足す環境変数(例: SYSML_PILOT_CACHE=公式実装の保存先) */
   env?: Record<string, string>;
@@ -38,6 +40,7 @@ export class JavaSysmlService implements SysmlService {
   private chain: Promise<unknown> = Promise.resolve();
   private nextId = 1;
   private closed = false;
+  private inFlight = 0;
   private readonly opts: Required<JavaServiceOptions>;
 
   constructor(opts: JavaServiceOptions = {}) {
@@ -46,6 +49,7 @@ export class JavaSysmlService implements SysmlService {
       args: opts.args ?? [],
       startTimeoutMs: opts.startTimeoutMs ?? 180_000,
       requestTimeoutMs: opts.requestTimeoutMs ?? 60_000,
+      maxQueue: opts.maxQueue ?? 8,
       log: opts.log ?? (() => {}),
       env: opts.env ?? {},
     };
@@ -161,8 +165,12 @@ export class JavaSysmlService implements SysmlService {
         });
       });
     };
+    if (this.inFlight >= this.opts.maxQueue) return Promise.reject(new SysmlBusyError("SysML の解析待ちが多すぎます。しばらくしてからやり直してください"));
+    this.inFlight++;
     const result = this.chain.then(run, run);
-    this.chain = result.catch(() => undefined);
+    this.chain = result.catch(() => undefined).finally(() => {
+      this.inFlight--;
+    });
     return result;
   }
 

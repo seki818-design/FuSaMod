@@ -24,7 +24,7 @@ import { ConvertBusyError, ConvertError, convertModel } from "./sysml/convert.js
 import type { Config } from "./config.js";
 import { HttpError, ProjectStore } from "./projects.js";
 import { AnalysisService, requireSafety } from "./services.js";
-import { SysmlTimeoutError, SysmlUnavailableError } from "./sysml/types.js";
+import { SysmlBusyError, SysmlTimeoutError, SysmlUnavailableError } from "./sysml/types.js";
 
 export interface AppDeps {
   config: Config;
@@ -167,6 +167,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (err instanceof ZodError) return reply.code(400).send({ error: "リクエストが不正です", details: err.issues.slice(0, 20).map((i) => `${i.path.join(".")}: ${i.message}`) });
     if (err instanceof ConvertBusyError) return reply.code(429).header("Retry-After", "30").send({ error: err.message });
     if (err instanceof ConvertError) return reply.code(422).send({ error: err.message });
+    if (err instanceof SysmlBusyError) return reply.code(429).header("Retry-After", "10").send({ error: err.message });
     if (err instanceof SysmlTimeoutError) return reply.code(504).send({ error: err.message });
     if (err instanceof SysmlUnavailableError) return reply.code(503).send({ error: err.message });
     if (err instanceof AiProviderError) return reply.code(err.retryable ? 503 : 502).send({ error: err.message });
@@ -284,6 +285,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // --- エクスポート ---
   /** 解析できなかった理由で、応答を分ける: タイムアウト 504 / サービス停止 503 / モデルの誤り 409 */
   const analysisUnavailable = (out: Awaited<ReturnType<AnalysisService["analyze"]>>, what: string): HttpError => {
+    if (out.sysmlFailure === "busy") return new HttpError(429, "SysML の解析待ちが多すぎます。しばらくしてからやり直してください");
     if (out.sysmlFailure === "timeout") return new HttpError(504, `SysML の解析がタイムアウトしました: ${out.sysmlError ?? ""}`.trim());
     if (out.sysmlFailure) return new HttpError(503, `SysML の解析に失敗しました: ${out.sysmlError ?? ""}`.trim());
     return new HttpError(409, `モデルにエラーがあるため、${what}。モデルのエラーを直してください`);

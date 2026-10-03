@@ -185,3 +185,40 @@ describe("riskChanges: ハードウェア故障モード", () => {
     expect(f).toEqual(expect.arrayContaining(["dcSpfRf", "fit", "削除(ハードウェア故障モード)"]));
   });
 });
+
+describe("riskChanges: ハードウェア・独立性(ラウンド 8)", () => {
+  const base = () => structuredClone(safety());
+  const lowers = (b: ReturnType<typeof base>, a: ReturnType<typeof base>) => riskChanges(b, a).filter((c) => c.lowersRisk).map((c) => `${c.id}.${c.field}`);
+  it("DC を主張するモードの追加、高 DC モードの故障率の増加、未設定からの DC・安全な故障の設定はリスク低下の主張", () => {
+    const before = base();
+    const after = base();
+    after.hardwareFailureModes!.push({ id: "HW-9", name: "追加", fit: 500, type: "single", dcSpfRf: 0.99 });
+    after.hardwareFailureModes![0]!.fit = 100; // HW-1: dc 0.9 → 分母が増えて SPFM が改善
+    after.hardwareFailureModes![0]!.safeFraction = 0.5;
+    const got = lowers(before, after);
+    expect(got).toEqual(expect.arrayContaining(["HW-9.追加(ハードウェア故障モード)", "HW-1.fit", "HW-1.safeFraction"]));
+  });
+  it("DC を持たないモードの追加はリスク低下ではない。対象の安全目標を絞る・独立性の記述を消すのはリスク低下", () => {
+    const before = base();
+    const after = base();
+    after.hardwareFailureModes!.push({ id: "HW-9", name: "追加", fit: 5, type: "single" });
+    expect(lowers(before, after)).toEqual([]);
+    after.hardwareFailureModes![0]!.goalIds = [];
+    after.hardwareFailureModes![1]!.goalIds = ["SG-2"];
+    after.pairs[0]!.independence = "";
+    expect(lowers(before, after)).toEqual(expect.arrayContaining(["HW-2.goalIds", "PAIR-1.independence"]));
+  });
+});
+
+describe("riskChanges: 要求の付け替えによる ASIL の迂回(ラウンド 8)", () => {
+  it("意図機能の紐づけを、ASIL の低い安全目標の要求へ付け替えるのは、ASIL を下げる迂回としてリスク低下になる", () => {
+    const before = structuredClone(safety());
+    const after = structuredClone(before);
+    const f = after.intendedFunctions[0]!;
+    // 新しい要求(安全目標 SG-2 = ASIL A)を作り、意図機能をそちらへ付け替える
+    after.safetyRequirements.push({ id: "FSR-LOW", text: "低い目標の要求", asil: "A", safetyGoalId: "SG-2" } as never);
+    f.requirementIds = ["FSR-LOW"];
+    const c = riskChanges(before, after).find((x) => x.field === "requirementIds(意図機能)");
+    expect(c?.lowersRisk).toBe(true);
+  });
+});

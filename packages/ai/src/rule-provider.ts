@@ -168,7 +168,7 @@ export class RuleBasedProvider implements AiProvider {
     const nm = (id: string) => a.net.elements.find((e) => e.id === id)?.name ?? id;
     const lines = [
       `要求 ${hit.label} を変更したときに、影響しうる範囲(機械的にたどった結果。影響の有無は人が判断してください):`,
-      `- 関連する要求: ${r.requirements.map((x) => x.split("::").pop()).join("、") || "なし"}`,
+      `- 下位の要求: ${r.requirements.map((x) => x.split("::").pop()).join("、") || "なし"} / 上位(整合の確認): ${r.upstream.map((x) => x.split("::").pop()).join("、") || "なし"} / 分解の相手: ${r.partners.join("、") || "なし"}`,
       `- 構造要素: ${r.elements.map(nm).join("、") || "なし"}`,
       `- 機能 ${r.functions.length} 件、故障ノード ${r.failures.length} 件`,
       `- 見直す FMEA: ${r.fmeaElements.map(nm).join("、") || "なし"}`,

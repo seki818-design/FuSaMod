@@ -15,6 +15,8 @@ import type { ElementGraph, GraphElement, GraphParameter } from "./types.js";
 export interface DerivedRequirement {
   id: string;
   text?: string;
+  /** 入れ子の requirement の、親の requirement */
+  parentId?: string;
   /** satisfy で結びつく構造要素 */
   satisfiedBy: ElementId[];
 }
@@ -129,7 +131,12 @@ function deriveRequirements(x: Graph, warn: Warn, ownerOfAction: (qn: string) =>
   }
   return x.g.elements
     .filter((e) => e.kind === "RequirementUsage")
-    .map((e) => ({ id: e.qualifiedName, ...(e.doc ? { text: e.doc } : {}), satisfiedBy: satisfiedBy.get(e.qualifiedName) ?? [] }));
+    .map((e) => ({
+      id: e.qualifiedName,
+      ...(e.doc ? { text: e.doc } : {}),
+      ...(e.owner && x.byQn.get(e.owner)?.kind === "RequirementUsage" ? { parentId: e.owner } : {}),
+      satisfiedBy: satisfiedBy.get(e.qualifiedName) ?? [],
+    }));
 }
 
 function deriveCandidates(functions: FunctionNode[], parameters: Record<string, GraphParameter[]>): FailureModeCandidate[] {

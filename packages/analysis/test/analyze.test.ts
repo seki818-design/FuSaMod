@@ -39,17 +39,17 @@ describe("デモプロジェクトの解析", () => {
     expect(cells.detail.structure.count).toBe(2);
   });
 
-  it("SCDL: 名前に基づく安定した ID(ITEM/powertrain/vcu)で生成され、検証を通る(ペアの分解 D → B + B を含む)", () => {
-    expect(a.scdlElementIds).toMatchObject({ [VEH]: "ITEM", [PT]: "ITEM/powertrain", [VCU]: "ITEM/powertrain/vcu", [INV]: "ITEM/powertrain/inverter", [GD]: "ITEM/powertrain/inverter/gateDriver", [SM]: "ITEM/powertrain/safetyMonitor" });
+  it("SCDL: 名前に基づく安定した ID(vehicle/powertrain/vcu)で生成され、検証を通る(ペアの分解 D → B + B を含む)", () => {
+    expect(a.scdlElementIds).toMatchObject({ [VEH]: "vehicle", [PT]: "vehicle/powertrain", [VCU]: "vehicle/powertrain/vcu", [INV]: "vehicle/powertrain/inverter", [GD]: "vehicle/powertrain/inverter/gateDriver", [SM]: "vehicle/powertrain/safetyMonitor" });
     expect(a.issues.filter((i) => i.source === "scdl")).toEqual([]);
     const pairing = a.scdl.groupPairings[0]!;
     expect(pairing.set).toEqual(["RG-IF-1", "SRG-SM-1"]);
-    expect(a.scdl.constraints[0]).toMatchObject({ id: "NFSR-PAIR-1", allocation: "ITEM/powertrain", weight: "B(D)" });
+    expect(a.scdl.constraints[0]).toMatchObject({ id: "NFSR-PAIR-1", allocation: "vehicle/powertrain", weight: "B(D)" });
     // 外部の信号源は境界の要求として生成される
     expect(a.scdl.requirements.filter((r) => r.isExternal).map((r) => r.id).sort()).toEqual(["EXT-accelerator", "EXT-inverter-gate"]);
     // エレメントの重み付け: VCU は B(D)、パワートレインは D(FSR-1)
-    expect(a.scdl.elements.find((e) => e.id === "ITEM/powertrain/vcu")!.weight).toBe("B(D)");
-    expect(a.scdl.elements.find((e) => e.id === "ITEM/powertrain")!.weight).toBe("D");
+    expect(a.scdl.elements.find((e) => e.id === "vehicle/powertrain/vcu")!.weight).toBe("B(D)");
+    expect(a.scdl.elements.find((e) => e.id === "vehicle/powertrain")!.weight).toBe("D");
   });
 
   it("トレース: すべての要求が構造要素に紐づく。分解リンクを持つ", () => {
@@ -223,9 +223,9 @@ describe("SCDL の ID は安定で、元のモデルへ追跡できる", () => {
     const a2 = analyzeProject(swapped, demoSafety());
     expect(a2.scdlElementIds).toEqual(a1.scdlElementIds);
   });
-  it("エレメントの備考に、元の構造要素(完全修飾名)が入る", () => {
+  it("エレメントの modelRef に、元の構造要素(完全修飾名)が入る", () => {
     const a = analyzeProject(demoGraph(), demoSafety());
-    expect(a.scdl.elements.find((e) => e.id === "ITEM/powertrain/vcu")!.text).toContain(VCU);
+    expect(a.scdl.elements.find((e) => e.id === "vehicle/powertrain/vcu")!.modelRef).toBe(VCU);
   });
   it("要求の名前は切り詰めない", () => {
     const a = analyzeProject(demoGraph(), demoSafety());
@@ -246,10 +246,19 @@ describe("要求変更の影響分析とトレース", () => {
     expect(r.decompositions).toContain("DEC-1");
     expect(r.reasons.join("\n")).toContain("satisfy");
   });
-  it("安全要求を起点にしても、上位の SysML 要求と満たす要素へたどれる", () => {
+  it("葉の要求を変えても、全体には波及しない(上位は確認のみ。下位と配置先の要素だけが範囲)", () => {
     const r = impactOfRequirementChange(a, s, "TSR-1b")!;
-    expect(r.requirements).toEqual(expect.arrayContaining(["FSR-1b", "FSR-1"]));
-    expect(r.requirements.some((x) => x.endsWith("'REQ-001'"))).toBe(true);
+    expect(r.upstream).toEqual(expect.arrayContaining(["FSR-1b", "FSR-1"]));
+    expect(r.upstream.some((x) => x.endsWith("'REQ-001'"))).toBe(true);
+    expect(r.requirements).toEqual(["FSR-1b"]); // 同じ要素(safetyMonitor)に配置された要求
+    expect(r.elements).toEqual([SM]);
+    expect(r.elements).not.toContain(VEH);
+    expect(r.fmeaElements.length).toBeLessThan(Object.keys(a.fmea).length);
+  });
+  it("分解先を変えると、分解の相手が『確認』の対象になる", () => {
+    const r = impactOfRequirementChange(a, s, "FSR-1a")!;
+    expect(r.partners).toEqual(["FSR-1b"]);
+    expect(r.elements).not.toContain(SM);
   });
   it("存在しない要求は undefined", () => {
     expect(impactOfRequirementChange(a, s, "NOPE")).toBeUndefined();
@@ -290,5 +299,15 @@ describe("ラウンド 2 の指摘への回帰", () => {
     const s = structuredClone(demoSafety());
     s.aiChanges = [{ proposalId: "P-1", title: "t", provider: "rule-based", requestedBy: "alice", approvedBy: "bob", at: "2026-01-01T00:00:00Z", operations: 2 }];
     expect(parseSafetyData(JSON.parse(JSON.stringify(s))).ok).toBe(true);
+  });
+});
+
+describe("SCDL の ID は、根の追加でも変わらない", () => {
+  it("最上位の part がもう 1 つ増えても、既存のエレメントの ID は同じ", () => {
+    const g = demoGraph();
+    const extra = { kind: "PartUsage", qualifiedName: `${VEH.split("::")[0]}::spare`, name: "spare", owner: VEH.split("::")[0]! };
+    const a1 = analyzeProject(g, demoSafety());
+    const a2 = analyzeProject({ ...g, elements: [...g.elements, extra] }, demoSafety());
+    for (const [k, v] of Object.entries(a1.scdlElementIds)) expect(a2.scdlElementIds[k]).toBe(v);
   });
 });

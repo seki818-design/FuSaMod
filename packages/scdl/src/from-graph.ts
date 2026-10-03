@@ -48,6 +48,7 @@ const common = (id: string, md: GraphMetadata) => ({
   id,
   ...(str(md, "title") !== undefined ? { name: str(md, "title")! } : {}),
   ...(str(md, "note") !== undefined ? { text: str(md, "note")! } : {}),
+  ...(str(md, "modelRef") !== undefined ? { modelRef: str(md, "modelRef")! } : {}),
 });
 function weightOf(id: string, md: GraphMetadata): string | undefined {
   const w = str(md, "weight");

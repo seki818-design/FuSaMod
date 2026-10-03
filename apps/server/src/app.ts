@@ -244,6 +244,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       case "report.md": return attachment(reply, `${id}-report.md`, "text/markdown", reportMarkdown(await needAnalysis(id), id));
       case "scdl.sysml": {
         const a = await needAnalysis(id);
+        const bad = a.issues.filter((i) => i.source === "scdl" && i.severity === "error");
+        if (bad.length > 0) throw new HttpError(409, "SCDL にエラーがあるため、SysML として書き出せません。先にエラーを解消してください", bad.slice(0, 20).map((i) => `${i.code}: ${i.message}`));
         const pkg = `ScdlView_${id.replace(/-/g, "_")}`;
         return attachment(reply, `${id}-scdl.sysml`, "text/plain", exportSysml(a.scdl, { packageName: pkg }));
       }

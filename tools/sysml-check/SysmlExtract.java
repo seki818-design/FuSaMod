@@ -46,6 +46,23 @@ public class SysmlExtract {
         return m;
     }
 
+    /** satisfy の `by` に書かれた特徴の連鎖(`car.front` なら [car, Car::front])。連鎖でなければ空。 */
+    static List<String> chainOf(SatisfyRequirementUsage s) {
+        List<String> out = new ArrayList<>();
+        TreeIterator<EObject> it = s.eAllContents();
+        while (it.hasNext()) {
+            EObject o = it.next();
+            if (o instanceof FeatureReferenceExpression && !(o.eContainer() instanceof FeatureReferenceExpression)) {
+                for (Element c : ((Element) o).getOwnedElement())
+                    if (c instanceof Feature f && !f.getChainingFeature().isEmpty()) {
+                        for (Feature cf : f.getChainingFeature()) out.add(q(cf));
+                        return out;
+                    }
+            }
+        }
+        return out;
+    }
+
     /** 宣言された型(`: Def`)の完全修飾名。 */
     static List<String> typesOf(Feature f) {
         List<String> out = new ArrayList<>();
@@ -82,7 +99,13 @@ public class SysmlExtract {
         if (!types.isEmpty()) n.put("types", types);
         List<String> sup = supertypesOf(f);
         if (!sup.isEmpty()) n.put("supertypes", sup);
-        if (!f.getOwnedRedefinition().isEmpty()) n.put("redefines", true);
+        if (!f.getOwnedRedefinition().isEmpty()) {
+            n.put("redefines", true);
+            List<String> red = new ArrayList<>();
+            for (Redefinition r : f.getOwnedRedefinition()) if (r.getRedefinedFeature() != null) red.add(q(r.getRedefinedFeature()));
+            if (!red.isEmpty()) n.put("redefinedFeatures", red);
+        }
+        if (f instanceof PartUsage pu && f.getOwningType() != null && pu.isReference()) n.put("isRef", true);
         return n;
     }
 
@@ -131,6 +154,14 @@ public class SysmlExtract {
                 n.put("requirement", q(s.getSatisfiedRequirement()));
                 Feature by = s.getSatisfyingFeature();
                 n.put("by", by == null ? null : q(by.getFeatureTarget() == null ? by : by.getFeatureTarget()));
+                // `car.front` のような連鎖は、途中の経路も出力する(定義側の特徴だけでは、どのインスタンスか分からないため)
+                List<String> chain = chainOf(s);
+                if (!chain.isEmpty()) n.put("byChain", chain);
+                // `by` を省略した satisfy(part の中で書く)は、その part が満たす
+                if (by == null || n.get("by") == null) {
+                    Element own = s.getOwningNamespace();
+                    if (own instanceof PartUsage || own instanceof PartDefinition) n.put("by", q(own));
+                }
                 satisfies.add(n);
             } else if (o instanceof PerformActionUsage p) {
                 Map<String, Object> n = new LinkedHashMap<>();

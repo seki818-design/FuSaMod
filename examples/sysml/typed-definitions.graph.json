@@ -98,7 +98,11 @@
   "satisfies": [
     {
       "requirement": "TypedDefinitions::torque",
-      "by": "TypedDefinitions::Car::front"
+      "by": "TypedDefinitions::Car::front",
+      "byChain": [
+        "TypedDefinitions::car",
+        "TypedDefinitions::Car::front"
+      ]
     }
   ],
   "performs": [

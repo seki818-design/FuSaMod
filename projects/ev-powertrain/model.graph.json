@@ -211,15 +211,29 @@
     },
     {
       "requirement": "EvPowertrainDemo::'REQ-002'",
-      "by": "EvPowertrainDemo::vehicle::powertrain::motor"
+      "by": "EvPowertrainDemo::vehicle::powertrain::motor",
+      "byChain": [
+        "EvPowertrainDemo::vehicle",
+        "EvPowertrainDemo::vehicle::powertrain",
+        "EvPowertrainDemo::vehicle::powertrain::motor"
+      ]
     },
     {
       "requirement": "EvPowertrainDemo::'REQ-003'",
-      "by": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor"
+      "by": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
+      "byChain": [
+        "EvPowertrainDemo::vehicle",
+        "EvPowertrainDemo::vehicle::powertrain",
+        "EvPowertrainDemo::vehicle::powertrain::safetyMonitor"
+      ]
     },
     {
       "requirement": "EvPowertrainDemo::'REQ-004'",
-      "by": "EvPowertrainDemo::vehicle::powertrain"
+      "by": "EvPowertrainDemo::vehicle::powertrain",
+      "byChain": [
+        "EvPowertrainDemo::vehicle",
+        "EvPowertrainDemo::vehicle::powertrain"
+      ]
     }
   ],
   "performs": [

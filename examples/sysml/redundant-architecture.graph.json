@@ -1079,55 +1079,117 @@
   "satisfies": [
     {
       "requirement": "RedundantArchitecture::Requirements::'MFR-1'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-1'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-1'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-1'",
+        "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-1'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'SR-11'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-1'",
+        "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'SR-12'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-1'",
+        "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'MFR-2'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-1'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-1'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-2'",
+        "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-1'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'SR-21'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-2'",
+        "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'SR-22'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-2'",
+        "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'MFR-3'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-2'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-2'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-2'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'SR-31'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'SR-32'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Requirements::'SR-33'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Constraints::'NFSR-1'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-1'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-1'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Constraints::'NFSR-2'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-2'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-2'"
+      ]
     },
     {
       "requirement": "RedundantArchitecture::Constraints::'NFSR-3'",
-      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'"
+      "by": "RedundantArchitecture::Architecture::ITEM::'E-3'",
+      "byChain": [
+        "RedundantArchitecture::Architecture::ITEM",
+        "RedundantArchitecture::Architecture::ITEM::'E-3'"
+      ]
     }
   ],
   "performs": []

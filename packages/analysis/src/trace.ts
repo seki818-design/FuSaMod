@@ -60,6 +60,7 @@ export function buildTrace(
     if (!seen.has(k)) { seen.add(k); links.push({ from, to, kind }); }
   };
   const sysmlIds = new Set(derived.requirements.map((r) => r.id));
+  for (const r of derived.requirements) if (r.parentId) link(r.parentId, r.id, "derives");
   for (const r of s.safetyRequirements) {
     if (r.parentId) link(r.parentId, r.id, "derives");
     if (r.refines && sysmlIds.has(r.refines)) link(r.refines, r.id, "refines");

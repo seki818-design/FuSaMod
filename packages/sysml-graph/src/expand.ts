@@ -68,25 +68,27 @@ class Expander {
     return d !== undefined && DEFINITIONS.has(d.kind);
   }
 
-  /** 型と上位の型のうち、定義であるもの(重複なし、宣言順)。 */
-  private definitionsOf(types: string[]): string[] {
-    const seen = new Set<string>();
+  /**
+   * 中身を引き継ぐ元(重複なし、宣言順)。型(定義)と、その上位の型に加えて、
+   * 使用どうしの特殊化(`part ax2 :> ax`)と再定義(`part :>> ax`)の相手(使用)も含む。
+   */
+  private sourcesOf(el: GraphElement, seen = new Set<string>()): string[] {
     const order: string[] = [];
     const visit = (t: string) => {
       const d = this.byQn.get(t);
       if (!d || seen.has(t)) return;
       seen.add(t);
-      if (DEFINITIONS.has(d.kind)) order.push(t);
-      d.supertypes?.forEach(visit);
+      order.push(t);
+      for (const s of [...(d.supertypes ?? []), ...(d.redefinedFeatures ?? []), ...(USAGES.has(d.kind) ? (d.types ?? []) : [])]) visit(s);
     };
-    types.forEach(visit);
-    return order;
+    for (const t of [...(el.types ?? []), ...(el.supertypes ?? []), ...(el.redefinedFeatures ?? [])]) visit(t);
+    return order.filter((t) => this.byQn.has(t));
   }
 
   run(): ExpandResult {
     this.warnUnsupported();
-    const kept = this.g.elements.filter((e) => !this.insideDefinition(e) && !UNSUPPORTED[e.kind]);
-    const typed = kept.some((e) => USAGES.has(e.kind) && e.types?.some((t) => this.isDefinition(t)));
+    const kept = this.g.elements.filter((e) => !this.insideDefinition(e) && !UNSUPPORTED[e.kind] && !e.isRef);
+    const typed = kept.some((e) => USAGES.has(e.kind) && (e.types?.some((t) => this.isDefinition(t)) || e.supertypes?.length || e.redefinedFeatures?.length));
     if (!typed && !this.g.elements.some((e) => DEFINITIONS.has(e.kind))) return { graph: { ...this.g, elements: kept }, issues: this.issues };
 
     for (const e of kept) {
@@ -100,7 +102,7 @@ class Expander {
   private warnUnsupported() {
     const found = new Map<string, string[]>();
     for (const e of this.g.elements) {
-      const label = UNSUPPORTED[e.kind];
+      const label = UNSUPPORTED[e.kind] ?? (e.isRef ? "ref part(参照)" : undefined);
       if (label) append(found, label, e.qualifiedName);
     }
     for (const [label, qns] of found)
@@ -134,6 +136,7 @@ class Expander {
       ...(m.doc ? { doc: m.doc } : {}),
       ...(m.types ? { types: m.types } : {}),
       ...(m.supertypes ? { supertypes: m.supertypes } : {}),
+      ...(m.redefinedFeatures ? { redefinedFeatures: m.redefinedFeatures } : {}),
       ...(m.kind === "ActionUsage" ? { parameters: this.parametersOf(m) } : {}),
     };
   }
@@ -166,8 +169,8 @@ class Expander {
   }
 
   private expandInto(inst: GraphElement, depth: number, defStack: string[]) {
-    const defs = this.definitionsOf(inst.types ?? []);
-    this.typeChain.set(inst.qualifiedName, new Set([...defs, ...(inst.supertypes ?? [])]));
+    const defs = this.sourcesOf(inst);
+    this.typeChain.set(inst.qualifiedName, new Set(defs));
     if (defs.length === 0) return;
     if (depth >= MAX_DEPTH) return this.warn("RECURSIVE_DEFINITION", "定義の入れ子が深すぎるため、展開を打ち切りました", inst.qualifiedName);
     const names = new Set((this.children.get(inst.qualifiedName) ?? []).map(lastName));
@@ -176,7 +179,7 @@ class Expander {
         this.warn("RECURSIVE_DEFINITION", `定義が自分自身を含んでいます(展開を止めます): ${d}`, inst.qualifiedName);
         continue;
       }
-      this.instantiated.add(d);
+      if (this.isDefinition(d)) this.instantiated.add(d);
       for (const m of this.children.get(d) ?? []) {
         if (!USAGES.has(m.kind) || names.has(lastName(m))) continue; // 使用側に同名があれば、そちらを優先
         if (m.redefines) {
@@ -210,16 +213,40 @@ class Expander {
     return out;
   }
 
+  /** satisfy の連鎖(`car.front.rotor`)を、複製されたインスタンスの ID にたどる。たどれなければ undefined。 */
+  private resolveChain(chain: string[], ids: Set<string>): string | undefined {
+    const first = this.byQn.get(chain[0]!);
+    if (!first || this.insideDefinition(first)) return undefined;
+    let cur = chain[0]!;
+    for (const next of chain.slice(1)) {
+      const el = this.byQn.get(next);
+      const cand = el ? `${cur}::${lastName(el)}` : undefined;
+      if (!cand || !ids.has(cand)) return undefined;
+      cur = cand;
+    }
+    return cur;
+  }
+
   private remapSatisfies(): GraphSatisfy[] {
     const out: GraphSatisfy[] = [];
+    const ids = new Set(this.out.map((e) => e.qualifiedName));
     for (const s of this.g.satisfies) {
       const by = s.by ? this.byQn.get(s.by) : undefined;
-      if (!s.by || !by || !this.insideDefinition(by)) {
-        out.push(s);
+      if (s.byChain && s.byChain.length > 1) {
+        // インスタンスの経路が分かっている: その 1 つだけに紐づける
+        const target = this.resolveChain(s.byChain, ids);
+        if (target) out.push({ requirement: s.requirement, by: target });
+        else this.warn("SATISFY_UNRESOLVED", `satisfy の対象(${s.byChain.map((c) => c.split("::").pop()).join(".")})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
         continue;
       }
+      if (!s.by || !by || !this.insideDefinition(by)) {
+        out.push(s.byChain ? { requirement: s.requirement, by: s.by } : s);
+        continue;
+      }
+      // 定義側の特徴を直接指している: 定義のすべてのインスタンスが満たすことになる
       const copies = this.copiesOf.get(s.by) ?? [];
       if (copies.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、使われていない定義の中の要素です", s.requirement ?? undefined);
+      if (copies.length > 1) this.warn("SATISFY_AMBIGUOUS", `satisfy が定義側の要素を直接指しているため、${copies.length} 個のインスタンスすべてに紐づけました(特定するには car.front のような経路で書いてください)`, s.requirement ?? undefined);
       for (const c of copies) out.push({ requirement: s.requirement, by: c });
     }
     return out;

@@ -359,3 +359,17 @@ describe("AI の来歴と承認者の分離", () => {
     expect((await h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/ai/proposals/${proposal.id}/apply`, headers: B })).statusCode).toBe(200);
   });
 });
+
+describe("SCDL の書き出し", () => {
+  it("SCDL にエラーがあるとき(存在しない要素への配置)は、書き出しを拒否する", async () => {
+    h = await harness();
+    const p = json(await h.app.inject("/api/projects/ev-powertrain"));
+    const ok = await h.app.inject("/api/projects/ev-powertrain/export/scdl.sysml");
+    expect(ok.statusCode).toBe(200);
+    const bad = structuredClone(p.safety);
+    bad.mechanisms[0].elementId = "NOPE::nowhere";
+    await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", payload: { data: bad } });
+    const r = await h.app.inject("/api/projects/ev-powertrain/export/scdl.sysml");
+    expect(r.statusCode).toBe(409);
+  });
+});

@@ -140,3 +140,14 @@ describe("役割(拡張)の検査", () => {
     expect(validateScdl(m).map((i) => i.code)).toContain("PAIR_ROLES");
   });
 });
+
+describe("modelRef(元のモデル要素への参照)", () => {
+  it("書き出し → 読み込みで保たれ、引用符・日本語を含んでも壊れない", () => {
+    const m = redundantArchitecture();
+    m.elements[1]!.modelRef = "Sys::'a b'::日本語\\\"x";
+    const text = exportSysml(m, { packageName: "X" });
+    expect(text).toContain("modelRef =");
+    const back = importSysml(text).model;
+    expect(back.elements.find((e) => e.id === m.elements[1]!.id)!.modelRef).toBe(m.elements[1]!.modelRef);
+  });
+});

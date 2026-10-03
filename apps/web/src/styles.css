@@ -74,10 +74,10 @@ textarea { width: 100%; resize: vertical; }
 table.grid { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 table.grid th, table.grid td { border: 1px solid var(--border); padding: 4px 6px; vertical-align: top; text-align: left; }
 table.grid th { background: var(--panel2); position: sticky; top: 0; z-index: 1; font-weight: 600; white-space: nowrap; }
-table.grid td.num, table.grid th.num { text-align: center; width: 46px; }
+table.grid td.num, table.grid th.num { text-align: center; width: 58px; }
 table.grid tr.sel td { background: var(--accent-bg); }
-table.grid input[type=number] { width: 44px; padding: 2px 4px; min-height: 26px; }
-table.grid input[type=text] { width: 100%; min-width: 84px; min-height: 26px; padding: 2px 6px; }
+table.grid input[type=number] { width: 60px; padding: 2px 4px; min-height: 26px; }
+table.grid input[type=text] { width: 100%; min-width: 64px; min-height: 26px; padding: 2px 6px; }
 .rpn-high { color: var(--err); font-weight: 700; }
 
 /* ---- エクスプローラ ---- */
@@ -160,3 +160,6 @@ pre.json { white-space: pre-wrap; font: 12px/1.45 var(--mono); }
 .tree li > button > * { white-space: nowrap; }
 .tree li > button .muted { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; }
 .panel > header { flex-wrap: wrap; }
+
+table.grid select { max-width: 76px; padding: 2px 4px; min-height: 26px; }
+table.grid td, table.grid th { overflow-wrap: anywhere; }

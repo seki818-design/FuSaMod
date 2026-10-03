@@ -72,10 +72,11 @@ export function exportSysml(m: ScdlModel, opts: ExportOptions): string {
   const out: string[] = [];
   const line = (depth: number, text: string) => out.push(text ? `${"    ".repeat(depth)}${text}` : "");
 
-  const attrs = (x: { name?: string | undefined; text?: string | undefined; weight?: string | undefined }, extra: string[] = []) => {
+  const attrs = (x: { name?: string | undefined; text?: string | undefined; weight?: string | undefined; modelRef?: string | undefined }, extra: string[] = []) => {
     const a: string[] = [];
     if (x.name !== undefined) a.push(`title = ${str(x.name)};`);
     if (x.text !== undefined) a.push(`note = ${str(x.text)};`);
+    if (x.modelRef !== undefined) a.push(`modelRef = ${str(x.modelRef)};`);
     if (x.weight !== undefined) {
       const w = parseWeight(x.weight);
       if (!w) throw new ScdlSysmlError(`重み付けの表記が不正です: ${x.weight}`);

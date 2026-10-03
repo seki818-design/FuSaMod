@@ -61,8 +61,8 @@ function checkFunctions({ net, idx, err, warn }: Ctx) {
     if (!f.parentFunctionId) continue;
     const p = idx.fn.get(f.parentFunctionId);
     if (!p) err("UNKNOWN_REF", `上位機能が存在しません: ${f.parentFunctionId}`, f.id);
-    else if (idx.element.get(f.ownerId)?.parentId !== p.ownerId)
-      warn("FUNCTION_HIERARCHY", "上位機能の担当要素が、この機能の担当要素の親ではありません", f.id);
+    else if (f.ownerId !== p.ownerId && idx.element.get(f.ownerId)?.parentId !== p.ownerId)
+      warn("FUNCTION_HIERARCHY", "上位機能の担当要素が、この機能の担当要素と同じか、その親ではありません", f.id);
   }
 }
 

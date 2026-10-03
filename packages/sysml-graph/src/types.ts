@@ -25,6 +25,10 @@ export interface GraphElement {
   supertypes?: string[];
   /** 再定義(`:>>`)を含む使用 */
   redefines?: boolean;
+  /** 再定義している特徴(完全修飾名)。定義側の同名の使用の中身を引き継ぐために使う */
+  redefinedFeatures?: string[];
+  /** `ref part`(参照。構造の入れ子ではない) */
+  isRef?: boolean;
 }
 
 export interface GraphDependency extends GraphElement {
@@ -42,7 +46,10 @@ export interface GraphMetadata extends GraphElement {
 
 export interface GraphSatisfy {
   requirement: string | null;
+  /** 満たす特徴(連鎖なら最後の特徴。定義側の特徴の場合がある) */
   by: string | null;
+  /** `car.front.rotor` のような連鎖の、途中も含む特徴の完全修飾名(先頭がインスタンスの起点) */
+  byChain?: string[];
 }
 
 /** `perform` 宣言: performer(part)が performed(action)を実施する。 */

@@ -109,11 +109,20 @@
   "satisfies": [
     {
       "requirement": "'EV Powertrain'::'REQ-001'",
-      "by": "'EV Powertrain'::vehicle::powertrain"
+      "by": "'EV Powertrain'::vehicle::powertrain",
+      "byChain": [
+        "'EV Powertrain'::vehicle",
+        "'EV Powertrain'::vehicle::powertrain"
+      ]
     },
     {
       "requirement": "'EV Powertrain'::'REQ-002'",
-      "by": "'EV Powertrain'::vehicle::powertrain::motor"
+      "by": "'EV Powertrain'::vehicle::powertrain::motor",
+      "byChain": [
+        "'EV Powertrain'::vehicle",
+        "'EV Powertrain'::vehicle::powertrain",
+        "'EV Powertrain'::vehicle::powertrain::motor"
+      ]
     }
   ],
   "performs": [

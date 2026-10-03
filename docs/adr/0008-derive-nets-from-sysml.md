@@ -37,6 +37,15 @@
 - `satisfy` の対象が action のときは、その action の担当 part への紐づけとして扱う。
 - 型を使わないモデルでは、展開は何もしない(導出結果は従来と同じ)。
 
+## インスタンスの経路と satisfy(3 回目の追補)
+
+- 公式実装は `satisfy r by car1.front` を定義側の特徴(`Car::front`)に解決する。そのため `SysmlExtract` は **連鎖の途中も含めて**(`byChain`: `[car1, Car::front]`)出力し、展開では**その経路のインスタンス 1 つだけ**に紐づける。経路を特定できないときは紐づけず `SATISFY_UNRESOLVED` で警告する。
+- 定義側の特徴を直接指す `satisfy`(経路なし)は、すべてのインスタンスに紐づけ、複数なら `SATISFY_AMBIGUOUS` で警告する。
+- `by` を省略した `satisfy`(part の中で書く)は、囲んでいる part が満たす。
+- usage 側の特殊化(`part ax2 :> ax`)と再定義(`part :>> ax`)は、元の使用(と、その型)の中身を引き継ぐ。
+- `ref part` は構造の入れ子ではないので、構造に入れず警告する(`UNSUPPORTED_CONSTRUCT`)。
+- 入れ子の `requirement` は、親子を残す(`parentId`、トレースに「導出」リンク)。
+
 ## 導出しない構成(黙って捨てず、必ず警告する)
 
 | 構成 | 扱い | 警告コード |

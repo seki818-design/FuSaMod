@@ -350,7 +350,7 @@ class Builder {
     return typeof v === "string" ? v : undefined;
   }
   private common(d: Decl) {
-    return { id: d.name, ...(this.str(d, "title") !== undefined ? { name: this.str(d, "title")! } : {}), ...(this.str(d, "note") !== undefined ? { text: this.str(d, "note")! } : {}) };
+    return { id: d.name, ...(this.str(d, "title") !== undefined ? { name: this.str(d, "title")! } : {}), ...(this.str(d, "note") !== undefined ? { text: this.str(d, "note")! } : {}), ...(this.str(d, "modelRef") !== undefined ? { modelRef: this.str(d, "modelRef")! } : {}) };
   }
   private weight(d: Decl): string | undefined {
     const w = this.str(d, "weight");

@@ -197,10 +197,11 @@ test("データ(JSON): 不正な内容は拒否され、AP 表を設定すると
   await expect(page.getByRole("alert")).toContainText("JSON として解釈できません");
   const data = JSON.parse(JSON.stringify(SAFETY));
   data.apTable = [{ s: [1, 10], o: [1, 10], d: [1, 10], ap: "M" }];
+  data.apTableSource = "テスト用の正式表(想定)";
   await ta.fill(JSON.stringify(data));
   await page.getByRole("button", { name: "検証して反映" }).click();
   await tab(page, "FMEA シート").click();
-  await expect(page.getByText("AP: 設定済み")).toBeVisible();
+  await expect(page.getByText(/AP: 設定済み/)).toBeVisible();
   await expect(page.getByRole("row", { name: /過大トルクを出力する/ })).toContainText("M");
 });
 
@@ -260,4 +261,9 @@ test("レスポンシブ: 狭い画面でも横スクロールなしで全パネ
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   for (const name of ["エクスプローラ", "ビュースペース", "分析", "AI との対話スペース", "パズルビュー"]) await expect(page.getByLabel(name, { exact: true }).first()).toBeAttached();
+});
+
+test("非公式の AP 表は、FMEA 画面で非公式と明示される", async ({ page }) => {
+  await open(page);
+  await expect(page.getByText(/AP は 非公式のサンプル表 による値です/)).toBeVisible();
 });

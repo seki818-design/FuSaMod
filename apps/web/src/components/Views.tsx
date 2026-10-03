@@ -38,7 +38,7 @@ export function TraceView() {
         <div className="banner" role="region" aria-label="要求変更の影響分析">
           <strong>{impact.requirementId.split("::").pop()} を変更したときに影響しうる範囲</strong>(機械的にたどった結果です。影響の有無は人が判断してください)
           <ul style={{ margin: "4px 0", paddingLeft: 20 }}>
-            <li>関連する要求: {impact.requirements.map((x) => x.split("::").pop()).join("、") || "なし"}</li>
+            <li>下位の要求: {impact.requirements.map((x) => x.split("::").pop()).join("、") || "なし"} / 上位(整合の確認): {impact.upstream.map((x) => x.split("::").pop()).join("、") || "なし"} / 分解の相手: {impact.partners.join("、") || "なし"}</li>
             <li>構造要素: {impact.elements.map(nm).join("、") || "なし"}</li>
             <li>機能 {impact.functions.length} 件 / 故障ノード {impact.failures.length} 件</li>
             <li>見直す FMEA: {impact.fmeaElements.map(nm).join("、") || "なし"}</li>

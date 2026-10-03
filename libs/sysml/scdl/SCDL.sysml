@@ -19,7 +19,7 @@
  *   Weight                   → weight / decomposedFrom 属性(表記 A(B) = weight A, decomposedFrom B)
  *   SCDLType.id              → 宣言名(declaredName)。SCDLType.name → title、text → note
  *
- * 拡張(ASAM 仕様には無い): ScdlRequirementGroup.role と ScdlRequirement.isExternal。
+ * 拡張(ASAM 仕様には無い): ScdlRequirementGroup.role、ScdlRequirement.isExternal、ScdlType.modelRef(元のモデル要素への参照)。
  */
 library package SCDL {
     private import ScalarValues::String;
@@ -46,9 +46,10 @@ library package SCDL {
 
     /* すべての SCDL 要素の基底。id は宣言名で表す。 */
     abstract metadata def ScdlType {
-        doc /* SCDLType: title = name(名称・短縮名)、note = text(備考)。 */
+        doc /* SCDLType: title = name(名称・短縮名)、note = text(備考)、modelRef = 元のモデル要素の完全修飾名(拡張)。 */
         attribute title : String [0..1];
         attribute note : String [0..1];
+        attribute modelRef : String [0..1];
     }
 
     /* 重み付けを持てる型(WeightableType)。 */

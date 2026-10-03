@@ -36,8 +36,8 @@ interface Ctx {
 }
 
 /**
- * エレメントの ID: 単一の根は ITEM、子は「親の ID/名前」(例: ITEM/powertrain/vcu)。
- * 兄弟の並び順や追加・削除で変わらない(名前を変えたときだけ変わる)。同名の兄弟は #2 のように区別する。
+ * エレメントの ID: 根は構造要素の名前、子は「親の ID/名前」(例: vehicle/powertrain/vcu)。
+ * 兄弟の並び順、根の追加・削除、他の要素の追加では変わらない(名前を変えたときだけ変わる)。同名の兄弟は #2 のように区別する。
  */
 function numberElements({ net, elementIds }: Pick<Ctx, "net" | "elementIds">) {
   const children = new Map<string | undefined, string[]>();
@@ -55,7 +55,7 @@ function numberElements({ net, elementIds }: Pick<Ctx, "net" | "elementIds">) {
     for (const c of children.get(id) ?? []) assign(c, unique(`${scdlId}/${byId.get(c)!.name}`));
   };
   const roots = children.get(undefined) ?? [];
-  for (const r of roots) assign(r, unique(roots.length === 1 ? "ITEM" : byId.get(r)!.name));
+  for (const r of roots) assign(r, unique(byId.get(r)!.name));
 }
 
 function buildPool({ s, pool, err }: Ctx) {
@@ -184,7 +184,7 @@ function mapElements({ net, m, pool, elementIds, ancestors }: Ctx) {
     const el: Element = {
       id: elementIds[e.id]!,
       name: e.name,
-      text: `モデル参照: ${e.modelRef ?? e.id}`,
+      modelRef: e.modelRef ?? e.id,
       ...(e.parentId !== undefined && elementIds[e.parentId] ? { parent: elementIds[e.parentId]! } : {}),
       ...(weight ? { weight } : {}),
     };

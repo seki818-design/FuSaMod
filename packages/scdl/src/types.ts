@@ -11,6 +11,11 @@ export interface ScdlType {
   name?: string;
   /** 備考 */
   text?: string;
+  /**
+   * 元のモデル要素への参照(SysML の完全修飾名)。拡張属性。
+   * SCDL を安全分析データ・構造モデルから生成したとき、元へ機械的にたどるために使う。
+   */
+  modelRef?: string;
 }
 
 /** 重み付け(ASIL)。表記は "B" や、分解後の "A(B)"。 */

@@ -573,15 +573,27 @@
   "satisfies": [
     {
       "requirement": "AllStereotypes::Requirements::'R-1'",
-      "by": "AllStereotypes::Architecture::SYS::'SYS-A'"
+      "by": "AllStereotypes::Architecture::SYS::'SYS-A'",
+      "byChain": [
+        "AllStereotypes::Architecture::SYS",
+        "AllStereotypes::Architecture::SYS::'SYS-A'"
+      ]
     },
     {
       "requirement": "AllStereotypes::Requirements::'R-2'",
-      "by": "AllStereotypes::Architecture::SYS::'SYS-B'"
+      "by": "AllStereotypes::Architecture::SYS::'SYS-B'",
+      "byChain": [
+        "AllStereotypes::Architecture::SYS",
+        "AllStereotypes::Architecture::SYS::'SYS-B'"
+      ]
     },
     {
       "requirement": "AllStereotypes::Requirements::'R-3'",
-      "by": "AllStereotypes::Architecture::SYS::'SYS-C'"
+      "by": "AllStereotypes::Architecture::SYS::'SYS-C'",
+      "byChain": [
+        "AllStereotypes::Architecture::SYS",
+        "AllStereotypes::Architecture::SYS::'SYS-C'"
+      ]
     },
     {
       "requirement": "AllStereotypes::Constraints::'NF-1'",

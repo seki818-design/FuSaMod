@@ -93,3 +93,42 @@ describe("satisfy の対象が action のとき", () => {
     expect(d.deriveIssues.map((i) => i.code)).not.toContain("SATISFY_NOT_PART");
   });
 });
+
+describe("satisfy の経路・特殊化・再定義・ref(公式実装の出力で確認)", () => {
+  const T = "T2";
+  // 元のモデルは examples/sysml/instance-paths.sysml
+  const d = deriveNet(ex("instance-paths.graph.json"));
+  const sat = (r: string) => d.requirements.find((x) => x.id === `${T}::${r}`)!.satisfiedBy;
+  it("car1.front への satisfy は car1 の front だけに紐づく(car2 や他の複製には付かない)", () => {
+    expect(sat("r1")).toContain(`${T}::car1::front`);
+    expect(sat("r1")).not.toContain(`${T}::car2::front`);
+    expect(sat("r1")).toContain(`${T}::sat1`); // by を省略した satisfy は、囲んでいる part が満たす
+  });
+  it("連鎖 car2.front.rotor は、その経路の 1 要素だけ", () => {
+    expect(sat("r2")).toEqual([`${T}::car2::front::rotor`]);
+  });
+  it("usage 側の再定義(:>> ax)は、定義側の中身を引き継ぎ、追加した子も持つ", () => {
+    const ids = d.net.elements.map((e) => e.id);
+    expect(ids).toContain(`${T}::car1::ax`);
+    expect(ids).toContain(`${T}::car1::ax::w1`);
+    expect(ids).toContain(`${T}::car2::ax`);
+  });
+  it("特殊化(sub1 :> base)は、base の子も持つ", () => {
+    const ids = d.net.elements.map((e) => e.id);
+    expect(ids).toEqual(expect.arrayContaining([`${T}::sub1::b1`, `${T}::sub1::d1`]));
+  });
+  it("ref part は構造の子に入れず、警告する", () => {
+    expect(d.net.elements.map((e) => e.id)).not.toContain(`${T}::holder::r`);
+    expect(d.deriveIssues.some((i) => i.code === "UNSUPPORTED_CONSTRUCT" && i.message.includes("ref"))).toBe(true);
+  });
+  it("入れ子の requirement の親子が残る", () => {
+    expect(d.requirements.find((x) => x.id === `${T}::outer::inner`)!.parentId).toBe(`${T}::outer`);
+  });
+  it("経路を特定できない satisfy は、紐づけずに警告する", () => {
+    const g = ex("instance-paths.graph.json");
+    const bad = { ...g, satisfies: [{ requirement: `${T}::r1`, by: `${T}::Car::front`, byChain: [`${T}::car1`, `${T}::Car::nonexistent`] }] };
+    const r = deriveNet(bad);
+    expect(r.deriveIssues.map((i) => i.code)).toContain("SATISFY_UNRESOLVED");
+    expect(r.requirements.find((x) => x.id === `${T}::r1`)!.satisfiedBy).toEqual([]);
+  });
+});

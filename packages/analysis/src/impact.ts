@@ -5,8 +5,12 @@ import type { SafetyData } from "./project.js";
 export interface RequirementImpact {
   /** 起点の要求(SysML または安全要求) */
   requirementId: string;
-  /** 影響を受けうる他の要求(詳細化・導出・分解の先と元、同じ要素に紐づく要求) */
+  /** 影響を受けうる下位の要求(詳細化・導出・分解の先、同じ要素に配置された要求)。構造要素・FMEA の範囲は、これと起点から求める */
   requirements: string[];
+  /** 上位の要求(整合の確認のみ。上位の要素・FMEA は範囲に含めない) */
+  upstream: string[];
+  /** 分解の相手(同じ分解の兄弟)。分解の妥当性の確認のみ */
+  partners: string[];
   /** 影響を受けうる構造要素(satisfy / 配置先と、その下位) */
   elements: ElementId[];
   functions: string[];
@@ -34,20 +38,18 @@ function requirementRelations(s: SafetyData): Rel[] {
   return rel;
 }
 
-/** 起点から、要求の関係を双方向に推移的にたどる。 */
-function relatedRequirements(start: string, rel: Rel[], reasons: string[]): Set<string> {
+/** 起点から、関係(from → to)を一方向に推移的にたどる。down=true なら下位(to)へ、false なら上位(from)へ。 */
+function walk(start: string, rel: Rel[], down: boolean, reasons: string[]): Set<string> {
   const out = new Set<string>();
-  const seen = new Set([start]);
   const frontier = [start];
   while (frontier.length) {
     const cur = frontier.pop()!;
     for (const [from, to, label] of rel) {
-      const other = from === cur ? to : to === cur ? from : undefined;
-      if (other === undefined || seen.has(other)) continue;
-      seen.add(other);
-      frontier.push(other);
-      out.add(other);
-      reasons.push(`${cur} と ${other} は「${label}」の関係`);
+      const [here, there] = down ? [from, to] : [to, from];
+      if (here !== cur || there === start || out.has(there)) continue;
+      out.add(there);
+      frontier.push(there);
+      reasons.push(down ? `${cur} から ${there} は「${label}」(下位)` : `${there} は ${cur} の「${label}」元(上位。整合の確認)`);
     }
   }
   return out;
@@ -115,8 +117,16 @@ export function impactOfRequirementChange(a: ProjectAnalysis, s: SafetyData, req
   if (!isSysml && !s.safetyRequirements.some((r) => r.id === requirementId)) return undefined;
 
   const reasons: string[] = [];
-  const reqs = relatedRequirements(requirementId, requirementRelations(s), reasons);
+  const rel = requirementRelations(s);
+  const reqs = walk(requirementId, rel, true, reasons);
+  const upstream = walk(requirementId, rel, false, reasons);
+  // 分解の相手: 起点(または下位)を分解先に持つ分解の、もう一方の分解先
+  const partners = new Set<string>();
   const all = new Set([requirementId, ...reqs]);
+  for (const d of s.decompositions) {
+    if (!d.childRequirementIds.some((c) => all.has(c))) continue;
+    for (const c of d.childRequirementIds) if (!all.has(c)) { partners.add(c); reasons.push(`${c} は ${d.id} の分解の相手(分解の妥当性を確認)`); }
+  }
   const elements = subtree(a, rootElements(a, s, [...all], reasons));
   const { functions, failures, failureSet, fmeaElements } = failureImpact(a, elements);
 
@@ -136,6 +146,8 @@ export function impactOfRequirementChange(a: ProjectAnalysis, s: SafetyData, req
   return {
     requirementId,
     requirements: [...reqs],
+    upstream: [...upstream],
+    partners: [...partners],
     elements: [...elements],
     functions,
     failures,

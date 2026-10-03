@@ -1,0 +1,214 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "T2",
+      "name": "T2"
+    },
+    {
+      "kind": "ActionDefinition",
+      "qualifiedName": "T2::Drive",
+      "name": "Drive",
+      "owner": "T2",
+      "parameters": [
+        {
+          "name": "torque",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "T2::Motor",
+      "name": "Motor",
+      "owner": "T2"
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "T2::Motor::gen",
+      "name": "gen",
+      "owner": "T2::Motor",
+      "types": [
+        "T2::Drive"
+      ],
+      "parameters": []
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::Motor::rotor",
+      "name": "rotor",
+      "owner": "T2::Motor"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "T2::Car",
+      "name": "Car",
+      "owner": "T2"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::Car::front",
+      "name": "front",
+      "owner": "T2::Car",
+      "types": [
+        "T2::Motor"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::Car::rear",
+      "name": "rear",
+      "owner": "T2::Car",
+      "types": [
+        "T2::Motor"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::Car::ax",
+      "name": "ax",
+      "owner": "T2::Car"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::car1",
+      "name": "car1",
+      "owner": "T2",
+      "types": [
+        "T2::Car"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::car1::ax",
+      "owner": "T2::car1",
+      "supertypes": [
+        "T2::Car::ax"
+      ],
+      "redefines": true,
+      "redefinedFeatures": [
+        "T2::Car::ax"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::car1::ax::w1",
+      "name": "w1",
+      "owner": "T2::car1::ax"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::car2",
+      "name": "car2",
+      "owner": "T2",
+      "types": [
+        "T2::Car"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::base",
+      "name": "base",
+      "owner": "T2"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::base::b1",
+      "name": "b1",
+      "owner": "T2::base"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::sub1",
+      "name": "sub1",
+      "owner": "T2",
+      "supertypes": [
+        "T2::base"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::sub1::d1",
+      "name": "d1",
+      "owner": "T2::sub1"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::holder",
+      "name": "holder",
+      "owner": "T2"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::holder::r",
+      "name": "r",
+      "owner": "T2::holder",
+      "types": [
+        "T2::Motor"
+      ],
+      "isRef": true
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "T2::r1",
+      "name": "r1",
+      "owner": "T2"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "T2::r2",
+      "name": "r2",
+      "owner": "T2"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "T2::outer",
+      "name": "outer",
+      "owner": "T2"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "T2::outer::inner",
+      "name": "inner",
+      "owner": "T2::outer"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T2::sat1",
+      "name": "sat1",
+      "owner": "T2"
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [
+    {
+      "requirement": "T2::r1",
+      "by": "T2::Car::front",
+      "byChain": [
+        "T2::car1",
+        "T2::Car::front"
+      ]
+    },
+    {
+      "requirement": "T2::r2",
+      "by": "T2::Motor::rotor",
+      "byChain": [
+        "T2::car2",
+        "T2::Car::front",
+        "T2::Motor::rotor"
+      ]
+    },
+    {
+      "requirement": "T2::r1",
+      "by": "T2::sat1"
+    }
+  ],
+  "performs": [
+    {
+      "performer": "T2::Motor",
+      "performed": "T2::Motor::gen"
+    }
+  ]
+}

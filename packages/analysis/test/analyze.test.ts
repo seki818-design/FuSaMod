@@ -354,3 +354,20 @@ describe("入れ子の requirement は影響分析にも入る", () => {
     expect(r.requirements).toContain(child.qualifiedName);
   });
 });
+
+describe("ラウンド 5 の指摘(ISO)への回帰", () => {
+  const run = (mutate: (s: ReturnType<typeof demoSafety>) => void) => {
+    const s = structuredClone(demoSafety());
+    mutate(s);
+    return analyzeProject(demoGraph(), s).issues;
+  };
+  it("安全機構の FTTI が安全目標の FTTI を超えるとエラー(100 ms → 5000 ms)", () => {
+    const issues = run((s) => { s.mechanisms[0]!.ftti = 5000; });
+    expect(issues.find((i) => i.code === "MECH_FTTI_EXCEEDS_GOAL")?.severity).toBe("error");
+    expect(run(() => {}).map((i) => i.code)).not.toContain("MECH_FTTI_EXCEEDS_GOAL");
+  });
+  it("ASIL の安全目標があるとき、要求に紐づかない QM の意図機能はエラー", () => {
+    const issues = run((s) => { const f = s.intendedFunctions[0]!; f.asil = "QM"; delete f.originAsil; f.requirementIds = []; s.safetyRequirements = s.safetyRequirements.filter((r) => r.id !== f.id); });
+    expect(issues.find((i) => i.code === "ELEMENT_QM_UNLINKED")?.severity).toBe("error");
+  });
+});

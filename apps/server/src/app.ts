@@ -20,7 +20,7 @@ import {
 } from "@fusamod/ai";
 import { exportSysml, ScdlSysmlError } from "@fusamod/scdl";
 import { randomUUID } from "node:crypto";
-import { convertModel } from "./sysml/convert.js";
+import { ConvertBusyError, ConvertError, convertModel } from "./sysml/convert.js";
 import type { Config } from "./config.js";
 import { HttpError, ProjectStore } from "./projects.js";
 import { AnalysisService, requireSafety } from "./services.js";
@@ -85,12 +85,10 @@ class RateLimiter {
   }
 }
 
-/** AI の適用履歴(aiChanges)は追記のみ。既存の記録の削除・書き換えを拒否する(来歴の改ざん防止)。 */
-function assertAiChangesAppendOnly(current: unknown[] | undefined, incoming: unknown[] | undefined) {
-  const cur = current ?? [];
-  const inc = incoming ?? [];
-  const ok = inc.length >= cur.length && cur.every((c, i) => JSON.stringify(c) === JSON.stringify(inc[i]));
-  if (!ok) throw new HttpError(422, "AI の適用履歴(aiChanges)は追記のみで、削除・書き換えはできません");
+/** AI の適用履歴(aiChanges)は、サーバーだけが書く。クライアントの保存では、現在の内容と完全に一致していなければならない(追記・削除・書き換えをすべて拒否)。 */
+function assertAiChangesUnchanged(current: unknown[] | undefined, incoming: unknown[] | undefined) {
+  if (JSON.stringify(current ?? []) !== JSON.stringify(incoming ?? []))
+    throw new HttpError(422, "AI の適用履歴(aiChanges)は、サーバーが記録するもので、保存の際に追加・削除・書き換えはできません");
 }
 
 const idParam = z.object({ id: z.string() });
@@ -110,9 +108,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: deps.logger ?? false,
     bodyLimit: config.bodyLimit,
-    trustProxy: config.trustProxy as never,
+    trustProxy: config.trustProxy,
   });
   const aiLimiter = new RateLimiter(20, 60_000);
+  const exportAuditAt = new Map<string, number>();
   let authFailCount = 0;
   const authFailLimiter = new RateLimiter(10, 60_000); // 認証失敗(総当たり対策): 1 分に 10 回まで
   const apiLimiter = new RateLimiter(600, 60_000); // API 全体: 1 分に 600 回まで(利用者または接続元ごと)
@@ -164,6 +163,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.setErrorHandler((err: Error & { statusCode?: number }, req, reply) => {
     if (err instanceof HttpError) return reply.code(err.status).send({ error: err.message, ...(err.details ? { details: err.details } : {}) });
     if (err instanceof ZodError) return reply.code(400).send({ error: "リクエストが不正です", details: err.issues.slice(0, 20).map((i) => `${i.path.join(".")}: ${i.message}`) });
+    if (err instanceof ConvertBusyError) return reply.code(429).header("Retry-After", "30").send({ error: err.message });
+    if (err instanceof ConvertError) return reply.code(422).send({ error: err.message });
     if (err instanceof SysmlUnavailableError) return reply.code(503).send({ error: err.message });
     if (err instanceof AiProviderError) return reply.code(err.retryable ? 503 : 502).send({ error: err.message });
     if (err instanceof ScdlSysmlError) return reply.code(422).send({ error: `SCDL を書き出せません: ${err.message}` });
@@ -242,8 +243,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const body = z.object({ data: z.unknown(), baseRevision: z.number().int().optional(), message: z.string().max(200).optional() }).strict().parse(req.body);
     const data = requireSafety(body.data);
     const p = await store.read(id);
-    assertAiChangesAppendOnly(p.safety.aiChanges, data.aiChanges);
+    assertAiChangesUnchanged(p.safety.aiChanges, data.aiChanges);
+    const diff = riskChanges(p.safety, data);
     const meta = await store.saveSafety(id, data, actorOf(req), body.message ?? "安全分析データを更新", body.baseRevision);
+    // 人の編集でも、評価値・ASIL・確率・削除などの差分を監査ログに残す(リスクを下げうる変更の件数つき)
+    if (diff.length > 0)
+      await store.audit(id, { actor: actorOf(req), action: "safety.diff", details: { revision: meta.revision, changes: diff.length, lowersRisk: diff.filter((c) => c.lowersRisk).length, items: diff.slice(0, 30).map((c) => `${c.id}.${c.field}: ${c.from ?? "-"} → ${c.to ?? "-"}${c.lowersRisk ? " [リスク低下]" : ""}`) } });
     const out = await analysis.analyze(p.model, data, p.graph);
     return view(id, { ...p, safety: data, revision: meta.revision }, out);
   });
@@ -278,7 +283,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const { id, name } = z.object({ id: z.string(), name: z.string() }).parse(req.params);
     const q = z.object({ element: z.string().optional() }).parse(req.query);
     store.dir(id);
-    await store.audit(id, { actor: actorOf(req), action: "export", details: { name: name.slice(0, 50) } });
+    await store.read(id); // 存在確認(無ければ 404)。監査の書き込みより前に行う
+    // 同じ人の同じ書き出しは、1 分に 1 回だけ監査に残す(閲覧だけでログが増え続けないように)
+    const auditKey = `${id}|${actorOf(req)}|${name}`;
+    if (Date.now() - (exportAuditAt.get(auditKey) ?? 0) > 60_000) {
+      exportAuditAt.set(auditKey, Date.now());
+      if (exportAuditAt.size > 5000) exportAuditAt.clear();
+      await store.audit(id, { actor: actorOf(req), action: "export", details: { name: name.slice(0, 50) } });
+    }
     switch (name) {
       case "model.sysml": return attachment(reply, `${id}.sysml`, "text/plain", (await store.read(id)).model);
       case "fmea.csv": return attachment(reply, `${id}-fmea.csv`, "text/csv", fmeaCsv(await needAnalysis(id), q.element));
@@ -297,6 +309,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         // 標準の交換形式(公式実装の変換器)。公式実装(Java)が必要
         if (config.sysmlMode === "snapshot") throw new HttpError(503, "SysML v2 の標準形式への変換には、公式実装(Java 21)が必要です(FUSAMOD_SYSML=snapshot では使えません)");
         const p = await store.read(id);
+        // 誤りのあるモデルは、部分的な出力を返さず 409(他の書き出しと同じ)
+        const check = await analysis.analyze(p.model, p.safety, p.graph);
+        if (!check.modelOk) throw new HttpError(409, "モデルにエラーがあるため、標準形式に書き出せません。先にモデルのエラーを直してください");
         const xmi = name === "model.xmi";
         const out = await convertModel(p.model, xmi ? "xmi" : "json", { cacheDir: config.sysmlCacheDir });
         return attachment(reply, `${id}-model.${xmi ? "sysmlx" : "json"}`, xmi ? "application/xml" : "application/json", out);

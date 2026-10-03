@@ -52,16 +52,19 @@ export interface Config {
   /** true なら、AI の提案を依頼した人と承認する人を別にする(認証を設定しているときのみ有効) */
   aiSeparateApprover: boolean;
   /** リバースプロキシの背後のとき true(または信頼するホップ数)。接続元 IP(レート制限・監査)を X-Forwarded-For から取る */
-  trustProxy: boolean | number;
+  trustProxy: boolean | ((address: string, hop: number) => boolean);
 }
 
-/** FUSAMOD_TRUST_PROXY: 未設定=信頼しない / 1 か true=1 段 / 2 以上の整数=その段数まで。 */
-function parseTrustProxy(v: string | undefined): boolean | number {
+/**
+ * FUSAMOD_TRUST_PROXY: 未設定=信頼しない / `true` か `1`=直前のプロキシ 1 段 / 2〜10=その段数まで。
+ * Fastify は数値を無視するので、段数は「ホップ数が範囲内か」を返す関数にして渡す。
+ * (`true` をそのまま渡すと全段を信用してしまうため、`true` も 1 段として扱う。)
+ */
+export function parseTrustProxy(v: string | undefined): boolean | ((address: string, hop: number) => boolean) {
   if (v === undefined || v === "" || v === "0" || v === "false") return false;
-  if (v === "true") return 1;
-  const n = Number(v);
+  const n = v === "true" ? 1 : Number(v);
   if (!Number.isInteger(n) || n < 1 || n > 10) throw new Error(`FUSAMOD_TRUST_PROXY は true か 1〜10 の整数: ${v}`);
-  return n;
+  return (_address: string, hop: number) => hop < n;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {

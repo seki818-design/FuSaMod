@@ -180,3 +180,10 @@ describe("定義の中の再定義・最上位の多重度・requirement def(公
     expect(r.deriveIssues.some((i) => i.code === "INVALID_ELEMENT")).toBe(true);
   });
 });
+
+describe("上限なしの多重度([0..*])", () => {
+  it("最上位でも警告する", () => {
+    const d = deriveNet(ex("definition-redefinition.graph.json"));
+    expect(d.deriveIssues.some((i) => i.code === "MULTIPLICITY_IGNORED" && i.message.includes("spares") && i.message.includes("なし"))).toBe(true);
+  });
+});

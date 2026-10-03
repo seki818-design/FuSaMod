@@ -100,9 +100,9 @@ class Expander {
 
     const warnedTop = new Set<string>();
     for (const e of kept) {
-      if (e.multiplicityUpper !== undefined && e.multiplicityUpper > 1 && USAGES.has(e.kind) && !warnedTop.has(e.qualifiedName)) {
+      if (e.multiplicityUpper !== undefined && (e.multiplicityUpper > 1 || e.multiplicityUpper === -1) && USAGES.has(e.kind) && !warnedTop.has(e.qualifiedName)) {
         warnedTop.add(e.qualifiedName);
-        this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${e.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${e.qualifiedName}`, e.qualifiedName);
+        this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${e.multiplicityUpper === -1 ? "なし(*)" : e.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${e.qualifiedName}`, e.qualifiedName);
       }
       let el = e;
       if (e.kind === "ActionUsage" && !e.parameters?.length) el = { ...e, parameters: this.parametersOf(e) };
@@ -210,8 +210,8 @@ class Expander {
           this.warn("UNSUPPORTED_CONSTRUCT", `定義の中の ref part(参照)は構造に入れません: ${m.qualifiedName}`, m.qualifiedName);
           continue;
         }
-        if (m.multiplicityUpper !== undefined && m.multiplicityUpper > 1)
-          this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${m.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${m.qualifiedName}`, m.qualifiedName);
+        if (m.multiplicityUpper !== undefined && (m.multiplicityUpper > 1 || m.multiplicityUpper === -1))
+          this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${m.multiplicityUpper === -1 ? "なし(*)" : m.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${m.qualifiedName}`, m.qualifiedName);
         names.add(lastName(m));
         this.instantiateMember(inst, m, depth, [...defStack, d]);
       }

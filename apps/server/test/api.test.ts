@@ -521,16 +521,18 @@ describe("AI の適用: リスクを下げる編集・来歴の追記のみ(ラ�
     const r = await apply(pid, B, { confirmRiskLowering: true });
     expect(r.statusCode).toBe(422);
   });
-  it("aiChanges は追記のみ: PUT で削除・書き換えはできない", async () => {
+  it("aiChanges はサーバーだけが書く: PUT での追加・削除・書き換えは 422、変えなければ 200", async () => {
     h = await harness({ env: { FUSAMOD_TOKENS: "bob:t2-0123456789abcdef" } });
     const B = { authorization: "Bearer t2-0123456789abcdef" };
     const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: B }));
-    const withLog = { ...p.safety, aiChanges: [{ proposalId: "P-1", title: "t", provider: "x", requestedBy: "a", approvedBy: "b", at: "2026-01-01T00:00:00Z", operations: 1 }] };
-    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: withLog } })).statusCode).toBe(200);
-    const cleared = { ...withLog, aiChanges: [] };
-    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: cleared } })).statusCode).toBe(422);
-    const edited = { ...withLog, aiChanges: [{ ...withLog.aiChanges[0], approvedBy: "mallory" }] };
-    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: edited } })).statusCode).toBe(422);
+    const entry = { proposalId: "P-1", title: "t", provider: "x", requestedBy: "a", approvedBy: "b", at: "2026-01-01T00:00:00Z", operations: 1 };
+    const put = (data: unknown) => h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data } });
+    expect((await put({ ...p.safety, aiChanges: [entry] })).statusCode).toBe(422); // 追加
+    await h.store.saveSafety("ev-powertrain", { ...p.safety, aiChanges: [entry] }, "server", "来歴を記録", undefined); // サーバー側の記録
+    const cur = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: B })).safety;
+    expect((await put({ ...cur })).statusCode).toBe(200); // 変えない
+    expect((await put({ ...cur, aiChanges: [] })).statusCode).toBe(422); // 削除
+    expect((await put({ ...cur, aiChanges: [{ ...entry, approvedBy: "mallory" }] })).statusCode).toBe(422); // 書き換え
   });
 });
 
@@ -540,5 +542,73 @@ describe("標準形式のエクスポート", () => {
     const r = await h.app.inject("/api/projects/ev-powertrain/export/model.json");
     expect(r.statusCode).toBe(503);
     expect(json(r).error).toContain("Java");
+  });
+});
+
+describe("ラウンド 5 の指摘への回帰(server)", () => {
+  it("FUSAMOD_TRUST_PROXY=true なら X-Forwarded-For を接続元として使い、未設定なら信用しない", async () => {
+    const { parseTrustProxy } = await import("../src/config.js");
+    expect(parseTrustProxy(undefined)).toBe(false);
+    const f = parseTrustProxy("2") as (a: string, hop: number) => boolean;
+    expect([f("x", 0), f("x", 1), f("x", 2)]).toEqual([true, true, false]);
+    expect(() => parseTrustProxy("99")).toThrow();
+    // 実際に Fastify が使う ip を確かめる(接続元 10.0.0.1 の背後のクライアント 203.0.113.9)
+    const ipOf = async (env: Record<string, string>) => {
+      h = await harness({ env: { FUSAMOD_TOKENS: "ed:tok-editor-0123456789", ...env } });
+      await h.app.inject({ url: "/api/projects", headers: { authorization: "Bearer wrong", "x-forwarded-for": "203.0.113.9" }, remoteAddress: "10.0.0.1" });
+      const { readFile } = await import("node:fs/promises");
+      const line = (await readFile(`${h.root}/_server-audit.jsonl`, "utf8")).trim().split("\n").at(-1)!;
+      return JSON.parse(line).details.ip as string;
+    };
+    expect(await ipOf({})).toBe("10.0.0.1");
+    expect(await ipOf({ FUSAMOD_TRUST_PROXY: "true" })).toBe("203.0.113.9");
+    expect(await ipOf({ FUSAMOD_TRUST_PROXY: "1" })).toBe("203.0.113.9");
+  });
+  it("履歴の復元でも aiChanges は消えない。保存での追記(偽の来歴)も拒否される", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:t1-0123456789abcdef,bob:t2-0123456789abcdef" } });
+    const A = { authorization: "Bearer t1-0123456789abcdef" };
+    const B = { authorization: "Bearer t2-0123456789abcdef" };
+    const proposal: Proposal = json(await h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/ai/chat", headers: A, payload: { message: "safetyMonitor の FMEA を実施して" } })).proposals[0];
+    expect((await h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/ai/proposals/${proposal.id}/apply`, headers: B })).statusCode).toBe(200);
+    const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: B }));
+    expect(p.safety.aiChanges).toHaveLength(1);
+    const hist = json(await h.app.inject({ url: "/api/projects/ev-powertrain/history", headers: B })).history;
+    const oldest = hist.at(-1).revision;
+    const rest = await h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/history/${oldest}/restore`, headers: B });
+    expect(rest.statusCode).toBe(200);
+    expect(json(rest).safety.aiChanges).toHaveLength(1);
+    const forged = { ...p.safety, aiChanges: [...p.safety.aiChanges, { proposalId: "P-fake", title: "偽", provider: "x", requestedBy: "x", approvedBy: "CEO", at: "2026-01-01T00:00:00Z", operations: 0 }] };
+    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: forged } })).statusCode).toBe(422);
+  });
+  it("標準形式のエクスポート: 存在しないプロジェクトは 404、誤りのあるモデルは 409(部分的な出力を返さない)", async () => {
+    h = await harness();
+    expect((await h.app.inject("/api/projects/nope-project/export/model.json")).statusCode).toBe(404);
+    const p = json(await h.app.inject("/api/projects/ev-powertrain"));
+    await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/model", payload: { text: p.model + "\n// 変更\n" } });
+    const r = await h.app.inject("/api/projects/ev-powertrain/export/model.xmi");
+    expect(r.statusCode).toBe(409);
+  });
+  it("同じ書き出しの監査は 1 分に 1 回だけ(閲覧でログが増え続けない)", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
+    const auth = { authorization: "Bearer tok-viewer-0123456789" };
+    for (let i = 0; i < 20; i++) await h.app.inject({ url: "/api/projects/ev-powertrain/export/fmea.csv", headers: auth });
+    const ev = json(await h.app.inject({ url: "/api/projects/ev-powertrain/audit", headers: auth })).events;
+    expect(ev.filter((e: { action: string }) => e.action === "export")).toHaveLength(1);
+  });
+});
+
+describe("人の保存でも差分が監査ログに残る(ラウンド 5)", () => {
+  it("重大度を下げて保存すると、safety.diff にリスク低下として記録される", async () => {
+    h = await harness();
+    const p = json(await h.app.inject("/api/projects/ev-powertrain"));
+    const changed = structuredClone(p.safety);
+    const f = changed.failures.find((x: { severity?: number }) => x.severity !== undefined);
+    const old = f.severity;
+    f.severity = 1;
+    changed.hara.goals[0].ftti = 5000;
+    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", payload: { data: changed } })).statusCode).toBe(200);
+    const ev = json(await h.app.inject("/api/projects/ev-powertrain/audit")).events.find((e: { action: string }) => e.action === "safety.diff");
+    expect(ev.details.lowersRisk).toBeGreaterThanOrEqual(2);
+    expect(ev.details.items.join("\n")).toContain(`${f.id}.severity: ${old} → 1 [リスク低下]`);
   });
 });

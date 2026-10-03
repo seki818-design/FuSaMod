@@ -4,6 +4,7 @@ import {
   compileApTable,
   validateAsilInheritance,
   validateElementAsil,
+  goalIdOfRequirement,
   validateDecompositions,
   validateFaultTree,
   validateHara,
@@ -214,6 +215,23 @@ function coverageConsistencyIssues(net: SafetyNet, s: SafetyData): Issue[] {
   return out;
 }
 
+/** 安全機構の FTTI が、紐づく安全目標の FTTI を超えていないか(超えると、故障を許容時間内に安全状態へ移せない)。 */
+function mechanismFttiIssues(s: SafetyData): Issue[] {
+  const goals = new Map(s.hara.goals.map((g) => [g.id, g]));
+  const out: Issue[] = [];
+  for (const m of s.mechanisms) {
+    if (m.ftti === undefined) continue;
+    for (const rid of m.requirementIds ?? []) {
+      const g = goals.get(goalIdOfRequirement(s.safetyRequirements, rid) ?? "");
+      if (g?.ftti !== undefined && m.ftti > g.ftti) {
+        out.push({ code: "MECH_FTTI_EXCEEDS_GOAL", severity: "error", message: `安全機構 ${m.id} の FTTI(${m.ftti} ms)が、安全目標 ${g.id} の FTTI(${g.ftti} ms)を超えています`, ref: m.id });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
 function referenceIssues(net: SafetyNet, s: SafetyData, derived: DerivedNet): { pairing: Issue[]; safetyReq: Issue[] } {
   const sysmlReqs = new Set(derived.requirements.map((r) => r.id));
   const known = new Set(net.elements.map((e) => e.id));
@@ -375,7 +393,8 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   push("decomposition", [
     ...validateDecompositions(s.safetyRequirements, s.decompositions),
     ...validateAsilInheritance(s.safetyRequirements, s.decompositions, s.hara.goals),
-    ...validateElementAsil(s.intendedFunctions, s.mechanisms, s.safetyRequirements),
+    ...validateElementAsil(s.intendedFunctions, s.mechanisms, s.safetyRequirements, { hasAsilGoal: s.hara.goals.some((g) => g.asil !== "QM") }),
+    ...mechanismFttiIssues(s),
     ...decompositionAllocationIssues(net, s),
   ]);
   push("fta", faultTreeIssues(net, s));

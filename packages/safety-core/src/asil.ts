@@ -117,7 +117,7 @@ const isSubstantial = (t: string) =>
   new Set(t).size >= 6 &&
   !/^\d+$/.test(t) &&
   !/^(.{2,}?)\s*\1+$/.test(t) &&
-  !/(todo|tbd|n\/a|xxx|dummy|sample|未定|あとで|ダミー|仮)/i.test(t) &&
+  !/(todo|tbd|tbc|n\/a|xxx|dummy|sample|lorem|ipsum|pending|placeholder|未定|未確認|確認中|検討中|あとで|ダミー|仮)/i.test(t) &&
   /[\d\-_/:()（）\s]/.test(t); // 文書番号・区切りなど、参照らしい形(連打した文字列を除く)
 
 /** 分解の自己参照と循環(A → B + QM、B → A + … など)。 */
@@ -331,6 +331,7 @@ export function validateElementAsil(
   functions: IntendedFunction[],
   mechanisms: SafetyMechanism[],
   reqs: SafetyRequirement[],
+  opts: { hasAsilGoal?: boolean } = {},
 ): Issue[] {
   const issues: Issue[] = [];
   const byId = new Map(reqs.map((r) => [r.id, r]));
@@ -343,9 +344,21 @@ export function validateElementAsil(
     if (x.originAsil !== undefined && !linked.some((r) => (r.originAsil ?? r.asil) === x.originAsil && r.originAsil !== undefined))
       issues.push({ code: "DECOMP_ORPHAN", severity: "error", message: `${kind} ${x.id} は元 ASIL(${x.originAsil})の表記を持ちますが、同じ元 ASIL を持つ要求(分解先)に紐づいていません`, ref: x.id });
     if (own === "QM" && linked.length === 0 && x.originAsil === undefined)
-      issues.push({ code: "ELEMENT_QM_UNLINKED", severity: "warning", message: `${kind} ${x.id} は QM で、紐づく要求もありません。ASIL の付いた安全目標・要求との関係を確認してください`, ref: x.id });
+      // ASIL の付いた安全目標があるのに、要求に紐づかない QM の意図機能は、ASIL を黙って外している疑いがある(エラー)。安全機構は警告
+      issues.push({ code: "ELEMENT_QM_UNLINKED", severity: opts.hasAsilGoal && kind === "意図機能" ? "error" : "warning", message: `${kind} ${x.id} は QM で、紐づく要求もありません。ASIL の付いた安全目標・要求との関係を確認してください`, ref: x.id });
   };
   for (const f of functions) check("意図機能", f);
   for (const m of mechanisms) check("安全機構", m);
   return issues;
+}
+
+/** 要求が(自身または親をたどって)紐づく安全目標の ID。 */
+export function goalIdOfRequirement(reqs: SafetyRequirement[], requirementId: string): string | undefined {
+  const byId = new Map(reqs.map((r) => [r.id, r]));
+  const seen = new Set<string>();
+  for (let cur = byId.get(requirementId); cur && !seen.has(cur.id); cur = cur.parentId ? byId.get(cur.parentId) : undefined) {
+    if (cur.safetyGoalId !== undefined) return cur.safetyGoalId;
+    seen.add(cur.id);
+  }
+  return undefined;
 }

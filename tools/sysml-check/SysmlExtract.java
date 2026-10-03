@@ -69,9 +69,13 @@ public class SysmlExtract {
         if (!(m instanceof MultiplicityRange mr)) return null;
         Expression ub = mr.getUpperBound();
         if (ub == null) {
-            for (Element c : mr.getOwnedElement()) if (c instanceof LiteralInteger li) return li.getValue();
+            for (Element c : mr.getOwnedElement()) {
+                if (c instanceof LiteralInteger li) return li.getValue();
+                if (c instanceof LiteralInfinity) return -1;
+            }
             return null;
         }
+        if (ub instanceof LiteralInfinity) return -1; // 上限なし(*)
         return ub instanceof LiteralInteger li ? li.getValue() : null;
     }
 

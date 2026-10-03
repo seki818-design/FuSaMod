@@ -4,6 +4,7 @@ import { buildApp } from "./app.js";
 import { loadConfig, type Config } from "./config.js";
 import { ProjectStore } from "./projects.js";
 import { AnalysisService, FallbackSysmlService } from "./services.js";
+import { sweepConvertTemp } from "./sysml/convert.js";
 import { JavaSysmlService } from "./sysml/java-service.js";
 import { SnapshotSysmlService } from "./sysml/snapshot-service.js";
 
@@ -40,6 +41,7 @@ function makeAi(c: Config): AiProvider {
   return new RuleBasedProvider();
 }
 
+void sweepConvertTemp(0); // 前回の異常終了で残った変換の一時ディレクトリを掃除する
 const sysml = makeSysml(config);
 const app = await buildApp({
   config,

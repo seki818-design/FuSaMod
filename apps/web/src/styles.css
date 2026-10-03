@@ -162,4 +162,18 @@ pre.json { white-space: pre-wrap; font: 12px/1.45 var(--mono); }
 .panel > header { flex-wrap: wrap; }
 
 table.grid select { max-width: 76px; padding: 2px 4px; min-height: 26px; }
-table.grid td, table.grid th { overflow-wrap: anywhere; }
+table.grid td, table.grid th { overflow-wrap: break-word; word-break: normal; }
+table.grid td:first-child { min-width: 64px; }
+
+/* 読み取り専用(viewer): 編集できる部品は、押せない・入力できないことを見た目でも示す(操作は store でも拒否される) */
+.app[data-readonly="true"] .panel input:not([type=checkbox]),
+.app[data-readonly="true"] .panel select,
+.app[data-readonly="true"] .panel textarea,
+.app[data-readonly="true"] .panel .btn.danger { pointer-events: none; opacity: .6; }
+
+/* 解析パネルの表を、1440x900 で右端まで収める(列の最小幅を詰め、長い文は折り返す) */
+table.grid { font-size: 12px; }
+table.grid th, table.grid td { padding: 3px 4px; }
+table.grid td.num, table.grid th.num { width: 40px; }
+table.grid input[type=number] { width: 42px; padding: 1px 3px; }
+table.grid input[type=text] { min-width: 52px; }

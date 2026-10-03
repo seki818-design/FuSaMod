@@ -299,9 +299,17 @@ export class ProjectStore {
       const rd = join(this.dir(id), ".history", String(revision).padStart(6, "0"));
       if (!(await this.exists(rd))) throw new HttpError(404, `リビジョン ${revision} が見つかりません`);
       const graph = (await this.exists(join(rd, "model.graph.json"))) ? await readFile(join(rd, "model.graph.json"), "utf8") : undefined;
+      // AI の適用履歴(来歴)は、復元しても消えない: 現在の aiChanges を、復元する内容に引き継ぐ
+      const cur = await this.read(id);
+      let safety = await readFile(join(rd, "safety.json"), "utf8");
+      if (cur.safety.aiChanges?.length) {
+        const restored = JSON.parse(safety) as Record<string, unknown>;
+        restored["aiChanges"] = cur.safety.aiChanges;
+        safety = JSON.stringify(restored, null, 2) + "\n";
+      }
       const meta = await this.commit(
         id,
-        { model: await readFile(join(rd, "model.sysml"), "utf8"), safety: await readFile(join(rd, "safety.json"), "utf8"), graph },
+        { model: await readFile(join(rd, "model.sysml"), "utf8"), safety, graph },
         { kind: "restore", actor, message: `リビジョン ${revision} に戻す` },
       );
       await this.audit(id, { actor, action: "project.restore", details: { from: revision, revision: meta.revision } });
@@ -324,22 +332,33 @@ export class ProjectStore {
    * 途中の行の改ざん・削除を verifyAudit で検出できる。末尾の削除や全面的な作り直しは、外部へのバックアップ・転送で補う必要がある。
    */
   async audit(id: string, e: Omit<AuditEvent, "ts" | "prev">): Promise<void> {
-    await this.withLock(`${id}:audit`, async () => {
-      const p = join(this.dir(id), "audit.jsonl");
-      const last = (await this.exists(p)) ? (await readFile(p, "utf8")).split("\n").filter(Boolean).at(-1) : undefined;
-      const line = JSON.stringify({ ts: new Date().toISOString(), ...e, prev: last ? sha(last) : GENESIS } satisfies AuditEvent);
-      await appendFile(p, line + "\n", "utf8");
-    });
+    await this.withLock(`${id}:audit`, () => this.appendChained(join(this.dir(id), "audit.jsonl"), e));
+  }
+
+  /** 直前の行のハッシュ(ファイルごと)。毎回ファイル全体を読み直さないための記憶。外部で書き換えられた場合に備え、サイズが合わなければ読み直す。 */
+  private lastHash = new Map<string, { size: number; hash: string }>();
+
+  private async appendChained(p: string, e: Omit<AuditEvent, "ts" | "prev">): Promise<void> {
+    const size = (await this.exists(p)) ? (await stat(p)).size : 0;
+    let prev = GENESIS;
+    const cached = this.lastHash.get(p);
+    if (size > 0) {
+      if (cached && cached.size === size) prev = cached.hash;
+      else {
+        const last = (await readFile(p, "utf8")).split("\n").filter(Boolean).at(-1);
+        prev = last ? sha(last) : GENESIS;
+      }
+    }
+    const line = JSON.stringify({ ts: new Date().toISOString(), ...e, prev } satisfies AuditEvent);
+    await appendFile(p, line + "\n", "utf8");
+    this.lastHash.set(p, { size: size + Buffer.byteLength(line) + 1, hash: sha(line) });
   }
 
   /** サーバー全体の監査ログ(認証失敗など、プロジェクトに属さない出来事)。ハッシュ連鎖は project の audit と同じ。 */
   async auditGlobal(e: Omit<AuditEvent, "ts" | "prev">): Promise<void> {
     await this.withLock("_server:audit", async () => {
       await mkdir(this.root, { recursive: true });
-      const p = join(this.root, "_server-audit.jsonl");
-      const last = (await this.exists(p)) ? (await readFile(p, "utf8")).split("\n").filter(Boolean).at(-1) : undefined;
-      const line = JSON.stringify({ ts: new Date().toISOString(), ...e, prev: last ? sha(last) : GENESIS } satisfies AuditEvent);
-      await appendFile(p, line + "\n", "utf8");
+      await this.appendChained(join(this.root, "_server-audit.jsonl"), e);
     });
   }
 

@@ -56,7 +56,21 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準形式への変換(公式実�
     expect(xmi.startsWith("<?xml")).toBe(true);
     expect(xmi).toContain("PartUsage");
   }, 300_000);
-  it("誤りのあるモデルでも、他のファイルを壊さず、エラーとして返る(または空の結果)", async () => {
-    await expect(convertModel("package X { part a : ", "json")).resolves.toBeDefined();
+  it("変換器が対応しない記述(単位式を含む all-stereotypes.sysml の JSON)は ConvertError(一時パスを含まない)。同じモデルの XMI は成功する", async () => {
+    const { ConvertError } = await import("../src/sysml/convert.js");
+    const units = readFileSync(resolve(DEMO, "../../examples/sysml/all-stereotypes.sysml"), "utf8");
+    const err = await convertModel(units, "json").catch((e) => e);
+    expect(err).toBeInstanceOf(ConvertError);
+    expect(String(err.message)).not.toContain("fusamod-convert-");
+    expect((await convertModel(units, "xmi")).startsWith("<?xml")).toBe(true);
   }, 300_000);
+  it("同時実行の上限: 多数を同時に投げても、待ちを超えたものは ConvertBusyError で断られ、一時ディレクトリは残らない", async () => {
+    const { ConvertBusyError } = await import("../src/sysml/convert.js");
+    const { readdirSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const rs = await Promise.allSettled(Array.from({ length: 10 }, () => convertModel(model, "json")));
+    expect(rs.filter((r) => r.status === "fulfilled").length).toBeLessThanOrEqual(6);
+    expect(rs.filter((r) => r.status === "rejected" && r.reason instanceof ConvertBusyError).length).toBeGreaterThanOrEqual(4);
+    expect(readdirSync(tmpdir()).filter((n) => n.startsWith("fusamod-convert-"))).toEqual([]);
+  }, 600_000);
 });

@@ -134,3 +134,22 @@ describe("store", () => {
     expect(total(off!)).toBeLessThanOrEqual(total(on!));
   });
 });
+
+describe("読み取り専用の利用者(viewer)", () => {
+  it("編集・保存・AI の操作は、store でも拒否される", async () => {
+    const srv = fakeServer();
+    const base = srv.handler;
+    srv.handler = async (u, i) => (u === "/api/me" ? new Response(JSON.stringify({ user: "vera", role: "viewer" }), { status: 200 }) : base(u, i));
+    install(srv);
+    await store.init();
+    expect(store.isReadOnly()).toBe(true);
+    const before = JSON.stringify(store.getState().draftSafety);
+    store.updateSafety((d) => { d.failures.push({ id: "X", description: "x", functionId: "f" } as never); });
+    store.setDraftModel("package Hack {}");
+    expect(JSON.stringify(store.getState().draftSafety)).toBe(before);
+    expect(store.isDirty(store.getState())).toBe(false);
+    await store.save();
+    expect(srv.calls.some((c) => c.startsWith("PUT"))).toBe(false);
+    expect(store.getState().toasts.at(-1)?.text).toContain("読み取り専用");
+  });
+});

@@ -15,6 +15,7 @@ package DefRedefinition {
     part v : BigPack;
     part v2 : BigPack;
     part wheels : Cell [4];
+    part spares : Cell [0..*];
 
     requirement def Rd {
         doc /* 定義の本文 */

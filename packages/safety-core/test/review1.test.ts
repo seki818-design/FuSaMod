@@ -273,3 +273,11 @@ describe("形だけの根拠の追加例", () => {
   ).map((i) => i.code);
   it.each(["asdfghjk", "DFA-XXX-000", "DFA TBD 1234", "ダミーの根拠 001"])("『%s』は警告", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
 });
+
+describe("プレースホルダの根拠(ラウンド 5)", () => {
+  const e = (t: string) => validateDecompositions(
+    [req("P", "D"), req("A", "B", { originAsil: "D", parentId: "P" }), req("B", "B", { originAsil: "D", parentId: "P" })],
+    [{ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: t }],
+  ).map((i) => i.code);
+  it.each(["pending review", "TBC-001-xyz", "lorem ipsum 123", "未確認 DFA-1", "確認中 123-456"])("『%s』は警告", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
+});

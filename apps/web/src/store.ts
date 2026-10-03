@@ -114,6 +114,14 @@ function fail(e: unknown, prefix = "") {
   } else toast("error", `${prefix}予期しないエラーが発生しました`);
 }
 
+/** 読み取り専用の利用者(viewer)かどうか。編集系の操作は、画面で無効にするだけでなく、ここでも拒否する。 */
+export const isReadOnly = (st: State = state) => st.me?.role === "viewer";
+function denyReadOnly(): boolean {
+  if (!isReadOnly()) return false;
+  toast("error", "読み取り専用の利用者のため、この操作はできません");
+  return true;
+}
+
 // ----- 派生値 -----
 export const isModelDirty = (s: State) => s.server !== undefined && s.draftModel !== s.server.model;
 export const isSafetyDirty = (s: State) => s.server !== undefined && s.draftSafety !== undefined && JSON.stringify(s.draftSafety) !== JSON.stringify(s.server.safety);
@@ -135,7 +143,7 @@ function recompute(graph: ElementGraph | null, safety: SafetyData | undefined): 
 }
 
 function applyView(v: ProjectView, keepDrafts = false) {
-  if (v.notice) toast("error", v.notice);
+  if (v.notice) toast("info", v.notice);
   set((s) => {
     const draftSafety = keepDrafts && s.draftSafety ? s.draftSafety : v.safety;
     const draftModel = keepDrafts ? s.draftModel : v.model;
@@ -190,6 +198,7 @@ export async function selectProject(id: string) {
 }
 
 export async function createProject(id: string) {
+  if (denyReadOnly()) return;
   try {
     await api.create(id);
     set({ projects: (await api.projects()).projects });
@@ -234,6 +243,7 @@ let analyzeTimer: ReturnType<typeof setTimeout> | undefined;
 let analyzeSeq = 0;
 
 export function setDraftModel(text: string) {
+  if (denyReadOnly()) return;
   set({ draftModel: text });
   clearTimeout(analyzeTimer);
   analyzeTimer = setTimeout(() => void analyzeModelNow(), 700);
@@ -263,6 +273,7 @@ export async function analyzeModelNow() {
 
 /** 安全分析データを編集する。ブラウザ内で即時に再解析する。 */
 export function updateSafety(fn: (draft: SafetyData) => void) {
+  if (denyReadOnly()) return;
   const cur = state.draftSafety;
   if (!cur) return;
   const next = structuredClone(cur);
@@ -271,10 +282,12 @@ export function updateSafety(fn: (draft: SafetyData) => void) {
 }
 
 export function replaceSafety(next: SafetyData) {
+  if (denyReadOnly()) return;
   set((s) => ({ draftSafety: next, ...recompute(s.graph, next) }));
 }
 
 export async function save(message?: string) {
+  if (denyReadOnly()) return;
   const s0 = state;
   const id = s0.projectId;
   if (!id || !s0.server || s0.busy.saving) return;
@@ -308,6 +321,7 @@ export function discard() {
 }
 
 export async function restoreRevision(rev: number) {
+  if (denyReadOnly()) return;
   const id = state.projectId;
   if (!id) return;
   try {
@@ -323,6 +337,7 @@ export async function restoreRevision(rev: number) {
 // ----- AI -----
 let msgId = 1;
 export async function sendChat(text: string) {
+  if (denyReadOnly()) return;
   const id = state.projectId;
   const msg = text.trim();
   if (!id || !msg || state.busy.chatting) return;
@@ -343,6 +358,7 @@ export async function sendChat(text: string) {
 }
 
 export async function applyProposal(pid: string) {
+  if (denyReadOnly()) return;
   const id = state.projectId;
   if (!id) return;
   if (isDirty(state)) {
@@ -369,6 +385,7 @@ export async function applyProposal(pid: string) {
 }
 
 export async function rejectProposal(pid: string) {
+  if (denyReadOnly()) return;
   const id = state.projectId;
   if (!id) return;
   try {

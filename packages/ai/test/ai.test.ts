@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeProject } from "@fusamod/analysis";
-import { RefIndex, RuleBasedProvider, applyOperations, tokenize, type Operation } from "../src/index.js";
+import { RefIndex, RuleBasedProvider, applyOperations, riskChanges, tokenize, type Operation } from "../src/index.js";
 import { ctx, graph, refs, safety } from "./helpers.js";
 
 describe("操作の適用(原子的・検証つき)", () => {
@@ -117,5 +117,28 @@ describe("ルールベースの支援", () => {
     const ng = await p.propose(ctx("社員食堂のメニューは"));
     expect(ng.citations).toEqual([]);
     expect(ng.reply).toContain("根拠のない推測では回答しません");
+  });
+});
+
+describe("riskChanges: リスクを下げうる変更の分類(ラウンド 5)", () => {
+  const base = () => structuredClone(safety());
+  it("分解の追加・管理策の記述の削除・評価の新規設定・HARA の低下・確率の低下・削除を、リスク低下として分類する", () => {
+    const before = base();
+    const after = base();
+    after.decompositions.push({ id: "DEC-X", parentRequirementId: after.safetyRequirements[0]!.id, childRequirementIds: [after.safetyRequirements[1]!.id, after.safetyRequirements[2]!.id] } as never);
+    after.hara.events[0]!.severity = 1;
+    after.hara.goals[0]!.asil = "A";
+    after.failures.pop();
+    const l = after.links[0]!; l.preventionControl = "";
+    const kinds = riskChanges(before, after).filter((c) => c.lowersRisk).map((c) => c.field);
+    expect(kinds).toEqual(expect.arrayContaining(["分解(追加)", "S", "goalAsil", "削除(故障ノード)"]));
+  });
+  it("リスクを上げる変更は、差分には出るがリスク低下ではない", () => {
+    const before = base();
+    const after = base();
+    after.hara.events[0]!.severity = 3;
+    const f = after.failures.find((x) => x.severity !== undefined)!; f.severity = 10;
+    const c = riskChanges(before, after);
+    expect(c.every((x) => !x.lowersRisk)).toBe(true);
   });
 });

@@ -89,6 +89,16 @@
       "multiplicityUpper": 4
     },
     {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::spares",
+      "name": "spares",
+      "owner": "DefRedefinition",
+      "types": [
+        "DefRedefinition::Cell"
+      ],
+      "multiplicityUpper": -1
+    },
+    {
       "kind": "RequirementDefinition",
       "qualifiedName": "DefRedefinition::Rd",
       "name": "Rd",

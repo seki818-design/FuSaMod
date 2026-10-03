@@ -94,30 +94,127 @@ export interface DataChange {
   field: string;
   from: string | number | undefined;
   to: string | number | undefined;
-  /** リスクを下げうる変更(重大度・発生度・検出度の低下、QM の意図機能/安全機構の追加) */
+  /** リスクを下げうる変更(評価値の低下、管理策の削除、リスク情報の削除、ASIL を下げる分解/QM の追加 など) */
   lowersRisk: boolean;
 }
 
-/** 適用の前後の差分(評価値の変更と、追加された要素のうち ASIL に関わるもの)。承認者に見せ、来歴に残す。 */
-export function riskChanges(before: SafetyData, after: SafetyData): DataChange[] {
+const ASIL_RANK: Record<string, number> = { QM: 0, A: 1, B: 2, C: 3, D: 4 };
+
+type Val = string | number | undefined;
+interface Differ {
+  out: DataChange[];
+  push(id: string, field: string, from: Val, to: Val, lowersRisk: boolean): void;
+  /** 数値: 値が下がる(lowers)、または未評価に「良い評価」(good 以下)が付くとリスク低下 */
+  num(id: string, field: string, from: number | undefined, to: number | undefined, lowers: (a: number, b: number) => boolean, good?: number): void;
+  text(id: string, field: string, from: string | undefined, to: string | undefined): void;
+}
+
+function differ(): Differ {
   const out: DataChange[] = [];
-  const num = (id: string, field: string, from: number | undefined, to: number | undefined, lowers: (a: number, b: number) => boolean) => {
-    if (from !== to) out.push({ id, field, from, to, lowersRisk: from !== undefined && to !== undefined && lowers(from, to) });
+  const push: Differ["push"] = (id, field, from, to, lowersRisk) => {
+    if (from !== to) out.push({ id, field, from, to, lowersRisk });
   };
-  const oldF = new Map(before.failures.map((f) => [f.id, f]));
+  return {
+    out,
+    push,
+    num(id, field, from, to, lowers, good) {
+      const l = from !== undefined && to !== undefined ? lowers(from, to) : from === undefined && to !== undefined && good !== undefined && to <= good;
+      push(id, field, from, to, l);
+    },
+    text(id, field, from, to) {
+      if ((from ?? "") !== (to ?? "")) push(id, field, from ? "(記述あり)" : undefined, to ? "(記述あり)" : undefined, !!from && (to ?? "").trim().length < from.trim().length / 2);
+    },
+  };
+}
+const byId = <T extends { id: string }>(xs: T[]) => new Map(xs.map((x) => [x.id, x]));
+const dec = (a: number, b: number) => b < a;
+const inc = (a: number, b: number) => b > a;
+
+/** FMEA の評価値(重大度・発生度・検出度)と、管理策の記述。 */
+function fmeaChanges(d: Differ, before: SafetyData, after: SafetyData) {
+  const oldF = byId(before.failures);
   for (const f of after.failures) {
     const o = oldF.get(f.id);
-    if (o) num(f.id, "severity", o.severity, f.severity, (a, b) => b < a);
+    if (o) d.num(f.id, "severity", o.severity, f.severity, dec, 5);
   }
-  const oldL = new Map(before.links.map((l) => [l.id, l]));
+  const oldL = byId(before.links);
   for (const l of after.links) {
     const o = oldL.get(l.id);
     if (!o) continue;
-    num(l.id, "occurrence", o.occurrence, l.occurrence, (a, b) => b < a);
-    num(l.id, "detection", o.detection, l.detection, (a, b) => b < a);
+    d.num(l.id, "occurrence", o.occurrence, l.occurrence, dec, 3);
+    d.num(l.id, "detection", o.detection, l.detection, dec, 3);
+    d.text(l.id, "preventionControl", o.preventionControl, l.preventionControl);
+    d.text(l.id, "detectionControl", o.detectionControl, l.detectionControl);
   }
+}
+
+/** HARA(S/E/C、安全目標の ASIL・FTTI)、フォールトツリーの確率、安全機構。 */
+function haraChanges(d: Differ, before: SafetyData, after: SafetyData) {
+  const oldE = byId(before.hara.events);
+  for (const e of after.hara.events) {
+    const o = oldE.get(e.id);
+    if (!o) continue;
+    d.num(e.id, "S", o.severity, e.severity, dec);
+    d.num(e.id, "E", o.exposure, e.exposure, dec);
+    d.num(e.id, "C", o.controllability, e.controllability, dec);
+  }
+  const oldG = byId(before.hara.goals);
+  for (const g of after.hara.goals) {
+    const o = oldG.get(g.id);
+    if (!o) continue;
+    d.push(g.id, "goalAsil", o.asil, g.asil, (ASIL_RANK[g.asil] ?? 0) < (ASIL_RANK[o.asil] ?? 0));
+    d.num(g.id, "ftti", o.ftti, g.ftti, inc); // FTTI を延ばすと、安全機構への要求がゆるむ
+  }
+  const oldT = byId(before.faultTrees);
+  for (const t of after.faultTrees) {
+    const oldN = byId(oldT.get(t.id)?.nodes ?? []);
+    for (const n of t.nodes) {
+      const on = oldN.get(n.id);
+      if (on) d.num(`${t.id}/${n.id}`, "probability", on.probability, n.probability, dec);
+    }
+  }
+  const oldM = byId(before.mechanisms);
+  for (const m of after.mechanisms) {
+    const o = oldM.get(m.id);
+    if (!o) continue;
+    d.num(m.id, "ftti", o.ftti, m.ftti, inc);
+    const was = (o.coversFailureIds ?? []).length;
+    const now = (m.coversFailureIds ?? []).length;
+    d.push(m.id, "coversFailureIds", was, now, now < was);
+  }
+}
+
+/** 追加(QM の意図機能・安全機構、ASIL を下げる分解)と、削除(リスクの情報が消える)。 */
+function structureChanges(d: Differ, before: SafetyData, after: SafetyData) {
   const known = new Set([...before.intendedFunctions.map((f) => f.id), ...before.mechanisms.map((m) => m.id)]);
   for (const x of [...after.intendedFunctions, ...after.mechanisms])
-    if (!known.has(x.id)) out.push({ id: x.id, field: "asil(追加)", from: undefined, to: x.asil ?? "QM", lowersRisk: (x.asil ?? "QM") === "QM" });
-  return out;
+    if (!known.has(x.id)) d.push(x.id, "asil(追加)", undefined, x.asil ?? "QM", (x.asil ?? "QM") === "QM");
+  const knownD = new Set(before.decompositions.map((x) => x.id));
+  for (const x of after.decompositions) if (!knownD.has(x.id)) d.push(x.id, "分解(追加)", undefined, x.parentRequirementId, true);
+  const removed = <T extends { id: string }>(label: string, b: T[], a: T[]) => {
+    const now = new Set(a.map((x) => x.id));
+    for (const x of b) if (!now.has(x.id)) d.push(x.id, `削除(${label})`, "あり", undefined, true);
+  };
+  removed("故障ノード", before.failures, after.failures);
+  removed("故障リンク", before.links, after.links);
+  removed("ハザード事象", before.hara.events, after.hara.events);
+  removed("安全目標", before.hara.goals, after.hara.goals);
+  removed("安全要求", before.safetyRequirements, after.safetyRequirements);
+  removed("フォールトツリー", before.faultTrees, after.faultTrees);
+  removed("安全機構", before.mechanisms, after.mechanisms);
+  removed("意図機能", before.intendedFunctions, after.intendedFunctions);
+  removed("ペア", before.pairs, after.pairs);
+  removed("分解", before.decompositions, after.decompositions);
+}
+
+/**
+ * 前後の差分(評価値・HARA・ASIL・確率・管理策の記述の変更と、追加・削除された要素)。
+ * 承認者に見せ、来歴(AI)と監査ログ(人の保存)に残す。リスクを下げうる変更は lowersRisk = true。
+ */
+export function riskChanges(before: SafetyData, after: SafetyData): DataChange[] {
+  const d = differ();
+  fmeaChanges(d, before, after);
+  haraChanges(d, before, after);
+  structureChanges(d, before, after);
+  return d.out;
 }

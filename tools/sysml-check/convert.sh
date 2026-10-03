@@ -15,4 +15,6 @@ case "$fmt" in
 esac
 cd "$(dirname "$file")"
 # shellcheck disable=SC2086
-java $JAVA_OPTS_UTF8 -cp "$JAR" "org.omg.sysml.xtext.util.$cls" "$file" 2>&1 | grep -vE "$NOISE|log4j" >&2 || true
+java $JAVA_OPTS_UTF8 -cp "$JAR" "org.omg.sysml.xtext.util.$cls" "$file" 2>&1 | grep -vE "$NOISE|log4j" >&2
+# 終了コードは java のものを返す(出力ファイルの有無は呼び出し側が確認する)
+exit "${PIPESTATUS[0]}"

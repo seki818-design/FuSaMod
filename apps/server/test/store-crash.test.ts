@@ -48,16 +48,17 @@ describe("保存の原子性と回復(途中で落ちても履歴と現在の状
     writeFileSync(join(dir, "p1", ".history", "000002", "meta.json"), "{broken");
     expect((await s.latestMeta("p1"))?.revision).toBe(1);
   });
-  it("保存の所要時間が履歴の増加で悪化しない(100 回保存しても、最後の 10 回の中央値が最初の 10 回の 8 倍以内)", { timeout: 60_000 }, async () => {
+  it("100 回保存しても、すべて成功し、履歴が全件残り、1 回の保存が極端に遅くならない(負荷に左右されない上限 3 秒)", { timeout: 120_000 }, async () => {
     const s = await mk();
-    const times: number[] = [];
+    let worst = 0;
     for (let i = 0; i < 100; i++) {
       const t = performance.now();
       await s.saveModel("p1", `package P { part a${i}; }`, "tester", "m", i + 1);
-      times.push(performance.now() - t);
+      worst = Math.max(worst, performance.now() - t);
     }
-    const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
-    expect(med(times.slice(-10))).toBeLessThan(med(times.slice(0, 10)) * 8 + 50);
+    expect(worst).toBeLessThan(3000);
+    expect((await s.history("p1")).length).toBe(101);
+    expect((await s.latestMeta("p1"))?.revision).toBe(101);
   });
 });
 

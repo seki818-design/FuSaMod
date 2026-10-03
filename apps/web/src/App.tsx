@@ -13,6 +13,7 @@ export function App() {
   const ready = useStore((s) => s.ready);
   const hasProject = useStore((s) => s.projectId !== undefined);
   const max = useStore((s) => s.analysisMax);
+  const readOnly = useStore((s) => s.me?.role === "viewer");
   useEffect(() => {
     let theme: "dark" | "light" = "dark";
     try {
@@ -41,7 +42,7 @@ export function App() {
     };
   }, []);
   return (
-    <div className="app">
+    <div className="app" data-readonly={readOnly ? "true" : undefined}>
       <a className="skip" href="#main">本文へ移動</a>
       <TopBar />
       <main id="main" className="main" aria-busy={loading}>

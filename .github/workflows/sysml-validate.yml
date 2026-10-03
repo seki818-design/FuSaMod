@@ -1,0 +1,24 @@
+name: SysML validate
+# SysML v2 ライブラリ・例を公式パイロット実装で検証し、要素グラフのスナップショットが最新であることを確かめる。
+on:
+  push:
+    paths: ["libs/sysml/**", "examples/sysml/**", "tools/sysml-check/**", "packages/scdl/**"]
+  pull_request:
+    paths: ["libs/sysml/**", "examples/sysml/**", "tools/sysml-check/**", "packages/scdl/**"]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/fusamod
+          key: sysml-pilot-0.62.0
+      - run: ./tools/sysml-check/run.sh
+      - run: ./tools/sysml-check/extract.sh
+      - name: 要素グラフが最新であること
+        run: git diff --exit-code -- examples/sysml

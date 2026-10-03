@@ -85,3 +85,48 @@ export function redundantArchitecture(): ScdlModel {
     ],
   };
 }
+
+/** すべてのステレオタイプ(無干渉・部分ペアリング・名称/備考・3 種類のコネクティングライン先)を使う小さな例。 */
+export function allStereotypes(): ScdlModel {
+  return {
+    elements: [
+      { id: "SYS", weight: "B", name: "システム" },
+      { id: "SYS-A", parent: "SYS", weight: "B" },
+      { id: "SYS-B", parent: "SYS", weight: "A(B)" },
+      { id: "SYS-C", parent: "SYS", weight: "B" },
+    ],
+    requirements: [
+      req("R-1", "SYS-A", "B", { name: "入力検知", text: "ドライバの操作量を検知する" }),
+      req("R-2", "SYS-B", "A(B)", { name: "冗長検知" }),
+      req("R-3", "SYS-C", "B"),
+      req("X-IN", undefined, undefined, { isExternal: true }),
+    ],
+    constraints: [
+      req("NF-1", "SYS", "B", { text: "G-1 と G-2 が同時侵害となる従属故障なきこと" }),
+      req("NF-2", "SYS", "B"),
+      req("NF-3", "SYS", "B"),
+    ],
+    interactions: [
+      { id: "I-1", source: "X-IN", targets: ["R-1"], name: "操作量" },
+      { id: "I-2", source: "R-1", targets: ["R-2", "R-3"] },
+    ],
+    groups: [
+      { id: "G-1", name: "Main Function", role: "intendedFunction", requirements: ["R-1"] },
+      { id: "G-2", name: "Safety Mechanism", role: "safetyMechanism", requirements: ["R-2"] },
+    ],
+    groupPairings: [{ id: "P-1", set: ["G-1", "G-2"] }],
+    requirementPairings: [{ id: "RP-1", set: ["R-1", "R-2"] }],
+    coexistences: [
+      { id: "CX-1", source: "SYS-A", target: { kind: "requirement", id: "R-2" } },
+      { id: "CX-2", source: "SYS-A", target: { kind: "group", id: "G-2" } },
+      { id: "CX-3", source: "SYS-C", target: { kind: "element", id: "SYS-B" } },
+    ],
+    constraintPairings: [
+      { id: "C-1", constraint: "NF-1", target: { kind: "group-pairing", id: "P-1" } },
+      { id: "C-2", constraint: "NF-2", target: { kind: "requirement-pairing", id: "RP-1" } },
+      { id: "C-3", constraint: "NF-3", target: { kind: "coexistence", id: "CX-1" } },
+      { id: "C-4", constraint: "NF-3", target: { kind: "coexistence", id: "CX-2" } },
+      { id: "C-5", constraint: "NF-3", target: { kind: "coexistence", id: "CX-3" } },
+    ],
+  };
+}

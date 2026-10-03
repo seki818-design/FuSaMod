@@ -173,18 +173,18 @@ package RedundantArchitecture {
     }
 
     package Allocations {
-        satisfy RedundantArchitecture::Requirements::'MFR-1' by RedundantArchitecture::Architecture::'ITEM'::'E-1'::'E-1-1';
-        satisfy RedundantArchitecture::Requirements::'SR-11' by RedundantArchitecture::Architecture::'ITEM'::'E-1'::'E-1-2';
-        satisfy RedundantArchitecture::Requirements::'SR-12' by RedundantArchitecture::Architecture::'ITEM'::'E-1'::'E-1-2';
-        satisfy RedundantArchitecture::Requirements::'MFR-2' by RedundantArchitecture::Architecture::'ITEM'::'E-2'::'E-2-1';
-        satisfy RedundantArchitecture::Requirements::'SR-21' by RedundantArchitecture::Architecture::'ITEM'::'E-2'::'E-2-2';
-        satisfy RedundantArchitecture::Requirements::'SR-22' by RedundantArchitecture::Architecture::'ITEM'::'E-2'::'E-2-2';
-        satisfy RedundantArchitecture::Requirements::'MFR-3' by RedundantArchitecture::Architecture::'ITEM'::'E-3'::'E-3-2';
-        satisfy RedundantArchitecture::Requirements::'SR-31' by RedundantArchitecture::Architecture::'ITEM'::'E-3'::'E-3-1';
-        satisfy RedundantArchitecture::Requirements::'SR-32' by RedundantArchitecture::Architecture::'ITEM'::'E-3'::'E-3-1';
-        satisfy RedundantArchitecture::Requirements::'SR-33' by RedundantArchitecture::Architecture::'ITEM'::'E-3'::'E-3-1';
-        satisfy RedundantArchitecture::Constraints::'NFSR-1' by RedundantArchitecture::Architecture::'ITEM'::'E-1';
-        satisfy RedundantArchitecture::Constraints::'NFSR-2' by RedundantArchitecture::Architecture::'ITEM'::'E-2';
-        satisfy RedundantArchitecture::Constraints::'NFSR-3' by RedundantArchitecture::Architecture::'ITEM'::'E-3';
+        satisfy RedundantArchitecture::Requirements::'MFR-1' by RedundantArchitecture::Architecture::'ITEM'.'E-1'.'E-1-1';
+        satisfy RedundantArchitecture::Requirements::'SR-11' by RedundantArchitecture::Architecture::'ITEM'.'E-1'.'E-1-2';
+        satisfy RedundantArchitecture::Requirements::'SR-12' by RedundantArchitecture::Architecture::'ITEM'.'E-1'.'E-1-2';
+        satisfy RedundantArchitecture::Requirements::'MFR-2' by RedundantArchitecture::Architecture::'ITEM'.'E-2'.'E-2-1';
+        satisfy RedundantArchitecture::Requirements::'SR-21' by RedundantArchitecture::Architecture::'ITEM'.'E-2'.'E-2-2';
+        satisfy RedundantArchitecture::Requirements::'SR-22' by RedundantArchitecture::Architecture::'ITEM'.'E-2'.'E-2-2';
+        satisfy RedundantArchitecture::Requirements::'MFR-3' by RedundantArchitecture::Architecture::'ITEM'.'E-3'.'E-3-2';
+        satisfy RedundantArchitecture::Requirements::'SR-31' by RedundantArchitecture::Architecture::'ITEM'.'E-3'.'E-3-1';
+        satisfy RedundantArchitecture::Requirements::'SR-32' by RedundantArchitecture::Architecture::'ITEM'.'E-3'.'E-3-1';
+        satisfy RedundantArchitecture::Requirements::'SR-33' by RedundantArchitecture::Architecture::'ITEM'.'E-3'.'E-3-1';
+        satisfy RedundantArchitecture::Constraints::'NFSR-1' by RedundantArchitecture::Architecture::'ITEM'.'E-1';
+        satisfy RedundantArchitecture::Constraints::'NFSR-2' by RedundantArchitecture::Architecture::'ITEM'.'E-2';
+        satisfy RedundantArchitecture::Constraints::'NFSR-3' by RedundantArchitecture::Architecture::'ITEM'.'E-3';
     }
 }

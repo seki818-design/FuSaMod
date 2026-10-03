@@ -45,7 +45,8 @@ export function exportSysml(m: ScdlModel, opts: ExportOptions): string {
     throw new ScdlSysmlError(`パッケージ名が不正です: ${root}`);
 
   const elementById = new Map(m.elements.map((e) => [e.id, e]));
-  const elementPath = (id: ScdlId): string => {
+  /** 入れ子のエレメントへの参照。dependency の端は `::`、satisfy の by(特徴連鎖)は先頭以降を `.` でたどる。 */
+  const elementPath = (id: ScdlId, chainSep: "::" | "." = "::"): string => {
     const chain: string[] = [];
     const seen = new Set<ScdlId>();
     for (let cur: ScdlId | undefined = id; cur !== undefined; cur = elementById.get(cur)?.parent) {
@@ -54,7 +55,8 @@ export function exportSysml(m: ScdlModel, opts: ExportOptions): string {
       if (!elementById.has(cur)) throw new ScdlSysmlError(`エレメントが存在しません: ${cur}`);
       chain.unshift(quoteName(cur));
     }
-    return [root, PACKAGES.architecture, ...chain].join("::");
+    const [top, ...rest] = chain;
+    return `${root}::${PACKAGES.architecture}::${top}${rest.map((c) => chainSep + c).join("")}`;
   };
   const ref = (pkg: string, id: ScdlId) => `${root}::${pkg}::${quoteName(id)}`;
   const known = {
@@ -203,7 +205,7 @@ export function exportSysml(m: ScdlModel, opts: ExportOptions): string {
   ] as const)
     for (const r of items) {
       if (r.allocation === undefined) continue;
-      line(2, `satisfy ${ref(pkg, r.id)} by ${elementPath(r.allocation)};`);
+      line(2, `satisfy ${ref(pkg, r.id)} by ${elementPath(r.allocation, ".")};`);
     }
   line(1, "}");
   line(0, "}");

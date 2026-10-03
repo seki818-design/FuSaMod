@@ -140,7 +140,8 @@ export function importSysml(src: string): ImportResult {
   };
   const qname = (): string[] => {
     const segs = [nameTok()];
-    while (isP("::")) {
+    // `::`(名前空間)と `.`(特徴連鎖)のどちらでもたどれる
+    while (isP("::") || isP(".")) {
       pos++;
       segs.push(nameTok());
     }

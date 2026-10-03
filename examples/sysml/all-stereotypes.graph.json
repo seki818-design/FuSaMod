@@ -1,0 +1,599 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes",
+      "name": "AllStereotypes"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::Architecture",
+      "name": "Architecture",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS",
+      "name": "SYS",
+      "owner": "AllStereotypes::Architecture"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-A'",
+      "name": "SYS-A",
+      "owner": "AllStereotypes::Architecture::SYS"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-B'",
+      "name": "SYS-B",
+      "owner": "AllStereotypes::Architecture::SYS"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-C'",
+      "name": "SYS-C",
+      "owner": "AllStereotypes::Architecture::SYS"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::Requirements",
+      "name": "Requirements",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'R-1'",
+      "name": "R-1",
+      "owner": "AllStereotypes::Requirements"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'R-2'",
+      "name": "R-2",
+      "owner": "AllStereotypes::Requirements"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'R-3'",
+      "name": "R-3",
+      "owner": "AllStereotypes::Requirements"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'X-IN'",
+      "name": "X-IN",
+      "owner": "AllStereotypes::Requirements"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::Constraints",
+      "name": "Constraints",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "AllStereotypes::Constraints::'NF-1'",
+      "name": "NF-1",
+      "owner": "AllStereotypes::Constraints"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "AllStereotypes::Constraints::'NF-2'",
+      "name": "NF-2",
+      "owner": "AllStereotypes::Constraints"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "AllStereotypes::Constraints::'NF-3'",
+      "name": "NF-3",
+      "owner": "AllStereotypes::Constraints"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::Groups",
+      "name": "Groups",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::Interactions",
+      "name": "Interactions",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::GroupPairings",
+      "name": "GroupPairings",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::RequirementPairings",
+      "name": "RequirementPairings",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::Coexistences",
+      "name": "Coexistences",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::ConstraintPairings",
+      "name": "ConstraintPairings",
+      "owner": "AllStereotypes"
+    },
+    {
+      "kind": "Package",
+      "qualifiedName": "AllStereotypes::Allocations",
+      "name": "Allocations",
+      "owner": "AllStereotypes"
+    }
+  ],
+  "dependencies": [
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::Interactions::'I-1'",
+      "name": "I-1",
+      "owner": "AllStereotypes::Interactions",
+      "client": [
+        "AllStereotypes::Requirements::'X-IN'"
+      ],
+      "supplier": [
+        "AllStereotypes::Requirements::'R-1'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::Interactions::'I-2'",
+      "name": "I-2",
+      "owner": "AllStereotypes::Interactions",
+      "client": [
+        "AllStereotypes::Requirements::'R-1'"
+      ],
+      "supplier": [
+        "AllStereotypes::Requirements::'R-2'",
+        "AllStereotypes::Requirements::'R-3'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::GroupPairings::'P-1'",
+      "name": "P-1",
+      "owner": "AllStereotypes::GroupPairings",
+      "client": [
+        "AllStereotypes::Groups::'G-1'"
+      ],
+      "supplier": [
+        "AllStereotypes::Groups::'G-2'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::RequirementPairings::'RP-1'",
+      "name": "RP-1",
+      "owner": "AllStereotypes::RequirementPairings",
+      "client": [
+        "AllStereotypes::Requirements::'R-1'"
+      ],
+      "supplier": [
+        "AllStereotypes::Requirements::'R-2'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::Coexistences::'CX-1'",
+      "name": "CX-1",
+      "owner": "AllStereotypes::Coexistences",
+      "client": [
+        "AllStereotypes::Architecture::SYS::'SYS-A'"
+      ],
+      "supplier": [
+        "AllStereotypes::Requirements::'R-2'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::Coexistences::'CX-2'",
+      "name": "CX-2",
+      "owner": "AllStereotypes::Coexistences",
+      "client": [
+        "AllStereotypes::Architecture::SYS::'SYS-A'"
+      ],
+      "supplier": [
+        "AllStereotypes::Groups::'G-2'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::Coexistences::'CX-3'",
+      "name": "CX-3",
+      "owner": "AllStereotypes::Coexistences",
+      "client": [
+        "AllStereotypes::Architecture::SYS::'SYS-C'"
+      ],
+      "supplier": [
+        "AllStereotypes::Architecture::SYS::'SYS-B'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-1'",
+      "name": "C-1",
+      "owner": "AllStereotypes::ConstraintPairings",
+      "client": [
+        "AllStereotypes::Constraints::'NF-1'"
+      ],
+      "supplier": [
+        "AllStereotypes::GroupPairings::'P-1'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-2'",
+      "name": "C-2",
+      "owner": "AllStereotypes::ConstraintPairings",
+      "client": [
+        "AllStereotypes::Constraints::'NF-2'"
+      ],
+      "supplier": [
+        "AllStereotypes::RequirementPairings::'RP-1'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-3'",
+      "name": "C-3",
+      "owner": "AllStereotypes::ConstraintPairings",
+      "client": [
+        "AllStereotypes::Constraints::'NF-3'"
+      ],
+      "supplier": [
+        "AllStereotypes::Coexistences::'CX-1'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-4'",
+      "name": "C-4",
+      "owner": "AllStereotypes::ConstraintPairings",
+      "client": [
+        "AllStereotypes::Constraints::'NF-3'"
+      ],
+      "supplier": [
+        "AllStereotypes::Coexistences::'CX-2'"
+      ]
+    },
+    {
+      "kind": "Dependency",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-5'",
+      "name": "C-5",
+      "owner": "AllStereotypes::ConstraintPairings",
+      "client": [
+        "AllStereotypes::Constraints::'NF-3'"
+      ],
+      "supplier": [
+        "AllStereotypes::Coexistences::'CX-3'"
+      ]
+    }
+  ],
+  "metadata": [
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS/@ScdlElement#1",
+      "owner": "AllStereotypes::Architecture::SYS",
+      "type": "ScdlElement",
+      "annotated": [
+        "AllStereotypes::Architecture::SYS"
+      ],
+      "attributes": {
+        "title": "システム",
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-A'/@ScdlElement#1",
+      "owner": "AllStereotypes::Architecture::SYS::'SYS-A'",
+      "type": "ScdlElement",
+      "annotated": [
+        "AllStereotypes::Architecture::SYS::'SYS-A'"
+      ],
+      "attributes": {
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-B'/@ScdlElement#1",
+      "owner": "AllStereotypes::Architecture::SYS::'SYS-B'",
+      "type": "ScdlElement",
+      "annotated": [
+        "AllStereotypes::Architecture::SYS::'SYS-B'"
+      ],
+      "attributes": {
+        "weight": "A",
+        "decomposedFrom": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-C'/@ScdlElement#1",
+      "owner": "AllStereotypes::Architecture::SYS::'SYS-C'",
+      "type": "ScdlElement",
+      "annotated": [
+        "AllStereotypes::Architecture::SYS::'SYS-C'"
+      ],
+      "attributes": {
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'R-1'/@ScdlRequirement#1",
+      "owner": "AllStereotypes::Requirements::'R-1'",
+      "type": "ScdlRequirement",
+      "annotated": [
+        "AllStereotypes::Requirements::'R-1'"
+      ],
+      "attributes": {
+        "title": "入力検知",
+        "note": "ドライバの操作量を検知する",
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'R-2'/@ScdlRequirement#1",
+      "owner": "AllStereotypes::Requirements::'R-2'",
+      "type": "ScdlRequirement",
+      "annotated": [
+        "AllStereotypes::Requirements::'R-2'"
+      ],
+      "attributes": {
+        "title": "冗長検知",
+        "weight": "A",
+        "decomposedFrom": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'R-3'/@ScdlRequirement#1",
+      "owner": "AllStereotypes::Requirements::'R-3'",
+      "type": "ScdlRequirement",
+      "annotated": [
+        "AllStereotypes::Requirements::'R-3'"
+      ],
+      "attributes": {
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Requirements::'X-IN'/@ScdlRequirement#1",
+      "owner": "AllStereotypes::Requirements::'X-IN'",
+      "type": "ScdlRequirement",
+      "annotated": [
+        "AllStereotypes::Requirements::'X-IN'"
+      ],
+      "attributes": {
+        "isExternal": true
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Constraints::'NF-1'/@ScdlConstraint#1",
+      "owner": "AllStereotypes::Constraints::'NF-1'",
+      "type": "ScdlConstraint",
+      "annotated": [
+        "AllStereotypes::Constraints::'NF-1'"
+      ],
+      "attributes": {
+        "note": "G-1 と G-2 が同時侵害となる従属故障なきこと",
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Constraints::'NF-2'/@ScdlConstraint#1",
+      "owner": "AllStereotypes::Constraints::'NF-2'",
+      "type": "ScdlConstraint",
+      "annotated": [
+        "AllStereotypes::Constraints::'NF-2'"
+      ],
+      "attributes": {
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Constraints::'NF-3'/@ScdlConstraint#1",
+      "owner": "AllStereotypes::Constraints::'NF-3'",
+      "type": "ScdlConstraint",
+      "annotated": [
+        "AllStereotypes::Constraints::'NF-3'"
+      ],
+      "attributes": {
+        "weight": "B"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Groups::'G-1'",
+      "name": "G-1",
+      "owner": "AllStereotypes::Groups",
+      "type": "ScdlRequirementGroup",
+      "annotated": [
+        "AllStereotypes::Requirements::'R-1'"
+      ],
+      "attributes": {
+        "title": "Main Function",
+        "role": "intendedFunction"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Groups::'G-2'",
+      "name": "G-2",
+      "owner": "AllStereotypes::Groups",
+      "type": "ScdlRequirementGroup",
+      "annotated": [
+        "AllStereotypes::Requirements::'R-2'"
+      ],
+      "attributes": {
+        "title": "Safety Mechanism",
+        "role": "safetyMechanism"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Interactions::'I-1'/@ScdlInteraction#1",
+      "owner": "AllStereotypes::Interactions::'I-1'",
+      "type": "ScdlInteraction",
+      "annotated": [
+        "AllStereotypes::Interactions::'I-1'"
+      ],
+      "attributes": {
+        "title": "操作量"
+      }
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Interactions::'I-2'/@ScdlInteraction#1",
+      "owner": "AllStereotypes::Interactions::'I-2'",
+      "type": "ScdlInteraction",
+      "annotated": [
+        "AllStereotypes::Interactions::'I-2'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::GroupPairings::'P-1'/@ScdlRequirementGroupPairing#1",
+      "owner": "AllStereotypes::GroupPairings::'P-1'",
+      "type": "ScdlRequirementGroupPairing",
+      "annotated": [
+        "AllStereotypes::GroupPairings::'P-1'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::RequirementPairings::'RP-1'/@ScdlRequirementPairing#1",
+      "owner": "AllStereotypes::RequirementPairings::'RP-1'",
+      "type": "ScdlRequirementPairing",
+      "annotated": [
+        "AllStereotypes::RequirementPairings::'RP-1'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Coexistences::'CX-1'/@ScdlCoexistence#1",
+      "owner": "AllStereotypes::Coexistences::'CX-1'",
+      "type": "ScdlCoexistence",
+      "annotated": [
+        "AllStereotypes::Coexistences::'CX-1'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Coexistences::'CX-2'/@ScdlCoexistence#1",
+      "owner": "AllStereotypes::Coexistences::'CX-2'",
+      "type": "ScdlCoexistence",
+      "annotated": [
+        "AllStereotypes::Coexistences::'CX-2'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::Coexistences::'CX-3'/@ScdlCoexistence#1",
+      "owner": "AllStereotypes::Coexistences::'CX-3'",
+      "type": "ScdlCoexistence",
+      "annotated": [
+        "AllStereotypes::Coexistences::'CX-3'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-1'/@ScdlConstraintPairing#1",
+      "owner": "AllStereotypes::ConstraintPairings::'C-1'",
+      "type": "ScdlConstraintPairing",
+      "annotated": [
+        "AllStereotypes::ConstraintPairings::'C-1'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-2'/@ScdlConstraintPairing#1",
+      "owner": "AllStereotypes::ConstraintPairings::'C-2'",
+      "type": "ScdlConstraintPairing",
+      "annotated": [
+        "AllStereotypes::ConstraintPairings::'C-2'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-3'/@ScdlConstraintPairing#1",
+      "owner": "AllStereotypes::ConstraintPairings::'C-3'",
+      "type": "ScdlConstraintPairing",
+      "annotated": [
+        "AllStereotypes::ConstraintPairings::'C-3'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-4'/@ScdlConstraintPairing#1",
+      "owner": "AllStereotypes::ConstraintPairings::'C-4'",
+      "type": "ScdlConstraintPairing",
+      "annotated": [
+        "AllStereotypes::ConstraintPairings::'C-4'"
+      ],
+      "attributes": {}
+    },
+    {
+      "kind": "MetadataUsage",
+      "qualifiedName": "AllStereotypes::ConstraintPairings::'C-5'/@ScdlConstraintPairing#1",
+      "owner": "AllStereotypes::ConstraintPairings::'C-5'",
+      "type": "ScdlConstraintPairing",
+      "annotated": [
+        "AllStereotypes::ConstraintPairings::'C-5'"
+      ],
+      "attributes": {}
+    }
+  ],
+  "satisfies": [
+    {
+      "requirement": "AllStereotypes::Requirements::'R-1'",
+      "by": "AllStereotypes::Architecture::SYS::'SYS-A'"
+    },
+    {
+      "requirement": "AllStereotypes::Requirements::'R-2'",
+      "by": "AllStereotypes::Architecture::SYS::'SYS-B'"
+    },
+    {
+      "requirement": "AllStereotypes::Requirements::'R-3'",
+      "by": "AllStereotypes::Architecture::SYS::'SYS-C'"
+    },
+    {
+      "requirement": "AllStereotypes::Constraints::'NF-1'",
+      "by": "AllStereotypes::Architecture::SYS"
+    },
+    {
+      "requirement": "AllStereotypes::Constraints::'NF-2'",
+      "by": "AllStereotypes::Architecture::SYS"
+    },
+    {
+      "requirement": "AllStereotypes::Constraints::'NF-3'",
+      "by": "AllStereotypes::Architecture::SYS"
+    }
+  ]
+}

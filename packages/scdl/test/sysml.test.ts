@@ -3,10 +3,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { exportSysml, importSysml, quoteName, ScdlSysmlError, validateScdl, type ScdlModel } from "../src/index.js";
-import { redundantArchitecture } from "./fixtures.js";
+import { allStereotypes, redundantArchitecture } from "./fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const exampleFile = resolve(here, "../../../examples/sysml/redundant-architecture.sysml");
 
 const exported = () => exportSysml(redundantArchitecture(), { packageName: "RedundantArchitecture" });
 
@@ -21,17 +20,28 @@ describe("SysML v2 書き出し", () => {
     expect(t).toContain("metadata 'RG-1' : ScdlRequirementGroup about RedundantArchitecture::Requirements::'MFR-1'");
     expect(t).toContain("role = ScdlGroupRole::intendedFunction;");
     expect(t).toContain(
-      "satisfy RedundantArchitecture::Requirements::'MFR-1' by RedundantArchitecture::Architecture::'ITEM'::'E-1'::'E-1-1';",
+      "satisfy RedundantArchitecture::Requirements::'MFR-1' by RedundantArchitecture::Architecture::'ITEM'.'E-1'.'E-1-1';",
     );
   });
 
-  it("コミット済みのサンプルと一致する(UPDATE_EXAMPLES=1 で再生成)", () => {
+  it.each([
+    ["redundant-architecture.sysml", () => exported()],
+    ["all-stereotypes.sysml", () => exportSysml(allStereotypes(), { packageName: "AllStereotypes" })],
+  ])("コミット済みのサンプル %s と一致する(UPDATE_EXAMPLES=1 で再生成)", (name, gen) => {
+    const file = resolve(here, "../../../examples/sysml", name);
     if (process.env["UPDATE_EXAMPLES"]) {
-      mkdirSync(dirname(exampleFile), { recursive: true });
-      writeFileSync(exampleFile, exported());
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, gen());
     }
-    expect(existsSync(exampleFile)).toBe(true);
-    expect(readFileSync(exampleFile, "utf8")).toBe(exported());
+    expect(existsSync(file)).toBe(true);
+    expect(readFileSync(file, "utf8")).toBe(gen());
+  });
+
+  it("全ステレオタイプの例は検証を通り、往復できる", () => {
+    expect(validateScdl(allStereotypes())).toEqual([]);
+    const { model, issues } = importSysml(exportSysml(allStereotypes(), { packageName: "X" }));
+    expect(issues).toEqual([]);
+    expect(model).toEqual(allStereotypes());
   });
 
   it("参照切れ・空グループ・不正な重み付けは書き出さない", () => {

@@ -67,7 +67,7 @@ library package SCDL {
         doc /* 要求。配置先は satisfy で表す。 */
         :>> annotatedElement : SysML::RequirementUsage;
         /* システム境界の外側にあたる相手側の要求(図では表示が省略される)(拡張)。 */
-        attribute isExternal : Boolean = false;
+        attribute isExternal : Boolean default false;
     }
 
     metadata def ScdlConstraint :> ScdlWeightable {

@@ -10,6 +10,7 @@ SysML v2 に準拠したシステムモデリングと、ISO 26262 / AIAG-VDA �
 | `packages/scdl` | ASAM SCDL v1.6.0 のメタモデル、検証、SysML v2 テキストとの相互変換(描画は後続) |
 | `libs/sysml/scdl` | SCDL ステレオタイプ・ライブラリ(SysML v2 の `metadata def`) |
 | `examples/sysml` | ライブラリを使った SysML v2 の例(`@fusamod/scdl` が生成) |
+| `tools/sysml-check` | 公式 SysML v2 パイロット実装での検証(`run.sh`)と要素グラフの抽出(`extract.sh`)。初回に約 120MB を取得 |
 | `docs/` | 設計方針・開発計画・レビューゲート・ADR |
 
 ## 開発
@@ -26,3 +27,10 @@ pnpm typecheck
 - [開発体制・計画](docs/plan.md)
 - [レビューゲート](docs/review-gates.md)
 - ADR: [docs/adr/](docs/adr/)
+
+## SysML v2 の検証
+
+```sh
+./tools/sysml-check/run.sh      # SCDL ライブラリと examples/sysml を公式実装で検証(Java 21+ が必要)
+./tools/sysml-check/extract.sh  # examples/sysml/*.graph.json を再生成
+```

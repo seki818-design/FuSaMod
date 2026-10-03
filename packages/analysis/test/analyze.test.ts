@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeProject, parseSafetyData, recomputePuzzle } from "../src/index.js";
-import { demoGraph, demoSafety, GD, INV, MOT, PT, SM, VCU, VEH } from "./helpers.js";
+import { demoGraph, demoSafety, GD, INV, PT, SM, VCU, VEH } from "./helpers.js";
 
 describe("デモプロジェクトの解析", () => {
   const a = analyzeProject(demoGraph(), demoSafety());

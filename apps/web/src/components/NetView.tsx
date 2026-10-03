@@ -26,7 +26,7 @@ export function NetView() {
         <span className="muted">上位の FM は下位 FMEA の FE と同じノードです。ノードを選ぶと、その要素に移ります。</span>
         <button className="btn small" onClick={() => openTab("fmea")}>FMEA シートで編集</button>
       </div>
-      <div className="diagram" style={{ minHeight: 160 }} tabIndex={0} aria-label="エラーネット">
+      <div className="diagram" role="region" style={{ minHeight: 160 }} tabIndex={0} aria-label="エラーネット">
         <svg width={drawing.width} height={drawing.height + 24} role="group" aria-label="エラーネット">
           <defs><marker id="arrow-net" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor" /></marker></defs>
           {(["cause", "mode", "effect"] as const).map((c) => <text key={c} className="svg-muted" x={c === "cause" ? 8 : c === "mode" ? 308 : 608} y={14} fontSize={12}>{cols[c]}</text>)}

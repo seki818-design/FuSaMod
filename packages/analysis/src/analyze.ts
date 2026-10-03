@@ -103,164 +103,127 @@ export function recomputePuzzle(a: ProjectAnalysis, opts: { excludeSources?: str
   return { levels: a.puzzle.levels, cells };
 }
 
-/**
- * モデル(SysML の要素グラフ)と安全分析データを突き合わせ、ネット・FMEA・整合性・パズルビュー・トレース・SCDL を一括で解析する。
- * 純粋関数。入力は変更しない。
- */
-export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnalysis {
-  const derived = deriveNet(graph);
-  const net: SafetyNet = { ...derived.net, failures: s.failures, links: s.links };
+/** 指摘がどの視点・構造要素の問題かを引くための索引。 */
+type Locate = (ref: string | undefined) => { viewpoint: Viewpoint; elementId?: ElementId } | undefined;
+
+function makeLocator(net: SafetyNet, derived: DerivedNet, s: SafetyData): Locate {
   const idx = buildIndex(net);
-  const levelOf = computeLevels(net, s.levelOverrides ?? {});
-  const issues: AnalysisIssue[] = [];
-
-  // --- 指摘の所在(視点・要素)を引くための索引 ---
+  const linkById = new Map(net.links.map((l) => [l.id, l]));
   const failureOwner = (fid: string) => idx.fn.get(idx.failure.get(fid)?.functionId ?? "")?.ownerId;
-  const intendedById = new Map(s.intendedFunctions.map((f) => [f.id, f]));
-  const mechById = new Map(s.mechanisms.map((m) => [m.id, m]));
-  const pairById = new Map(s.pairs.map((p) => [p.id, p]));
-  const safetyReqById = new Map(s.safetyRequirements.map((r) => [r.id, r]));
+  const intended = new Map(s.intendedFunctions.map((f) => [f.id, f]));
+  const mech = new Map(s.mechanisms.map((m) => [m.id, m]));
+  const pairs = new Map(s.pairs.map((p) => [p.id, p]));
+  const safetyReq = new Map(s.safetyRequirements.map((r) => [r.id, r]));
   const sysmlReq = new Map(derived.requirements.map((r) => [r.id, r]));
-  const decompById = new Map(s.decompositions.map((d) => [d.id, d]));
-  const treeById = new Map(s.faultTrees.map((t) => [t.id, t]));
-  const rootEl = net.elements.find((e) => e.parentId === undefined)?.id;
-
-  const locate = (ref: string | undefined): { viewpoint: Viewpoint; elementId?: ElementId } | undefined => {
+  const decomps = new Map(s.decompositions.map((d) => [d.id, d]));
+  const trees = new Map(s.faultTrees.map((t) => [t.id, t]));
+  const withEl = (viewpoint: Viewpoint, elementId: ElementId | undefined) =>
+    elementId !== undefined && idx.element.has(elementId) ? { viewpoint, elementId } : { viewpoint };
+  return (ref) => {
     if (ref === undefined) return undefined;
     if (idx.element.has(ref)) return { viewpoint: "structure", elementId: ref };
     const fn = idx.fn.get(ref);
     if (fn) return { viewpoint: "behavior", elementId: fn.ownerId };
     if (idx.failure.has(ref)) return withEl("safety", failureOwner(ref));
-    const link = net.links.find((l) => l.id === ref);
+    const link = linkById.get(ref);
     if (link) return withEl("safety", failureOwner(link.effectId));
     const sr = sysmlReq.get(ref);
     if (sr) return withEl("requirements", sr.satisfiedBy[0]);
-    const f = intendedById.get(ref);
+    const f = intended.get(ref);
     if (f) return withEl("safety", f.elementId);
-    const m = mechById.get(ref);
+    const m = mech.get(ref);
     if (m) return withEl("safety", m.elementId);
-    const p = pairById.get(ref);
-    if (p) return withEl("safety", intendedById.get(p.intendedFunctionId)?.elementId);
-    const r = safetyReqById.get(ref);
+    const p = pairs.get(ref);
+    if (p) return withEl("safety", intended.get(p.intendedFunctionId)?.elementId);
+    const r = safetyReq.get(ref);
     if (r) return withEl("requirements", r.allocatedTo);
-    const d = decompById.get(ref);
-    if (d) return withEl("safety", safetyReqById.get(d.parentRequirementId)?.allocatedTo);
-    const t = treeById.get(ref);
+    const d = decomps.get(ref);
+    if (d) return withEl("safety", safetyReq.get(d.parentRequirementId)?.allocatedTo);
+    const t = trees.get(ref);
     if (t) return withEl("safety", failureOwner(t.top));
     return undefined;
   };
-  const withEl = (viewpoint: Viewpoint, elementId: ElementId | undefined) =>
-    elementId !== undefined && idx.element.has(elementId) ? { viewpoint, elementId } : { viewpoint };
+}
 
-  const defaultViewpoint: Record<string, Viewpoint> = {
-    derive: "behavior", net: "safety", consistency: "behavior", hara: "safety", pairing: "safety",
-    decomposition: "safety", "safety-req": "requirements", fta: "safety", fmea: "safety", scdl: "safety", trace: "requirements",
-  };
-  const push = (source: string, list: Issue[], forced?: Viewpoint) => {
-    for (const i of list) {
-      const loc = locate(i.ref);
-      issues.push({
-        ...i,
-        source,
-        viewpoint: forced ?? loc?.viewpoint ?? defaultViewpoint[source] ?? "safety",
-        ...(loc?.elementId !== undefined ? { elementId: loc.elementId } : {}),
-      });
-    }
-  };
+const DEFAULT_VIEWPOINT: Record<string, Viewpoint> = {
+  derive: "behavior", net: "safety", consistency: "behavior", hara: "safety", pairing: "safety",
+  decomposition: "safety", "safety-req": "requirements", fta: "safety", fmea: "safety", scdl: "safety", trace: "requirements",
+};
 
-  // --- 1. 導出時の指摘 / ネットの整合性 ---
-  push("derive", derived.deriveIssues);
-  push("net", validateNet(net));
-
-  // --- 2. 階層をまたいだ整合性(構造・振る舞い・要求) ---
-  const consistency: Issue[] = [];
-  const childElements = new Map<ElementId, ElementId[]>();
-  for (const e of net.elements) if (e.parentId) childElements.set(e.parentId, [...(childElements.get(e.parentId) ?? []), e.id]);
-  for (const f of net.functions) {
-    const kids = childElements.get(f.ownerId) ?? [];
-    if (kids.length > 0 && !net.functions.some((g) => g.parentFunctionId === f.id))
-      consistency.push({ code: "FUNCTION_NOT_DECOMPOSED", severity: "warning", message: "下位要素があるのに、この機能が下位の機能に分解されていません", ref: f.id });
-  }
+/** 階層をまたいだ整合性(構造・振る舞い・要求): 機能の分解、機能の無い要素、満たされない要求。 */
+function crossLayerIssues(net: SafetyNet, derived: DerivedNet): Issue[] {
+  const out: Issue[] = [];
+  const hasChildren = new Set(net.elements.filter((e) => e.parentId).map((e) => e.parentId!));
+  const decomposed = new Set(net.functions.map((g) => g.parentFunctionId).filter((x): x is string => x !== undefined));
+  const owners = new Set(net.functions.map((f) => f.ownerId));
+  for (const f of net.functions)
+    if (hasChildren.has(f.ownerId) && !decomposed.has(f.id))
+      out.push({ code: "FUNCTION_NOT_DECOMPOSED", severity: "warning", message: "下位要素があるのに、この機能が下位の機能に分解されていません", ref: f.id });
   for (const e of net.elements)
-    if (!net.functions.some((f) => f.ownerId === e.id))
-      consistency.push({ code: "ELEMENT_NO_FUNCTION", severity: "warning", message: "この構造要素が担当する機能がありません", ref: e.id });
+    if (!owners.has(e.id))
+      out.push({ code: "ELEMENT_NO_FUNCTION", severity: "warning", message: "この構造要素が担当する機能がありません", ref: e.id });
   for (const r of derived.requirements)
     if (r.satisfiedBy.length === 0)
-      consistency.push({ code: "REQUIREMENT_NOT_SATISFIED", severity: "warning", message: "どの構造要素にも satisfy されていない要求です", ref: r.id });
-  push("consistency", consistency);
+      out.push({ code: "REQUIREMENT_NOT_SATISFIED", severity: "warning", message: "どの構造要素にも satisfy されていない要求です", ref: r.id });
+  return out;
+}
 
-  // --- 3. 安全分析のデータ ---
-  push("hara", validateHara(s.hara));
-
-  const pairingIssues: Issue[] = [];
+/** 意図機能・安全機構・安全要求の参照整合。 */
+function referenceIssues(net: SafetyNet, s: SafetyData): { pairing: Issue[]; safetyReq: Issue[] } {
+  const known = new Set(net.elements.map((e) => e.id));
+  const reqIds = new Set(s.safetyRequirements.map((r) => r.id));
+  const pairing: Issue[] = [];
   for (const x of [...s.intendedFunctions, ...s.mechanisms])
-    if (!idx.element.has(x.elementId))
-      pairingIssues.push({ code: "UNKNOWN_ELEMENT", severity: "error", message: `構造要素が存在しません: ${x.elementId}`, ref: x.id });
-  push("pairing", [...pairingIssues, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
-
-  const safetyReqIssues: Issue[] = [];
+    if (!known.has(x.elementId)) pairing.push({ code: "UNKNOWN_ELEMENT", severity: "error", message: `構造要素が存在しません: ${x.elementId}`, ref: x.id });
+  const safetyReq: Issue[] = [];
   for (const r of s.safetyRequirements) {
-    if (r.allocatedTo !== undefined && !idx.element.has(r.allocatedTo))
-      safetyReqIssues.push({ code: "UNKNOWN_ELEMENT", severity: "error", message: `配置先の構造要素が存在しません: ${r.allocatedTo}`, ref: r.id });
-    if (r.parentId !== undefined && !safetyReqById.has(r.parentId))
-      safetyReqIssues.push({ code: "UNKNOWN_REF", severity: "error", message: `上位の要求が存在しません: ${r.parentId}`, ref: r.id });
+    if (r.allocatedTo !== undefined && !known.has(r.allocatedTo))
+      safetyReq.push({ code: "UNKNOWN_ELEMENT", severity: "error", message: `配置先の構造要素が存在しません: ${r.allocatedTo}`, ref: r.id });
+    if (r.parentId !== undefined && !reqIds.has(r.parentId))
+      safetyReq.push({ code: "UNKNOWN_REF", severity: "error", message: `上位の要求が存在しません: ${r.parentId}`, ref: r.id });
     if (r.asil !== "QM" && r.allocatedTo === undefined)
-      safetyReqIssues.push({ code: "REQ_NOT_ALLOCATED", severity: "warning", message: `ASIL ${r.asil} の安全要求が構造要素に配置されていません`, ref: r.id });
+      safetyReq.push({ code: "REQ_NOT_ALLOCATED", severity: "warning", message: `ASIL ${r.asil} の安全要求が構造要素に配置されていません`, ref: r.id });
   }
-  push("safety-req", safetyReqIssues);
-  push("decomposition", validateDecompositions(s.safetyRequirements, s.decompositions));
+  return { pairing, safetyReq };
+}
 
+function faultTreeIssues(net: SafetyNet, s: SafetyData): Issue[] {
+  const failures = new Set(net.failures.map((f) => f.id));
+  const out: Issue[] = [];
   for (const t of s.faultTrees) {
     const list = validateFaultTree(t);
     for (const n of t.nodes)
-      if (n.failureId !== undefined && !idx.failure.has(n.failureId))
+      if (n.failureId !== undefined && !failures.has(n.failureId))
         list.push({ code: "FT_UNKNOWN_FAILURE", severity: "error", message: `対応する故障ノードが存在しません: ${n.failureId}`, ref: n.id });
-    push("fta", list.map((i) => (i.ref !== undefined && t.nodes.some((n) => n.id === i.ref) ? { ...i, ref: t.id } : i)));
+    // ノードの指摘は、ツリー全体の指摘として扱う
+    out.push(...list.map((i) => (i.ref !== undefined && t.nodes.some((n) => n.id === i.ref) ? { ...i, ref: t.id } : i)));
   }
+  return out;
+}
 
-  // --- 4. FMEA(ネットの射影)と AP 表 ---
-  let ap: ApLookup | undefined;
-  if (s.apTable && s.apTable.length > 0) {
-    try {
-      ap = compileApTable(s.apTable);
-    } catch (e) {
-      push("fmea", [{ code: "AP_TABLE_INVALID", severity: "error", message: `AP 表が不正です: ${(e as Error).message}` }]);
-    }
-  } else {
-    push("fmea", [{ code: "AP_TABLE_MISSING", severity: "warning", message: "AIAG-VDA の AP 表が未設定です(RPN のみ表示します)。ハンドブックの正式な表を設定してください" }]);
+function compileAp(s: SafetyData): { ap?: ApLookup; issues: Issue[] } {
+  if (!s.apTable || s.apTable.length === 0)
+    return { issues: [{ code: "AP_TABLE_MISSING", severity: "warning", message: "AIAG-VDA の AP 表が未設定です(RPN のみ表示します)。ハンドブックの正式な表を設定してください" }] };
+  try {
+    return { ap: compileApTable(s.apTable), issues: [] };
+  } catch (e) {
+    return { issues: [{ code: "AP_TABLE_INVALID", severity: "error", message: `AP 表が不正です: ${(e as Error).message}` }] };
   }
-  const fmea: Record<ElementId, FmeaView> = {};
-  let maxRpn: number | undefined;
+}
+
+function buildPuzzle(a: Pick<ProjectAnalysis, "net" | "levelOf" | "issues" | "derived">, s: SafetyData): Puzzle {
+  const { net, levelOf, issues, derived } = a;
+  const fnOwner = new Map(net.functions.map((f) => [f.id, f.ownerId]));
+  const failureFn = new Map(net.failures.map((x) => [x.id, x.functionId]));
+  const failureOwner = (fid: string) => fnOwner.get(failureFn.get(fid) ?? "");
+  const rootEl = net.elements.find((e) => e.parentId === undefined)?.id;
+  const byLevel = new Map<string, string[]>();
   for (const e of net.elements) {
-    if (!net.functions.some((f) => f.ownerId === e.id)) continue;
-    const v = buildFmeaView(net, e.id, ap);
-    fmea[e.id] = v;
-    for (const row of v.rows) for (const c of row.causes) if (c.rpn !== undefined && (maxRpn === undefined || c.rpn > maxRpn)) maxRpn = c.rpn;
+    const k = levelOf[e.id];
+    if (k !== undefined) byLevel.set(k, [...(byLevel.get(k) ?? []), e.id]);
   }
-
-  // --- 5. SCDL ---
-  const mapped = toScdl(net, s);
-  push("scdl", [...mapped.issues, ...validateScdl(mapped.model)]);
-
-  // --- 6. トレース ---
-  const trace = buildTrace(derived, s, levelOf);
-  push(
-    "trace",
-    trace.uncovered.map((id) => ({
-      code: "TRACE_UNCOVERED",
-      severity: "warning" as const,
-      message: "どの構造要素にも紐づいていない要求です",
-      ref: id,
-    })),
-  );
-
-  // --- パズルビュー ---
-  const levelElements = (k: LevelKey) => net.elements.filter((e) => levelOf[e.id] === k).map((e) => e.id);
-  const cells = Object.fromEntries(
-    LEVELS.map((l) => [l.key, Object.fromEntries(["requirements", "structure", "behavior", "safety"].map((v) => [v, newCell()]))]),
-  ) as Record<LevelKey, Record<Viewpoint, PuzzleCell>>;
-  const levelOfRef = (elementId: ElementId | undefined): LevelKey =>
-    elementId !== undefined && levelOf[elementId] ? levelOf[elementId]! : rootEl !== undefined ? levelOf[rootEl] ?? "system" : "system";
+  const levelElements = (k: LevelKey) => byLevel.get(k) ?? [];
+  const cells = Object.fromEntries(LEVELS.map((l) => [l.key, Object.fromEntries(VIEWPOINTS.map((v) => [v.key, newCell()]))])) as Record<LevelKey, Record<Viewpoint, PuzzleCell>>;
   for (const l of LEVELS) {
     const ids = new Set(levelElements(l.key));
     cells[l.key].structure.count = ids.size;
@@ -274,31 +237,75 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
       s.mechanisms.filter((m) => ids.has(m.elementId)).length +
       (l.key === "system" ? s.hara.goals.length : 0);
   }
+  const levelOfRef = (elementId: ElementId | undefined): LevelKey =>
+    elementId !== undefined && levelOf[elementId] ? levelOf[elementId]! : rootEl !== undefined ? levelOf[rootEl] ?? "system" : "system";
   for (const i of issues) {
     const cell = cells[levelOfRef(i.elementId)][i.viewpoint];
     if (i.severity === "error") cell.errors++;
     else cell.warnings++;
   }
-  for (const l of LEVELS) {
-    const exists = levelElements(l.key).length > 0;
+  for (const l of LEVELS)
     for (const v of VIEWPOINTS) {
       const c = cells[l.key][v.key];
-      c.status = !exists ? "none" : c.errors > 0 ? "inconsistent" : c.warnings > 0 ? "review" : c.count === 0 ? "undetermined" : "consistent";
+      c.status = levelElements(l.key).length === 0 ? "none" : c.errors > 0 ? "inconsistent" : c.warnings > 0 ? "review" : c.count === 0 ? "undetermined" : "consistent";
     }
-  }
-  const puzzle: Puzzle = {
-    levels: LEVELS.map((l) => ({ key: l.key, label: l.label, elementIds: levelElements(l.key) })),
-    cells,
+  return { levels: LEVELS.map((l) => ({ key: l.key, label: l.label, elementIds: levelElements(l.key) })), cells };
+}
+
+/**
+ * モデル(SysML の要素グラフ)と安全分析データを突き合わせ、ネット・FMEA・整合性・パズルビュー・トレース・SCDL を一括で解析する。
+ * 純粋関数。入力は変更しない。
+ */
+export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnalysis {
+  const derived = deriveNet(graph);
+  const net: SafetyNet = { ...derived.net, failures: s.failures, links: s.links };
+  const levelOf = computeLevels(net, s.levelOverrides ?? {});
+  const locate = makeLocator(net, derived, s);
+  const issues: AnalysisIssue[] = [];
+  const push = (source: string, list: Issue[]) => {
+    for (const i of list) {
+      const loc = locate(i.ref);
+      issues.push({
+        ...i,
+        source,
+        viewpoint: loc?.viewpoint ?? DEFAULT_VIEWPOINT[source] ?? "safety",
+        ...(loc?.elementId !== undefined ? { elementId: loc.elementId } : {}),
+      });
+    }
   };
 
+  push("derive", derived.deriveIssues);
+  push("net", validateNet(net));
+  push("consistency", crossLayerIssues(net, derived));
+  push("hara", validateHara(s.hara));
+  const refs = referenceIssues(net, s);
+  push("pairing", [...refs.pairing, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
+  push("safety-req", refs.safetyReq);
+  push("decomposition", validateDecompositions(s.safetyRequirements, s.decompositions));
+  push("fta", faultTreeIssues(net, s));
+
+  const { ap, issues: apIssues } = compileAp(s);
+  push("fmea", apIssues);
+  const fmea: Record<ElementId, FmeaView> = {};
+  let maxRpn: number | undefined;
+  const fnOwners = new Set(net.functions.map((f) => f.ownerId));
+  const netIdx = buildIndex(net);
+  for (const e of net.elements) {
+    if (!fnOwners.has(e.id)) continue;
+    const v = buildFmeaView(net, e.id, ap, netIdx);
+    fmea[e.id] = v;
+    for (const row of v.rows) for (const c of row.causes) if (c.rpn !== undefined && (maxRpn === undefined || c.rpn > maxRpn)) maxRpn = c.rpn;
+  }
+
+  const mapped = toScdl(net, s);
+  push("scdl", [...mapped.issues, ...validateScdl(mapped.model)]);
+  const trace = buildTrace(derived, s, levelOf);
+  push("trace", trace.uncovered.map((id) => ({ code: "TRACE_UNCOVERED", severity: "warning" as const, message: "どの構造要素にも紐づいていない要求です", ref: id })));
+
   return {
-    net,
-    derived,
-    levelOf,
-    issues,
-    fmea,
+    net, derived, levelOf, issues, fmea,
     apAvailable: ap !== undefined,
-    puzzle,
+    puzzle: buildPuzzle({ net, levelOf, issues, derived }, s),
     trace,
     scdl: mapped.model,
     scdlElementIds: mapped.elementIds,

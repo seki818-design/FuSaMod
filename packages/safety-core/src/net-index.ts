@@ -17,6 +17,10 @@ export interface NetIndex {
   failure: Map<FailureId, FailureNode>;
   childrenOf: Map<ElementId, ElementId[]>;
   functionsOf: Map<ElementId, FunctionNode[]>;
+  /** functionId → その機能の故障ノード(ネットでの出現順) */
+  failuresOf: Map<FunctionId, FailureNode[]>;
+  /** failureId → ネットでの出現順 */
+  failureOrder: Map<FailureId, number>;
   /** failureId → 原因側リンク(この故障を引き起こすもの) */
   causesOf: Map<FailureId, FailureLink[]>;
   /** failureId → 影響側リンク(この故障が引き起こすもの) */
@@ -37,13 +41,16 @@ export function buildIndex(net: SafetyNet): NetIndex {
   for (const e of net.elements) if (e.parentId) push(childrenOf, e.parentId, e.id);
   const functionsOf = new Map<ElementId, FunctionNode[]>();
   for (const f of net.functions) push(functionsOf, f.ownerId, f);
+  const failuresOf = new Map<FunctionId, FailureNode[]>();
+  for (const f of net.failures) push(failuresOf, f.functionId, f);
+  const failureOrder = new Map(net.failures.map((f, i) => [f.id, i]));
   const causesOf = new Map<FailureId, FailureLink[]>();
   const effectsOf = new Map<FailureId, FailureLink[]>();
   for (const l of net.links) {
     push(causesOf, l.effectId, l);
     push(effectsOf, l.causeId, l);
   }
-  return { net, element, fn, failure, childrenOf, functionsOf, causesOf, effectsOf };
+  return { net, element, fn, failure, childrenOf, functionsOf, failuresOf, failureOrder, causesOf, effectsOf };
 }
 
 /** 故障ノードが属する構造要素(機能の担当要素)。 */

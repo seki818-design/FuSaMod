@@ -29,7 +29,7 @@ export function TraceView() {
           </tbody>
         </table>
       </div>
-      <div className="muted">● satisfy(SysML)　◆ allocate(安全要求)</div>
+      <div className="muted">● satisfy(SysML) / ◆ allocate(安全要求)</div>
       {t.links.length > 0 && <div><strong>要求の導出</strong><ul style={{ margin: "4px 0", paddingLeft: 20 }}>{t.links.map((l, i) => <li key={i}>{l.from} → {l.to}({l.kind === "derives" ? "導出" : "ASIL 分解"})</li>)}</ul></div>}
     </div>
   );

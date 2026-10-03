@@ -1,4 +1,4 @@
-import { isValidDecomposition, asilRank, type Issue } from "@fusamod/safety-core";
+import { asilRank, isValidDecomposition, type Issue } from "@fusamod/safety-core";
 import type { ScdlId, ScdlModel } from "./types.js";
 import { parseWeight, type ParsedWeight } from "./weight.js";
 
@@ -9,17 +9,41 @@ function dupes(ids: string[]): string[] {
   return [...out];
 }
 
-/**
- * SCDL メタモデル(附属書 A)の制約と、モデルとして判定できる記法規則の検証。
- * 図の幾何(重なり・内接など)は描画層の責務で、ここでは扱わない。
- */
-export function validateScdl(m: ScdlModel): Issue[] {
-  const issues: Issue[] = [];
-  const err = (code: string, message: string, ref?: string) =>
-    issues.push({ code, severity: "error", message, ...(ref ? { ref } : {}) });
-  const warn = (code: string, message: string, ref?: string) =>
-    issues.push({ code, severity: "warning", message, ...(ref ? { ref } : {}) });
+/** 検証の共有状態。各規則は、この文脈に指摘を追加する。 */
+interface Ctx {
+  m: ScdlModel;
+  err(code: string, message: string, ref?: string): void;
+  warn(code: string, message: string, ref?: string): void;
+  element: Map<ScdlId, ScdlModel["elements"][number]>;
+  req: Map<ScdlId, ScdlModel["requirements"][number]>;
+  constraint: Map<ScdlId, ScdlModel["constraints"][number]>;
+  group: Map<ScdlId, ScdlModel["groups"][number]>;
+  groupPairing: Set<ScdlId>;
+  reqPairing: Set<ScdlId>;
+  coexistence: Set<ScdlId>;
+  /** 解釈できた重み付け(要素・要求・制約条件) */
+  weightOf: Map<ScdlId, ParsedWeight>;
+}
 
+function makeCtx(m: ScdlModel, issues: Issue[]): Ctx {
+  const add = (severity: Issue["severity"]) => (code: string, message: string, ref?: string) =>
+    void issues.push({ code, severity, message, ...(ref ? { ref } : {}) });
+  return {
+    m,
+    err: add("error"),
+    warn: add("warning"),
+    element: new Map(m.elements.map((e) => [e.id, e])),
+    req: new Map(m.requirements.map((r) => [r.id, r])),
+    constraint: new Map(m.constraints.map((c) => [c.id, c])),
+    group: new Map(m.groups.map((g) => [g.id, g])),
+    groupPairing: new Set(m.groupPairings.map((p) => p.id)),
+    reqPairing: new Set(m.requirementPairings.map((p) => p.id)),
+    coexistence: new Set(m.coexistences.map((c) => c.id)),
+    weightOf: new Map(),
+  };
+}
+
+function checkDuplicateIds({ m, err }: Ctx) {
   const collections: [string, { id: string }[]][] = [
     ["エレメント", m.elements],
     ["要求", m.requirements],
@@ -33,16 +57,10 @@ export function validateScdl(m: ScdlModel): Issue[] {
   ];
   for (const [label, items] of collections)
     for (const id of dupes(items.map((i) => i.id))) err("DUP_ID", `${label} の ID が重複: ${id}`, id);
+}
 
-  const element = new Map(m.elements.map((e) => [e.id, e]));
-  const req = new Map(m.requirements.map((r) => [r.id, r]));
-  const constraint = new Map(m.constraints.map((c) => [c.id, c]));
-  const group = new Map(m.groups.map((g) => [g.id, g]));
-  const groupPairing = new Map(m.groupPairings.map((p) => [p.id, p]));
-  const reqPairing = new Map(m.requirementPairings.map((p) => [p.id, p]));
-  const coexistence = new Map(m.coexistences.map((c) => [c.id, c]));
-
-  // A.6.2 Element: 入れ子に自分自身を含まない
+/** A.6.2 Element: 入れ子に自分自身を含まない。 */
+function checkElements({ m, err, element }: Ctx) {
   for (const e of m.elements) {
     if (e.parent !== undefined && !element.has(e.parent)) {
       err("UNKNOWN_REF", `親エレメントが存在しません: ${e.parent}`, e.id);
@@ -57,49 +75,52 @@ export function validateScdl(m: ScdlModel): Issue[] {
       seen.add(cur);
     }
   }
+}
 
-  // A.5.2 AbstractRequirement: isAllocated と allocation の一致
+/** A.5.2 AbstractRequirement: isAllocated と allocation の一致。 */
+function checkAllocation({ m, err, element }: Ctx) {
   for (const r of [...m.requirements, ...m.constraints]) {
-    if (r.isAllocated && r.allocation === undefined)
-      err("ALLOCATION_MISMATCH", "isAllocated=true ですが配置先がありません", r.id);
-    else if (!r.isAllocated && r.allocation !== undefined)
-      err("ALLOCATION_MISMATCH", "isAllocated=false ですが配置先が指定されています", r.id);
-    else if (r.allocation !== undefined && !element.has(r.allocation))
-      err("UNKNOWN_REF", `配置先エレメントが存在しません: ${r.allocation}`, r.id);
+    if (r.isAllocated && r.allocation === undefined) err("ALLOCATION_MISMATCH", "isAllocated=true ですが配置先がありません", r.id);
+    else if (!r.isAllocated && r.allocation !== undefined) err("ALLOCATION_MISMATCH", "isAllocated=false ですが配置先が指定されています", r.id);
+    else if (r.allocation !== undefined && !element.has(r.allocation)) err("UNKNOWN_REF", `配置先エレメントが存在しません: ${r.allocation}`, r.id);
   }
+}
 
-  // 重み付けの表記
-  const weightOf = new Map<ScdlId, ParsedWeight>();
+/** 重み付けの表記を解釈する(不正な表記は指摘し、以降の検査から外す)。 */
+function collectWeights({ m, err, weightOf }: Ctx) {
   for (const x of [...m.elements, ...m.requirements, ...m.constraints]) {
     if (x.weight === undefined) continue;
     const p = parseWeight(x.weight);
     if (!p) err("WEIGHT_FORMAT", `重み付けの表記が不正です: ${x.weight}`, x.id);
     else weightOf.set(x.id, p);
   }
+}
 
-  // A.10 Interaction / A.7.2 Requirement.outgoing 0..1
+/** A.10 Interaction と、A.7.2 Requirement.outgoing の多重度 0..1。 */
+function checkInteractions({ m, err, req }: Ctx) {
   const outgoing = new Map<ScdlId, number>();
   for (const i of m.interactions) {
     if (!req.has(i.source)) err("UNKNOWN_REF", `出力元の要求が存在しません: ${i.source}`, i.id);
     if (i.targets.length === 0) err("INTERACTION_NO_TARGET", "宛先がありません", i.id);
     for (const t of i.targets) if (!req.has(t)) err("UNKNOWN_REF", `宛先の要求が存在しません: ${t}`, i.id);
-    if (i.targets.includes(i.source))
-      err("INTERACTION_SELF", "出力元と宛先が同じ要求です", i.id);
+    if (i.targets.includes(i.source)) err("INTERACTION_SELF", "出力元と宛先が同じ要求です", i.id);
     outgoing.set(i.source, (outgoing.get(i.source) ?? 0) + 1);
   }
   for (const [id, n] of outgoing)
-    if (n > 1)
-      err("MULTIPLE_OUTGOING", "1 つの要求から 2 つ以上の出力インタラクションは禁止です(分岐は 1 つのインタラクションの複数宛先で表す)", id);
+    if (n > 1) err("MULTIPLE_OUTGOING", "1 つの要求から 2 つ以上の出力インタラクションは禁止です(分岐は 1 つのインタラクションの複数宛先で表す)", id);
+}
 
-  // A.11 RequirementGroup
+/** A.11 RequirementGroup。 */
+function checkGroups({ m, err, req }: Ctx) {
   for (const g of m.groups) {
     if (g.requirements.length === 0) err("GROUP_EMPTY", "要求グループに要求がありません", g.id);
     for (const d of dupes(g.requirements)) err("GROUP_DUP_MEMBER", `要求が重複: ${d}`, g.id);
-    for (const r of g.requirements)
-      if (!req.has(r)) err("UNKNOWN_REF", `要求が存在しません: ${r}`, g.id);
+    for (const r of g.requirements) if (!req.has(r)) err("UNKNOWN_REF", `要求が存在しません: ${r}`, g.id);
   }
+}
 
-  // A.16 / A.17 ペアリング
+/** A.16 / A.17 ペアリング。 */
+function checkPairings({ m, err, group, req }: Ctx) {
   for (const p of m.groupPairings) {
     if (p.set[0] === p.set[1]) err("PAIRING_SAME", "同じ要求グループ同士のペアリングはできません", p.id);
     for (const g of p.set) if (!group.has(g)) err("UNKNOWN_REF", `要求グループが存在しません: ${g}`, p.id);
@@ -108,53 +129,49 @@ export function validateScdl(m: ScdlModel): Issue[] {
     if (p.set[0] === p.set[1]) err("PAIRING_SAME", "同じ要求同士のペアリングはできません", p.id);
     for (const r of p.set) if (!req.has(r)) err("UNKNOWN_REF", `要求が存在しません: ${r}`, p.id);
   }
+}
 
-  // A.14 CoexistenceTarget
+/** A.14 CoexistenceTarget(無干渉)。 */
+function checkCoexistence({ m, err, element, req, group }: Ctx) {
   for (const c of m.coexistences) {
     if (!element.has(c.source)) err("UNKNOWN_REF", `干渉元のエレメントが存在しません: ${c.source}`, c.id);
     const t = c.target;
-    const exists =
-      t.kind === "requirement" ? req.has(t.id) : t.kind === "group" ? group.has(t.id) : element.has(t.id);
+    const exists = t.kind === "requirement" ? req.has(t.id) : t.kind === "group" ? group.has(t.id) : element.has(t.id);
     if (!exists) err("UNKNOWN_REF", `干渉先が存在しません: ${t.kind}:${t.id}`, c.id);
-    if (t.kind === "element" && t.id === c.source)
-      err("COEXISTENCE_SELF", "エレメント自身への無干渉は定義できません", c.id);
+    if (t.kind === "element" && t.id === c.source) err("COEXISTENCE_SELF", "エレメント自身への無干渉は定義できません", c.id);
   }
+}
 
-  // A.8 / A.9 Constraint と ConstraintPairing
-  const constraintUse = new Map<ScdlId, number>();
+/** A.8 / A.9 Constraint と ConstraintPairing。独立性の制約が無いペアリングは(仕様上は省略可だが)警告する。 */
+function checkConstraints({ m, err, warn, constraint, groupPairing, reqPairing, coexistence }: Ctx) {
+  const use = new Map<ScdlId, number>();
   for (const cp of m.constraintPairings) {
-    if (!constraint.has(cp.constraint))
-      err("UNKNOWN_REF", `制約条件が存在しません: ${cp.constraint}`, cp.id);
-    else constraintUse.set(cp.constraint, (constraintUse.get(cp.constraint) ?? 0) + 1);
+    if (!constraint.has(cp.constraint)) err("UNKNOWN_REF", `制約条件が存在しません: ${cp.constraint}`, cp.id);
+    else use.set(cp.constraint, (use.get(cp.constraint) ?? 0) + 1);
     const t = cp.target;
-    const ok =
-      t.kind === "group-pairing"
-        ? groupPairing.has(t.id)
-        : t.kind === "requirement-pairing"
-          ? reqPairing.has(t.id)
-          : coexistence.has(t.id);
+    const ok = t.kind === "group-pairing" ? groupPairing.has(t.id) : t.kind === "requirement-pairing" ? reqPairing.has(t.id) : coexistence.has(t.id);
     if (!ok) err("UNKNOWN_REF", `紐づけ先が存在しません: ${t.kind}:${t.id}`, cp.id);
   }
-  for (const c of m.constraints)
-    if (!constraintUse.has(c.id))
-      err("CONSTRAINT_NO_PAIRING", "制約条件がどのペアリング/無干渉にも紐づいていません", c.id);
-
-  // 警告: 独立性の制約条件が無いペアリング(仕様上は省略可だが、ISO 26262-9 の分解には独立性が必要)
-  const constrainedPairings = new Set(
-    m.constraintPairings.filter((c) => c.target.kind === "group-pairing").map((c) => c.target.id),
-  );
+  for (const c of m.constraints) if (!use.has(c.id)) err("CONSTRAINT_NO_PAIRING", "制約条件がどのペアリング/無干渉にも紐づいていません", c.id);
+  const constrained = new Set(m.constraintPairings.filter((c) => c.target.kind === "group-pairing").map((c) => c.target.id));
   for (const p of m.groupPairings)
-    if (!constrainedPairings.has(p.id))
-      warn("PAIRING_NO_CONSTRAINT", "要求グループペアリングに独立性の制約条件がありません", p.id);
+    if (!constrained.has(p.id)) warn("PAIRING_NO_CONSTRAINT", "要求グループペアリングに独立性の制約条件がありません", p.id);
+}
 
-  // 役割(拡張)が両方指定されているペアは、意図機能と安全機構の組であること
+/** 役割(拡張)が両方指定されているペアは、意図機能と安全機構の組であること。 */
+function checkRoles({ m, warn, group }: Ctx) {
   for (const p of m.groupPairings) {
     const [a, b] = p.set.map((g) => group.get(g)?.role);
-    if (a && b && a === b)
-      warn("PAIR_ROLES", `ペアの両端がどちらも ${a} です(意図機能と安全機構の組が想定されます)`, p.id);
+    if (a && b && a === b) warn("PAIR_ROLES", `ペアの両端がどちらも ${a} です(意図機能と安全機構の組が想定されます)`, p.id);
   }
+}
 
-  // ペアリングの ASIL 分解の整合(ヒューリスティック: 元 ASIL を持つ要求の最大 ASIL を群の ASIL とみなす)
+/**
+ * ペアの ASIL 分解の整合。ヒューリスティック: 元 ASIL を持つ要求の最大 ASIL を、グループの ASIL とみなす
+ * (グループ内で混在していれば警告する)。
+ */
+function checkDecompositionPairs(ctx: Ctx) {
+  const { m, err, warn, group, weightOf } = ctx;
   const groupAsil = (gid: ScdlId) => {
     const g = group.get(gid);
     if (!g) return undefined;
@@ -162,38 +179,32 @@ export function validateScdl(m: ScdlModel): Issue[] {
       .map((r) => weightOf.get(r))
       .filter((w): w is ParsedWeight & { origin: NonNullable<ParsedWeight["origin"]> } => !!w?.origin);
     if (ws.length === 0) return undefined;
-    const origins = new Set(ws.map((w) => w.origin));
-    const levels = new Set(ws.map((w) => w.asil));
-    if (origins.size > 1)
-      warn("GROUP_MIXED_ORIGIN", "要求グループ内で分解前の ASIL が混在しています", gid);
-    if (levels.size > 1) warn("GROUP_MIXED_WEIGHT", "要求グループ内で分解後の ASIL が混在しています", gid);
-    const top = ws.reduce((a, b) => (asilRank(b.asil) > asilRank(a.asil) ? b : a));
-    return top;
+    if (new Set(ws.map((w) => w.origin)).size > 1) warn("GROUP_MIXED_ORIGIN", "要求グループ内で分解前の ASIL が混在しています", gid);
+    if (new Set(ws.map((w) => w.asil)).size > 1) warn("GROUP_MIXED_WEIGHT", "要求グループ内で分解後の ASIL が混在しています", gid);
+    return ws.reduce((a, b) => (asilRank(b.asil) > asilRank(a.asil) ? b : a));
   };
   for (const p of m.groupPairings) {
     if (p.set[0] === p.set[1]) continue;
     const a = groupAsil(p.set[0]);
     const b = groupAsil(p.set[1]);
     if (!a || !b) continue;
-    if (a.origin !== b.origin)
-      err("PAIR_ORIGIN_MISMATCH", `ペアの元 ASIL が一致しません: ${a.origin} / ${b.origin}`, p.id);
-    else if (!isValidDecomposition(a.origin, a.asil, b.asil))
-      err("PAIR_DECOMP_INVALID", `ASIL ${a.origin} は ${a.asil} + ${b.asil} に分解できません`, p.id);
+    if (a.origin !== b.origin) err("PAIR_ORIGIN_MISMATCH", `ペアの元 ASIL が一致しません: ${a.origin} / ${b.origin}`, p.id);
+    else if (!isValidDecomposition(a.origin, a.asil, b.asil)) err("PAIR_DECOMP_INVALID", `ASIL ${a.origin} は ${a.asil} + ${b.asil} に分解できません`, p.id);
   }
+}
 
-  // エレメントの重み付けは、配置された要求(下位エレメント経由を含む)の最大 ASIL 以上
+/** エレメントの重み付けは、配置された要求(下位エレメント経由を含む)の最大 ASIL 以上。 */
+function checkElementWeights({ m, warn, element, weightOf }: Ctx) {
   const ancestors = (id: ScdlId): ScdlId[] => {
     const out: ScdlId[] = [];
-    for (let cur: ScdlId | undefined = id, n = 0; cur !== undefined && n < 1000; cur = element.get(cur)?.parent, n++)
-      out.push(cur);
+    for (let cur: ScdlId | undefined = id, n = 0; cur !== undefined && n < 1000; cur = element.get(cur)?.parent, n++) out.push(cur);
     return out;
   };
   const maxAllocated = new Map<ScdlId, number>();
   for (const r of [...m.requirements, ...m.constraints]) {
     const w = weightOf.get(r.id);
     if (!w || r.allocation === undefined || !element.has(r.allocation)) continue;
-    for (const a of ancestors(r.allocation))
-      maxAllocated.set(a, Math.max(maxAllocated.get(a) ?? -1, asilRank(w.asil)));
+    for (const a of ancestors(r.allocation)) maxAllocated.set(a, Math.max(maxAllocated.get(a) ?? -1, asilRank(w.asil)));
   }
   for (const e of m.elements) {
     const w = weightOf.get(e.id);
@@ -201,6 +212,19 @@ export function validateScdl(m: ScdlModel): Issue[] {
     if (w && need !== undefined && asilRank(w.asil) < need)
       warn("ELEMENT_WEIGHT_LOW", "エレメントの重み付けが、配置された要求の最大 ASIL を下回っています", e.id);
   }
+}
 
+/**
+ * SCDL メタモデル(附属書 A)の制約と、モデルとして判定できる記法規則の検証。
+ * 図の幾何(重なり・内接など)は描画層の責務で、ここでは扱わない。
+ */
+export function validateScdl(m: ScdlModel): Issue[] {
+  const issues: Issue[] = [];
+  const ctx = makeCtx(m, issues);
+  for (const rule of [
+    checkDuplicateIds, checkElements, checkAllocation, collectWeights, checkInteractions, checkGroups,
+    checkPairings, checkCoexistence, checkConstraints, checkRoles, checkDecompositionPairs, checkElementWeights,
+  ])
+    rule(ctx);
   return issues;
 }

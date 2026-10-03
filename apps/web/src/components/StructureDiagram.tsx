@@ -25,7 +25,7 @@ export function StructureDiagram() {
           <span>枠: 灰=指摘なし</span><span style={{ color: "var(--warn)" }}>橙=警告あり</span><span style={{ color: "var(--err)" }}>赤=エラーあり</span><span>ƒ=担当する機能</span>
         </div>
       </div>
-      <div className="diagram" tabIndex={0} aria-label="構造図(入れ子の箱)">
+      <div className="diagram" role="region" tabIndex={0} aria-label="構造図(入れ子の箱)">
         <svg width={layout.width * zoom} height={layout.height * zoom} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label="構造図">
           {[...layout.boxes].sort((p, q) => p.depth - q.depth).map((b) => (
             <g key={b.id} role="button" tabIndex={0} aria-label={`${b.label}${worst(b.id) === "err" ? "、エラーあり" : worst(b.id) === "warn" ? "、警告あり" : ""}`} aria-pressed={sel === b.id}

@@ -58,12 +58,13 @@ export interface FmeaView {
  * ネットから、ある構造要素を注目要素とした FMEA を導出する。
  * 手入力の表ではなくグラフの射影なので、上位/下位 FMEA とは常にノードを共有する。
  */
-export function buildFmeaView(net: SafetyNet, focusElementId: ElementId, ap?: ApLookup): FmeaView {
-  const idx = buildIndex(net);
+export function buildFmeaView(net: SafetyNet, focusElementId: ElementId, ap?: ApLookup, index?: NetIndex): FmeaView {
+  const idx = index ?? buildIndex(net);
   const rows: FmeaRow[] = [];
-  for (const f of net.failures) {
+  const owned = (idx.functionsOf.get(focusElementId) ?? []).flatMap((fnode) => idx.failuresOf.get(fnode.id) ?? []);
+  owned.sort((a, b) => idx.failureOrder.get(a.id)! - idx.failureOrder.get(b.id)!);
+  for (const f of owned) {
     if (f.isBasicCause) continue;
-    if (ownerOfFailure(idx, f.id) !== focusElementId) continue;
     const fn = idx.fn.get(f.functionId)!;
     const severity = effectiveSeverity(idx, f.id);
     rows.push({

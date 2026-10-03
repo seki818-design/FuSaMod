@@ -39,7 +39,8 @@ export function fit(text: string, units: number): string {
   let used = 0;
   let out = "";
   for (const ch of text) {
-    const w = /[\u0000-\u00ff\uff61-\uff9f]/.test(ch) ? 1 : 2;
+    const c = ch.codePointAt(0)!;
+    const w = c <= 0xff || (c >= 0xff61 && c <= 0xff9f) ? 1 : 2;
     if (used + w > units - 1) return `${out}…`;
     used += w;
     out += ch;

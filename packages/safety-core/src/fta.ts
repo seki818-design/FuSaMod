@@ -28,34 +28,24 @@ export interface FaultTree {
   nodes: FaultTreeNode[];
 }
 
-export function validateFaultTree(t: FaultTree): Issue[] {
-  const issues: Issue[] = [];
-  const err = (code: string, message: string, ref?: string) =>
-    issues.push({ code, severity: "error", message, ...(ref ? { ref } : {}) });
-  const warn = (code: string, message: string, ref?: string) =>
-    issues.push({ code, severity: "warning", message, ...(ref ? { ref } : {}) });
+type Add = (code: string, message: string, ref?: string) => void;
 
-  const byId = new Map<string, FaultTreeNode>();
-  for (const n of t.nodes) {
-    if (byId.has(n.id)) err("DUP_ID", `ノード ID が重複: ${n.id}`, n.id);
-    byId.set(n.id, n);
-  }
-  if (!byId.has(t.top)) {
-    err("UNKNOWN_REF", `頂上事象が存在しません: ${t.top}`, t.id);
-    return issues;
-  }
+function checkNodes(t: FaultTree, byId: Map<string, FaultTreeNode>, err: Add, warn: Add) {
   for (const n of t.nodes) {
     if (n.kind === "gate") {
       if (!n.gate) err("GATE_TYPE", "ゲートの種類(and/or)がありません", n.id);
       if (!n.inputs || n.inputs.length === 0) err("GATE_NO_INPUT", "ゲートに入力がありません", n.id);
       else if (n.gate === "and" && n.inputs.length < 2) warn("AND_SINGLE_INPUT", "AND ゲートの入力が 1 つです", n.id);
       for (const i of n.inputs ?? []) if (!byId.has(i)) err("UNKNOWN_REF", `入力ノードが存在しません: ${i}`, n.id);
+      if (n.probability !== undefined) warn("GATE_PROBABILITY", "ゲートの確率は無視されます", n.id);
     } else if (n.inputs?.length) err("BASIC_HAS_INPUT", "基本事象に入力があります", n.id);
-    if (n.probability !== undefined && !(n.probability >= 0 && n.probability <= 1))
-      err("PROBABILITY_RANGE", "確率は 0〜1", n.id);
-    if (n.kind === "gate" && n.probability !== undefined) warn("GATE_PROBABILITY", "ゲートの確率は無視されます", n.id);
+    if (n.probability !== undefined && !(n.probability >= 0 && n.probability <= 1)) err("PROBABILITY_RANGE", "確率は 0〜1", n.id);
+    if (n.kind === "basic" && n.undeveloped) warn("FT_UNDEVELOPED", "展開されていない事象です", n.id);
   }
-  // 循環
+}
+
+/** 頂上事象から到達できないノードの検出と、循環の検出。 */
+function checkReachability(t: FaultTree, byId: Map<string, FaultTreeNode>, err: Add, warn: Add) {
   const state = new Map<string, 1 | 2>();
   const visit = (id: string): boolean => {
     if (state.get(id) === 2) return false;
@@ -66,7 +56,6 @@ export function validateFaultTree(t: FaultTree): Issue[] {
     return false;
   };
   if (visit(t.top)) err("FT_CYCLE", "フォールトツリーに循環があります", t.id);
-  // 到達不能
   const reach = new Set<string>();
   const walk = (id: string) => {
     if (reach.has(id)) return;
@@ -75,8 +64,24 @@ export function validateFaultTree(t: FaultTree): Issue[] {
   };
   if (!state.has(t.top) || state.get(t.top) === 2) walk(t.top);
   for (const n of t.nodes) if (!reach.has(n.id)) warn("FT_UNREACHABLE", "頂上事象から到達できないノードです", n.id);
-  for (const n of t.nodes)
-    if (n.kind === "basic" && n.undeveloped) warn("FT_UNDEVELOPED", "展開されていない事象です", n.id);
+}
+
+export function validateFaultTree(t: FaultTree): Issue[] {
+  const issues: Issue[] = [];
+  const add = (severity: Issue["severity"]): Add => (code, message, ref) => void issues.push({ code, severity, message, ...(ref ? { ref } : {}) });
+  const err = add("error");
+  const warn = add("warning");
+  const byId = new Map<string, FaultTreeNode>();
+  for (const n of t.nodes) {
+    if (byId.has(n.id)) err("DUP_ID", `ノード ID が重複: ${n.id}`, n.id);
+    byId.set(n.id, n);
+  }
+  if (!byId.has(t.top)) {
+    err("UNKNOWN_REF", `頂上事象が存在しません: ${t.top}`, t.id);
+    return issues;
+  }
+  checkNodes(t, byId, err, warn);
+  checkReachability(t, byId, err, warn);
   return issues;
 }
 

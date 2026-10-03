@@ -18,7 +18,7 @@ export function ScdlView() {
           <span>┈ 破線の箱 = エレメント(右上の ASIL=重み付け)</span><span>▭ 実線の箱 = 要求</span><span>◯ = 要求グループ</span><span>⇠⇢ 破線の矢印 = ペアリング</span><span>◆— 制約条件</span><span>→ インタラクション</span>
         </div>
       </div>
-      <div className="diagram" style={{ minHeight: 200 }} tabIndex={0} aria-label="SCDL ビュー">
+      <div className="diagram" role="region" style={{ minHeight: 200 }} tabIndex={0} aria-label="SCDL ビュー">
         <svg width={d.width} height={d.height} role="group" aria-label="SCDL ビュー">
           <defs>
             <marker id="sc-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--text)" /></marker>

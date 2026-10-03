@@ -32,6 +32,111 @@ export interface DerivedNet {
   issues: Issue[];
 }
 
+type Warn = (code: string, message: string, ref?: string) => void;
+
+interface Graph {
+  g: ElementGraph;
+  byQn: Map<string, GraphElement>;
+  isPart(qn: string | null | undefined): boolean;
+  isAction(qn: string | null | undefined): boolean;
+}
+
+const nameOf = (e: GraphElement) => e.name ?? e.qualifiedName;
+
+function deriveStructure(x: Graph): StructureElement[] {
+  return x.g.elements
+    .filter((e) => e.kind === "PartUsage")
+    .map((e) => ({
+      id: e.qualifiedName,
+      name: nameOf(e),
+      modelRef: e.qualifiedName,
+      ...(x.isPart(e.owner) ? { parentId: e.owner! } : {}),
+    }));
+}
+
+/** performed(action) → それを perform した part の一覧。part 以外・action 以外の perform は警告して無視する。 */
+function indexPerforms(x: Graph, warn: Warn): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const p of x.g.performs ?? []) {
+    if (!p.performer || !p.performed) continue;
+    if (!x.isPart(p.performer)) {
+      warn("PERFORM_NOT_PART", "part 以外が perform しています(無視します)", p.performer);
+      continue;
+    }
+    if (!x.isAction(p.performed)) {
+      warn("PERFORM_NOT_ACTION", "action 以外を perform しています(無視します)", p.performed);
+      continue;
+    }
+    out.set(p.performed, [...(out.get(p.performed) ?? []), p.performer]);
+  }
+  return out;
+}
+
+/** 担当する part: perform した part → action を所有する part → 所有する action の担当、の順。 */
+function performerOf(x: Graph, performers: Map<string, string[]>, qn: string, seen = new Set<string>()): string | undefined {
+  if (seen.has(qn)) return undefined;
+  seen.add(qn);
+  const explicit = performers.get(qn);
+  if (explicit?.length) return explicit[0];
+  const owner = x.byQn.get(qn)?.owner;
+  if (x.isPart(owner)) return owner!;
+  if (x.isAction(owner)) return performerOf(x, performers, owner!, seen);
+  return undefined;
+}
+
+function deriveFunctions(x: Graph, warn: Warn): { functions: FunctionNode[]; parameters: Record<string, GraphParameter[]> } {
+  const performers = indexPerforms(x, warn);
+  const functions: FunctionNode[] = [];
+  const parameters: Record<string, GraphParameter[]> = {};
+  for (const e of x.g.elements) {
+    if (e.kind !== "ActionUsage") continue;
+    const list = performers.get(e.qualifiedName) ?? [];
+    if (new Set(list).size > 1) warn("FUNCTION_MULTIPLE_PERFORMERS", `複数の part が perform しています(先頭を担当要素とします): ${list.join(", ")}`, e.qualifiedName);
+    const owner = performerOf(x, performers, e.qualifiedName);
+    if (!owner) {
+      warn("FUNCTION_NO_OWNER", "担当する part を決められません(part が所有する action か、perform が必要です)", e.qualifiedName);
+      continue;
+    }
+    functions.push({
+      id: e.qualifiedName,
+      name: nameOf(e),
+      ownerId: owner,
+      modelRef: e.qualifiedName,
+      ...(x.isAction(e.owner) ? { parentFunctionId: e.owner! } : {}),
+    });
+    parameters[e.qualifiedName] = e.parameters ?? [];
+  }
+  // 上位の action が機能として採用されなかった場合は、上位機能を外す
+  const ids = new Set(functions.map((f) => f.id));
+  for (const f of functions) if (f.parentFunctionId && !ids.has(f.parentFunctionId)) delete f.parentFunctionId;
+  return { functions, parameters };
+}
+
+function deriveRequirements(x: Graph, warn: Warn): DerivedRequirement[] {
+  const satisfiedBy = new Map<string, ElementId[]>();
+  for (const s of x.g.satisfies) {
+    if (!s.requirement || !s.by) continue;
+    if (x.byQn.get(s.requirement)?.kind !== "RequirementUsage") continue;
+    if (!x.isPart(s.by)) {
+      warn("SATISFY_NOT_PART", "part 以外への satisfy です(構造ネットには紐づけません)", s.requirement);
+      continue;
+    }
+    satisfiedBy.set(s.requirement, [...(satisfiedBy.get(s.requirement) ?? []), s.by]);
+  }
+  return x.g.elements
+    .filter((e) => e.kind === "RequirementUsage")
+    .map((e) => ({ id: e.qualifiedName, ...(e.doc ? { text: e.doc } : {}), satisfiedBy: satisfiedBy.get(e.qualifiedName) ?? [] }));
+}
+
+function deriveCandidates(functions: FunctionNode[], parameters: Record<string, GraphParameter[]>): FailureModeCandidate[] {
+  const out: FailureModeCandidate[] = [];
+  for (const f of functions) {
+    out.push(...failureModeCandidates(f));
+    for (const p of parameters[f.id] ?? []) if (p.direction !== "in" && p.name) out.push(...outputFailureModeCandidates(f, p.name));
+  }
+  return out;
+}
+
 /**
  * 要素グラフから、安全分析の構造ネット・機能ネットを導出する。
  *
@@ -44,109 +149,19 @@ export interface DerivedNet {
  */
 export function deriveNet(graph: ElementGraph): DerivedNet {
   const issues: Issue[] = [];
-  const warn = (code: string, message: string, ref?: string) =>
-    issues.push({ code, severity: "warning", message, ...(ref ? { ref } : {}) });
-  const error = (code: string, message: string, ref?: string) =>
-    issues.push({ code, severity: "error", message, ...(ref ? { ref } : {}) });
-
+  const warn: Warn = (code, message, ref) => void issues.push({ code, severity: "warning", message, ...(ref ? { ref } : {}) });
   const byQn = new Map<string, GraphElement>(graph.elements.map((e) => [e.qualifiedName, e]));
-  const isPart = (qn: string | null | undefined) => !!qn && byQn.get(qn)?.kind === "PartUsage";
-  const isAction = (qn: string | null | undefined) => !!qn && byQn.get(qn)?.kind === "ActionUsage";
-  const nameOf = (e: GraphElement) => e.name ?? e.qualifiedName;
-
-  // 構造ネット
-  const elements: StructureElement[] = graph.elements
-    .filter((e) => e.kind === "PartUsage")
-    .map((e) => ({
-      id: e.qualifiedName,
-      name: nameOf(e),
-      modelRef: e.qualifiedName,
-      ...(isPart(e.owner) ? { parentId: e.owner! } : {}),
-    }));
-
-  // performer の索引
-  const performersOf = new Map<string, string[]>();
-  for (const p of graph.performs ?? []) {
-    if (!p.performer || !p.performed) continue;
-    if (!isPart(p.performer)) {
-      warn("PERFORM_NOT_PART", "part 以外が perform しています(無視します)", p.performer);
-      continue;
-    }
-    if (!isAction(p.performed)) {
-      warn("PERFORM_NOT_ACTION", "action 以外を perform しています(無視します)", p.performed);
-      continue;
-    }
-    performersOf.set(p.performed, [...(performersOf.get(p.performed) ?? []), p.performer]);
-  }
-
-  const performerOf = (qn: string, seen = new Set<string>()): string | undefined => {
-    if (seen.has(qn)) return undefined;
-    seen.add(qn);
-    const explicit = performersOf.get(qn);
-    if (explicit?.length) return explicit[0];
-    const owner = byQn.get(qn)?.owner;
-    if (isPart(owner)) return owner!;
-    if (isAction(owner)) return performerOf(owner!, seen);
-    return undefined;
+  const x: Graph = {
+    g: graph,
+    byQn,
+    isPart: (qn) => !!qn && byQn.get(qn)?.kind === "PartUsage",
+    isAction: (qn) => !!qn && byQn.get(qn)?.kind === "ActionUsage",
   };
-
-  // 機能ネット
-  const functions: FunctionNode[] = [];
-  const parameters: Record<string, GraphParameter[]> = {};
-  const functionIds = new Set<string>();
-  for (const e of graph.elements) {
-    if (e.kind !== "ActionUsage") continue;
-    const performers = performersOf.get(e.qualifiedName) ?? [];
-    if (new Set(performers).size > 1)
-      warn("FUNCTION_MULTIPLE_PERFORMERS", `複数の part が perform しています(先頭を担当要素とします): ${performers.join(", ")}`, e.qualifiedName);
-    const owner = performerOf(e.qualifiedName);
-    if (!owner) {
-      warn("FUNCTION_NO_OWNER", "担当する part を決められません(part が所有する action か、perform が必要です)", e.qualifiedName);
-      continue;
-    }
-    functionIds.add(e.qualifiedName);
-    functions.push({
-      id: e.qualifiedName,
-      name: nameOf(e),
-      ownerId: owner,
-      modelRef: e.qualifiedName,
-      ...(isAction(e.owner) ? { parentFunctionId: e.owner! } : {}),
-    });
-    parameters[e.qualifiedName] = e.parameters ?? [];
-  }
-  // 上位の action が機能として採用されなかった場合は、上位機能を外す
-  for (const f of functions)
-    if (f.parentFunctionId && !functionIds.has(f.parentFunctionId)) delete f.parentFunctionId;
-
-  // 要求
-  const satisfiedBy = new Map<string, ElementId[]>();
-  for (const s of graph.satisfies) {
-    if (!s.requirement || !s.by) continue;
-    if (byQn.get(s.requirement)?.kind !== "RequirementUsage") continue;
-    if (!isPart(s.by)) {
-      warn("SATISFY_NOT_PART", "part 以外への satisfy です(構造ネットには紐づけません)", s.requirement);
-      continue;
-    }
-    satisfiedBy.set(s.requirement, [...(satisfiedBy.get(s.requirement) ?? []), s.by]);
-  }
-  const requirements: DerivedRequirement[] = graph.elements
-    .filter((e) => e.kind === "RequirementUsage")
-    .map((e) => ({
-      id: e.qualifiedName,
-      ...(e.doc ? { text: e.doc } : {}),
-      satisfiedBy: satisfiedBy.get(e.qualifiedName) ?? [],
-    }));
-
-  // 故障モード候補
-  const candidates: FailureModeCandidate[] = [];
-  for (const f of functions) {
-    candidates.push(...failureModeCandidates(f));
-    for (const p of parameters[f.id] ?? [])
-      if (p.direction !== "in" && p.name) candidates.push(...outputFailureModeCandidates(f, p.name));
-  }
-
+  const elements = deriveStructure(x);
+  const { functions, parameters } = deriveFunctions(x, warn);
+  const requirements = deriveRequirements(x, warn);
+  const candidates = deriveCandidates(functions, parameters);
+  if (elements.length === 0) issues.push({ code: "NO_STRUCTURE", severity: "error", message: "構造ネットが空です(part が見つかりません)" });
   const net: SafetyNet = { elements, functions, failures: [], links: [] };
-  if (elements.length === 0) error("NO_STRUCTURE", "構造ネットが空です(part が見つかりません)");
-  const deriveIssues = [...issues];
-  return { net, parameters, requirements, candidates, deriveIssues, issues: [...deriveIssues, ...validateNet(net)] };
+  return { net, parameters, requirements, candidates, deriveIssues: [...issues], issues: [...issues, ...validateNet(net)] };
 }

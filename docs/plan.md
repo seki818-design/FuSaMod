@@ -20,7 +20,7 @@ PO 1 / テックリード 1 / フロントエンド 2 / バックエンド 2 / A
 | 認証・役割(editor/viewer)・レート制限・監査ログのハッシュ連鎖 | 実装済み | |
 | ビルド・配布(esbuild による単一ファイル、Dockerfile) | 実装済み | Docker イメージのビルドは環境により未検証(docs/operations.md) |
 | FMEA の 7 ステップのワークフロー(最適化など)、SPFM/LFM/PMHF、FMEA-MSR | 未実装 | 今後の課題 |
-| SysML v2 API(REST)・標準 JSON・XMI の入出力 | 未実装 | 公式実装の textual notation のみ |
+| SysML v2 標準 JSON・XMI | **書き出しのみ実装**(公式実装の変換器) | 取り込み、SysML v2 API(REST)は未実装 |
 | 図上でのモデル編集、Git 連携 | 未実装 | テキスト編集と履歴(リビジョン)のみ |
 
 ## リスク

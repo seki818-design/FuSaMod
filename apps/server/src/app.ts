@@ -20,6 +20,7 @@ import {
 } from "@fusamod/ai";
 import { exportSysml, ScdlSysmlError } from "@fusamod/scdl";
 import { randomUUID } from "node:crypto";
+import { convertModel } from "./sysml/convert.js";
 import type { Config } from "./config.js";
 import { HttpError, ProjectStore } from "./projects.js";
 import { AnalysisService, requireSafety } from "./services.js";
@@ -290,6 +291,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         if (bad.length > 0) throw new HttpError(409, "SCDL にエラーがあるため、SysML として書き出せません。先にエラーを解消してください", bad.slice(0, 20).map((i) => `${i.code}: ${i.message}`));
         const pkg = `ScdlView_${id.replace(/-/g, "_")}`;
         return attachment(reply, `${id}-scdl.sysml`, "text/plain", exportSysml(a.scdl, { packageName: pkg }));
+      }
+      case "model.json":
+      case "model.xmi": {
+        // 標準の交換形式(公式実装の変換器)。公式実装(Java)が必要
+        if (config.sysmlMode === "snapshot") throw new HttpError(503, "SysML v2 の標準形式への変換には、公式実装(Java 21)が必要です(FUSAMOD_SYSML=snapshot では使えません)");
+        const p = await store.read(id);
+        const xmi = name === "model.xmi";
+        const out = await convertModel(p.model, xmi ? "xmi" : "json", { cacheDir: config.sysmlCacheDir });
+        return attachment(reply, `${id}-model.${xmi ? "sysmlx" : "json"}`, xmi ? "application/xml" : "application/json", out);
       }
       case "analysis.json": return attachment(reply, `${id}-analysis.json`, "application/json", JSON.stringify(await needAnalysis(id), null, 2));
       default: throw new HttpError(404, "不明な出力です");

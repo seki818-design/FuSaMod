@@ -533,3 +533,12 @@ describe("AI の適用: リスクを下げる編集・来歴の追記のみ(ラ�
     expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: edited } })).statusCode).toBe(422);
   });
 });
+
+describe("標準形式のエクスポート", () => {
+  it("公式実装を使わない設定(snapshot)では 503 で理由を返す", async () => {
+    h = await harness({ env: { FUSAMOD_SYSML: "snapshot" } });
+    const r = await h.app.inject("/api/projects/ev-powertrain/export/model.json");
+    expect(r.statusCode).toBe(503);
+    expect(json(r).error).toContain("Java");
+  });
+});

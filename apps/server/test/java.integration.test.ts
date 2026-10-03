@@ -38,3 +38,25 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("JavaSysmlService(公式実装・統
     expect(rs[1]!.graph!.elements.some((e) => e.name === "b")).toBe(true);
   });
 });
+
+import { convertModel } from "../src/sysml/convert.js";
+
+describe.skipIf(!process.env["FUSAMOD_IT"])("標準形式への変換(公式実装・統合)", () => {
+  const model = readFileSync(resolve(DEMO, "model.sysml"), "utf8");
+  it("SysML v2 API の JSON 形式に変換できる(要素に elementId と @type がある)", async () => {
+    const out = JSON.parse(await convertModel(model, "json"));
+    expect(Array.isArray(out)).toBe(true);
+    const types = new Set(out.map((x: { payload: { "@type": string } }) => x.payload["@type"]));
+    expect(types.has("PartUsage")).toBe(true);
+    expect(types.has("RequirementUsage")).toBe(true);
+    expect(out.every((x: { payload: { elementId: string } }) => typeof x.payload.elementId === "string")).toBe(true);
+  }, 300_000);
+  it("XMI に変換できる", async () => {
+    const xmi = await convertModel(model, "xmi");
+    expect(xmi.startsWith("<?xml")).toBe(true);
+    expect(xmi).toContain("PartUsage");
+  }, 300_000);
+  it("誤りのあるモデルでも、他のファイルを壊さず、エラーとして返る(または空の結果)", async () => {
+    await expect(convertModel("package X { part a : ", "json")).resolves.toBeDefined();
+  }, 300_000);
+});

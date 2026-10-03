@@ -8,6 +8,8 @@ const EXPORTS: { value: string; label: string; query?: string }[] = [
   { value: "report.md", label: "レポート(Markdown)" },
   { value: "scdl.sysml", label: "SCDL ビュー(SysML v2)" },
   { value: "model.sysml", label: "モデル(SysML v2)" },
+  { value: "model.json", label: "モデル(SysML v2 標準 JSON・要 Java)" },
+  { value: "model.xmi", label: "モデル(XMI・要 Java)" },
   { value: "analysis.json", label: "解析結果(JSON)" },
 ];
 

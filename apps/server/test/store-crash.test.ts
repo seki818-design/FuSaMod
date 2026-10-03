@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, readFileSync, readdirSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { emptySafetyData } from "@fusamod/analysis";
 import { ProjectStore } from "../src/projects.js";
 
@@ -78,5 +78,42 @@ describe("監査ログのハッシュ連鎖", () => {
     const s = await mk();
     await Promise.all(Array.from({ length: 20 }, (_, i) => s.audit("p1", { actor: "a", action: `x${i}` })));
     expect(await s.verifyAudit("p1")).toMatchObject({ ok: true, lines: 21 });
+  });
+});
+
+describe("履歴の回復と初回の保存", () => {
+  it("最新の meta.json が壊れていても、次の保存が衝突せずに続けられる", async () => {
+    const s = await mk();
+    await s.saveModel("p1", "package P { part b; }", "tester", "m", 1);
+    writeFileSync(join(dir, "p1", ".history", "000002", "meta.json"), "{broken");
+    const m = await s.saveModel("p1", "package P { part c; }", "tester", "m", 1);
+    expect(m.revision).toBe(3);
+  });
+  it("履歴の無いプロジェクトは、最初の保存の前の内容が版 1 として残る", async () => {
+    dir = mkdtempSync(join(tmpdir(), "fusamod-store-"));
+    mkdirSync(join(dir, "legacy"));
+    writeFileSync(join(dir, "legacy", "model.sysml"), "package Legacy { part orig; }");
+    const s = new ProjectStore(dir);
+    const m = await s.saveModel("legacy", "package Legacy { part edited; }", "tester", "編集", undefined);
+    expect(m.revision).toBe(2);
+    expect((await s.revision("legacy", 1)).model).toContain("orig");
+    expect((await s.history("legacy")).map((h) => h.revision)).toEqual([2, 1]);
+  });
+  it("履歴の自動削除は監査ログに記録される", async () => {
+    process.env["FUSAMOD_HISTORY_KEEP"] = "10";
+    vi.resetModules();
+    const { ProjectStore: PS } = await import("../src/projects.js");
+    dir = mkdtempSync(join(tmpdir(), "fusamod-store-"));
+    const s = new PS(dir);
+    await s.create("p1", "package P {}", "t");
+    for (let i = 0; i < 12; i++) await s.saveModel("p1", `package P { part a${i}; }`, "t", "m", i + 1);
+    delete process.env["FUSAMOD_HISTORY_KEEP"];
+    expect((await s.readAudit("p1", 500)).some((e) => e.action === "history.prune")).toBe(true);
+    expect((await s.verifyAudit("p1")).ok).toBe(true);
+  });
+  it("PORT が不正なら起動時に拒否", async () => {
+    const { loadConfig } = await import("../src/config.js");
+    expect(() => loadConfig({ PORT: "99999" })).toThrow(/PORT/);
+    expect(() => loadConfig({ PORT: "abc" })).toThrow(/PORT/);
   });
 });

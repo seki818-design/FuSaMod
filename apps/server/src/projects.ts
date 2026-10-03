@@ -179,10 +179,12 @@ export class ProjectStore {
     m: Pick<RevisionMeta, "kind" | "actor" | "message">,
   ): Promise<RevisionMeta> {
     const d = this.dir(id);
-    const prev = await this.latestMeta(id);
-    const revision = (prev?.revision ?? 0) + 1;
+    await this.ensureBaseline(id, m.kind);
     const hd = join(d, ".history");
     await mkdir(hd, { recursive: true });
+    // 版番号は、メタが壊れていても衝突しないよう、ディレクトリ名の最大値から決める
+    const maxDir = Math.max(0, ...(await readdir(hd)).filter((n) => /^\d{6}$/.test(n)).map(Number));
+    const revision = Math.max(maxDir, (await this.latestMeta(id))?.revision ?? 0) + 1;
     const tmp = join(hd, `.tmp-${randomUUID()}`);
     await mkdir(tmp);
     const meta: RevisionMeta = { revision, ts: new Date().toISOString(), modelSha256: sha(c.model), safetySha256: sha(c.safety), ...m };
@@ -195,17 +197,42 @@ export class ProjectStore {
     await this.atomicWrite(join(d, "safety.json"), c.safety);
     if (c.graph !== undefined) await this.atomicWrite(join(d, "model.graph.json"), c.graph);
     else await rm(join(d, "model.graph.json"), { force: true });
-    await this.prune(id);
+    const pruned = await this.prune(id);
+    if (pruned > 0) await this.audit(id, { actor: "system", action: "history.prune", details: { removed: pruned, keep: HISTORY_KEEP } });
     return meta;
   }
 
+  /** 履歴が無いプロジェクト(手で置いたもの)は、最初の保存の前に、元の内容を版 1 として残す。 */
+  private async ensureBaseline(id: string, kind: RevisionMeta["kind"]) {
+    if (kind === "create") return;
+    const d = this.dir(id);
+    const hd = join(d, ".history");
+    if ((await this.exists(hd)) && (await readdir(hd)).some((n) => /^\d{6}$/.test(n))) return;
+    if (!(await this.exists(join(d, "model.sysml")))) return;
+    const model = await readFile(join(d, "model.sysml"), "utf8");
+    const safety = (await this.exists(join(d, "safety.json"))) ? await readFile(join(d, "safety.json"), "utf8") : JSON.stringify(emptySafetyData(), null, 2) + "\n";
+    const graph = (await this.exists(join(d, "model.graph.json"))) ? await readFile(join(d, "model.graph.json"), "utf8") : undefined;
+    await mkdir(hd, { recursive: true });
+    const rd = join(hd, "000001");
+    const tmp = join(hd, `.tmp-${randomUUID()}`);
+    await mkdir(tmp);
+    const meta: RevisionMeta = { revision: 1, ts: new Date().toISOString(), actor: "system", message: "最初の保存の前の内容(取り込み)", kind: "create", modelSha256: sha(model), safetySha256: sha(safety) };
+    await writeFile(join(tmp, "model.sysml"), model, "utf8");
+    await writeFile(join(tmp, "safety.json"), safety, "utf8");
+    if (graph !== undefined) await writeFile(join(tmp, "model.graph.json"), graph, "utf8");
+    await writeFile(join(tmp, "meta.json"), JSON.stringify(meta, null, 2) + "\n", "utf8");
+    await rename(tmp, rd);
+  }
+
   /** 古い履歴の削除と、確定前に落ちた一時ディレクトリの掃除。 */
-  private async prune(id: string) {
+  private async prune(id: string): Promise<number> {
     const hd = join(this.dir(id), ".history");
     const all = await readdir(hd);
     for (const t of all.filter((n) => n.startsWith(".tmp-"))) await rm(join(hd, t), { recursive: true, force: true });
     const nums = all.filter((n) => /^\d{6}$/.test(n)).sort();
-    for (const old of nums.slice(0, Math.max(0, nums.length - HISTORY_KEEP))) await rm(join(hd, old), { recursive: true, force: true });
+    const old = nums.slice(0, Math.max(0, nums.length - HISTORY_KEEP));
+    for (const o of old) await rm(join(hd, o), { recursive: true, force: true });
+    return old.length;
   }
 
   private checkBase(current: number, base: number | undefined) {

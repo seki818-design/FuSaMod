@@ -59,4 +59,4 @@ process.on("SIGTERM", shutdown);
 
 await app.listen({ port: config.port, host: config.host });
 log(`http://${config.host}:${config.port}(プロジェクト: ${config.projectsDir}、SysML: ${config.sysmlMode}、AI: ${config.ai.provider})`);
-if (config.host !== "127.0.0.1" && config.tokens.length === 0) log("警告: 認証なしで外部に公開されています。FUSAMOD_TOKENS を設定してください");
+if (!["127.0.0.1", "::1", "localhost"].includes(config.host) && config.tokens.length === 0) log("警告: 認証なしで外部に公開されています。FUSAMOD_TOKENS を設定してください");

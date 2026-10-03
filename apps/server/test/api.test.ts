@@ -104,7 +104,7 @@ describe("保存・競合・履歴", () => {
     expect(rest.statusCode).toBe(200);
     expect(json(rest).safety.hara.goals[0].text).not.toBe("変更後の安全目標");
     expect(json(rest).restored.kind).toBe("restore");
-    expect(json(await h.app.inject("/api/projects/ev-powertrain/history")).history).toHaveLength(3);
+    expect(json(await h.app.inject("/api/projects/ev-powertrain/history")).history).toHaveLength(4); // 取り込み・初期・目標を変更・復元
     expect((await h.app.inject("/api/projects/ev-powertrain/history/999")).statusCode).toBe(404);
   });
 
@@ -303,5 +303,35 @@ describe("認証の堅牢性・役割", () => {
     expect(codes.slice(10)).toEqual([429, 429]);
     // 正しいトークンは、失敗の制限とは別に通る
     expect((await h.app.inject({ url: "/api/projects", headers: { authorization: "Bearer tok-alice-0123456789" } })).statusCode).toBe(200);
+  });
+});
+
+describe("viewer の権限(クエリ・パスの迂回の回帰)", () => {
+  it("URL にクエリや末尾の /analyze を足しても、書き込み系は 403", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
+    const auth = { authorization: "Bearer tok-viewer-0123456789" };
+    const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: auth }));
+    const tries: [string, string, unknown][] = [
+      ["POST", "/api/projects?x=/analyze", { id: "x2" }],
+      ["POST", "/api/projects/ev-powertrain/history/1/restore?x=/analyze", undefined],
+      ["POST", "/api/projects/ev-powertrain/ai/chat?/analyze", { message: "FMEA を実施して" }],
+      ["PUT", "/api/projects/ev-powertrain/safety?a=/analyze", { data: p.safety }],
+      ["POST", "/api/projects/ev-powertrain/ai/proposals/x/apply?/analyze", undefined],
+    ];
+    for (const [method, url, payload] of tries) {
+      const r = await h.app.inject({ method: method as "POST" | "PUT", url, headers: auth, ...(payload ? { payload } : {}) });
+      expect([method, url, r.statusCode]).toEqual([method, url, 403]);
+    }
+    expect((await h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/analyze?x=1", headers: auth, payload: { safety: p.safety } })).statusCode).toBe(200);
+  });
+});
+
+describe("/api/me", () => {
+  it("利用者名と役割を返す(認証なしのローカルは local / editor)", async () => {
+    h = await harness();
+    expect(json(await h.app.inject("/api/me"))).toEqual({ user: "local", role: "editor" });
+    const h2 = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
+    expect(json(await h2.app.inject({ url: "/api/me", headers: { authorization: "Bearer tok-viewer-0123456789" } }))).toEqual({ user: "vera", role: "viewer" });
+    await h2.close();
   });
 });

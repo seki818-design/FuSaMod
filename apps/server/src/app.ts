@@ -45,7 +45,9 @@ function authenticate(tokens: Config["tokens"], header: string | undefined): Con
 }
 
 /** 読み取り専用の役割でも使える操作(解析のみ。保存しない)。 */
-const readOnlyOk = (method: string, url: string) => method === "GET" || method === "HEAD" || (method === "POST" && /\/analyze(\?|$)/.test(url));
+const pathOf = (url: string) => url.split("?")[0]!.split("#")[0]!;
+const readOnlyOk = (method: string, url: string) =>
+  method === "GET" || method === "HEAD" || (method === "POST" && /^\/api\/projects\/[^/]+\/analyze\/?$/.test(pathOf(url)));
 
 class RateLimiter {
   private hits = new Map<string, number[]>();
@@ -112,6 +114,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         return reply.code(401).header("WWW-Authenticate", "Bearer").send({ error: "認証が必要です" });
       }
       r.actor = found.user;
+      (req as unknown as { role: string }).role = found.role;
       if (found.role === "viewer" && !readOnlyOk(req.method, req.url)) return reply.code(403).send({ error: "この利用者は読み取り専用です" });
     }
     if (!apiLimiter.allow(r.actor === "local" ? req.ip : r.actor)) return reply.code(429).header("Retry-After", "60").send({ error: "リクエストが多すぎます" });
@@ -157,6 +160,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     authRequired: config.tokens.length > 0,
   }));
 
+  app.get("/api/me", async (req) => ({ user: actorOf(req), role: (req as FastifyRequest & { role?: string }).role ?? "editor" }));
   app.get("/api/projects", async () => ({ projects: await store.list() }));
 
   app.post("/api/projects", async (req, reply) => {
@@ -318,7 +322,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   // --- Web UI(ビルド済みなら配信) ---
   if (config.webDist && existsSync(config.webDist)) {
-    await app.register(fastifyStatic, { root: config.webDist, prefix: "/" });
+    await app.register(fastifyStatic, {
+      root: config.webDist,
+      prefix: "/",
+      // ハッシュ付きの資産は長期キャッシュ、index.html は毎回確認する
+      cacheControl: false,
+      setHeaders: (res, path) => res.header("Cache-Control", /[\\/]assets[\\/]/.test(path) ? "public, max-age=31536000, immutable" : "no-cache"),
+    });
     app.setNotFoundHandler((req, reply) => {
       if (req.method === "GET" && !req.url.startsWith("/api/")) return reply.sendFile("index.html");
       return reply.code(404).send({ error: "見つかりません" });

@@ -59,7 +59,8 @@ export function TopBar() {
         SysML: {s.health?.sysml === "java" ? "公式実装" : "保存済みのみ"}
       </span>
       <span className="badge undet" title="AI の提供元">AI: {s.health?.ai ?? "-"}</span>
-      <button className="btn primary" onClick={() => void save()} disabled={!dirty || s.busy.saving} title="Ctrl+S">
+      {s.me?.role === "viewer" && <span className="badge warn" title="この利用者は読み取り専用です(保存・AI の提案・復元はできません)">読み取り専用</span>}
+      <button className="btn primary" onClick={() => void save()} disabled={!dirty || s.busy.saving || s.me?.role === "viewer"} title={s.me?.role === "viewer" ? "読み取り専用のため保存できません" : "Ctrl+S"}>
         {s.busy.saving ? "保存中…" : "保存"}
       </button>
       <button className="btn" onClick={() => discard()} disabled={!dirty}>変更を破棄</button>

@@ -111,6 +111,7 @@ const P = (id: string) => `/api/projects/${encodeURIComponent(id)}`;
 
 export const api = {
   health: () => req<{ status: string; sysml: string; ai: string; authRequired: boolean }>("GET", "/api/health"),
+  me: () => req<{ user: string; role: "editor" | "viewer" }>("GET", "/api/me"),
   projects: () => req<{ projects: { id: string; revision: number; updated?: string }[] }>("GET", "/api/projects"),
   create: (id: string) => req<{ id: string }>("POST", "/api/projects", { id }),
   get: (id: string) => req<ProjectView>("GET", P(id)),

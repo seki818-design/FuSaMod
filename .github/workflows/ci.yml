@@ -43,3 +43,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:integration
       - run: ./tools/sysml-check/run.sh
+
+  docker:
+    # イメージのビルドと起動確認(ヘルスチェック)。開発環境には Docker が無く、ここで初めて検証される。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t fusamod .
+      - run: |
+          docker run -d --name fusamod -p 8787:8787 -e FUSAMOD_TOKENS='ci:0123456789abcdef0123' -e FUSAMOD_SYSML=snapshot fusamod
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8787/api/health && exit 0; sleep 2; done
+          docker logs fusamod; exit 1

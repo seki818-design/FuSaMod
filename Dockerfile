@@ -4,7 +4,8 @@ FROM node:22-bookworm-slim AS build
 RUN corepack enable
 WORKDIR /app
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm --filter @fusamod/web build && pnpm --filter @fusamod/server build
+RUN pnpm install --frozen-lockfile && pnpm --filter @fusamod/web build && pnpm --filter @fusamod/server build \
+    && pnpm --filter @fusamod/server --prod deploy --legacy /deploy
 
 FROM eclipse-temurin:21-jdk-jammy
 # Node 22(公式 SysML 実装の取得・コンパイルに必要な unzip / python3 / curl も入れる)
@@ -16,8 +17,10 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=8787 FUSAMOD_PROJECTS=/data FUSAMOD_WE
 COPY --from=build /app/apps/server/dist/server.mjs ./apps/server/dist/server.mjs
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/tools/sysml-check ./tools/sysml-check
+COPY --from=build /app/libs ./libs
+COPY --from=build /deploy/node_modules ./apps/server/node_modules
 COPY pnpm-workspace.yaml ./
-RUN cd /app/apps/server && npm init -y >/dev/null && npm install --omit=dev fastify@^5 @fastify/static@^10 && mkdir -p /data && chown -R 1000:1000 /data /app
+RUN mkdir -p /data && chown -R 1000:1000 /data /app
 USER 1000
 VOLUME /data
 EXPOSE 8787

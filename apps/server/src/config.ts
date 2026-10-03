@@ -58,8 +58,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!["rule", "claude"].includes(provider)) throw new Error(`FUSAMOD_AI_PROVIDER は rule|claude: ${provider}`);
   const tokens = parseTokens(env["FUSAMOD_TOKENS"] ?? "");
   const webDist = resolve(env["FUSAMOD_WEB_DIST"] ?? resolve(REPO_ROOT, "apps/web/dist"));
+  const port = Number(env["PORT"] ?? 8787);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`PORT は 1〜65535 の整数: ${env["PORT"]}`);
   return {
-    port: Number(env["PORT"] ?? 8787),
+    port,
     host: env["HOST"] ?? "127.0.0.1",
     projectsDir: resolve(env["FUSAMOD_PROJECTS"] ?? resolve(REPO_ROOT, "projects")),
     sysmlMode: mode,

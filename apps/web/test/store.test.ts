@@ -21,6 +21,7 @@ function fakeServer(opts: { authRequired?: boolean; conflictOnSave?: boolean } =
     const auth = (init?.headers as Record<string, string> | undefined)?.["Authorization"];
     if (opts.authRequired && auth !== "Bearer ok") return json(401, { error: "認証が必要です" });
     if (url === "/api/health") return json(200, { status: "ok", sysml: "snapshot", ai: "rule", authRequired: !!opts.authRequired });
+    if (url === "/api/me") return json(200, { user: "local", role: "editor" });
     if (url === "/api/projects") return json(200, { projects: [{ id: "demo", revision }] });
     if (url === "/api/projects/demo" && method === "GET") return json(200, view());
     if (url.endsWith("/history")) return json(200, { history: [] });

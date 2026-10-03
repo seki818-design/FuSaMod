@@ -17,6 +17,12 @@ Node.js 22 + pnpm。サーバー(Fastify)が API と Web UI(`apps/web/dist`)を�
 ## 監査ログ
 `audit.jsonl` は各行に直前の行のハッシュを持つ(ハッシュ連鎖)。`GET /api/projects/:id/audit` の `chain.ok` で途中の行の改ざん・削除を検出できる(画面の「履歴」タブにも表示)。**末尾の削除や全面的な作り直しは検出できない**ため、重要な運用では外部のログ基盤へ転送すること。
 
+## 手でファイルを書き換えない
+`model.sysml` / `safety.json` をディレクトリ上で直接書き換えると、次の読み込みで「確定済みの履歴の最新版」の内容に戻る(履歴とのハッシュの不一致を、途中で落ちた保存とみなすため)。変更は画面・API から保存すること。履歴が無い手置きのプロジェクトは、最初の保存の前に元の内容が版 1 として残る。履歴の自動削除(既定 500 件超)は監査ログ(`history.prune`)に記録される。
+
+## 静的配信
+Web UI の `assets/` はハッシュ付きなので長期キャッシュ(immutable)、`index.html` は毎回確認する。圧縮は行わない(必要ならリバースプロキシで)。
+
 ## 監視
 `GET /api/health` が状態(sysml モード、AI、認証要否)を返す。
 
@@ -28,4 +34,4 @@ Node.js 22 + pnpm。サーバー(Fastify)が API と Web UI(`apps/web/dist`)を�
 
 ## ビルドと配布
 - `pnpm build`(Web UI)と `pnpm --filter @fusamod/server build`(サーバーを `apps/server/dist/server.mjs` の 1 ファイルにまとめる。実行時に `tsx` は不要。`fastify` と `@fastify/static` のみ外部依存)。`node apps/server/dist/server.mjs` で起動。`FUSAMOD_WEB_DIST` で Web UI の配置先を変えられる。
-- `Dockerfile` を同梱(Java 21 + Node 22。公式 SysML 実装の取得に初回ネットワークが必要)。**このリポジトリの開発環境では Docker デーモンが無く、イメージのビルドは未検証**。使う前に `docker build` と `/api/health` の確認を行うこと。
+- `Dockerfile` を同梱(Java 21 + Node 22。依存は `pnpm deploy` でロックファイルの版に固定。公式 SysML 実装の取得に初回ネットワークが必要)。CI に `docker build` と起動確認のジョブを追加した(まだ実ランナーで実行されていない)。**このリポジトリの開発環境では Docker デーモンが無く、イメージのビルドは未検証**。使う前に `docker build` と `/api/health` の確認を行うこと。

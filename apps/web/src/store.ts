@@ -27,6 +27,8 @@ export interface State {
   ready: boolean;
   needLogin: boolean;
   health?: { sysml: string; ai: string; authRequired: boolean };
+  /** ログイン中の利用者と役割(viewer は読み取り専用) */
+  me?: { user: string; role: "editor" | "viewer" };
   projects: { id: string; revision: number; updated?: string }[];
   projectId?: string;
   server?: ProjectView;
@@ -153,8 +155,8 @@ function applyView(v: ProjectView, keepDrafts = false) {
 // ----- 起動・プロジェクト -----
 export async function init() {
   try {
-    const [health, list] = await Promise.all([api.health(), api.projects()]);
-    set({ health, projects: list.projects, ready: true, needLogin: false });
+    const [health, list, me] = await Promise.all([api.health(), api.projects(), api.me()]);
+    set({ health, projects: list.projects, me, ready: true, needLogin: false });
     const initialId = new URLSearchParams(location.search).get("project") ?? list.projects[0]?.id;
     if (initialId) await selectProject(initialId);
   } catch (e) {

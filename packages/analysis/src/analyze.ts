@@ -2,6 +2,7 @@ import {
   buildFmeaView,
   buildIndex,
   compileApTable,
+  validateAsilInheritance,
   validateDecompositions,
   validateFaultTree,
   validateHara,
@@ -175,6 +176,13 @@ function referenceIssues(net: SafetyNet, s: SafetyData): { pairing: Issue[]; saf
   const pairing: Issue[] = [];
   for (const x of [...s.intendedFunctions, ...s.mechanisms])
     if (!known.has(x.elementId)) pairing.push({ code: "UNKNOWN_ELEMENT", severity: "error", message: `構造要素が存在しません: ${x.elementId}`, ref: x.id });
+  const failureIds = new Set(net.failures.map((f) => f.id));
+  for (const m of s.mechanisms) {
+    for (const fid of m.coversFailureIds ?? [])
+      if (!failureIds.has(fid)) pairing.push({ code: "UNKNOWN_REF", severity: "error", message: `安全機構が対象とする故障ノードが存在しません: ${fid}`, ref: m.id });
+    if (m.asil !== undefined && m.asil !== "QM" && (m.coversFailureIds ?? []).length === 0)
+      pairing.push({ code: "MECH_NO_COVERAGE", severity: "warning", message: "安全機構が対象とする故障モード(coversFailureIds)が未登録です(FMEA-MSR で何を検出・対処するかを紐づけてください)", ref: m.id });
+  }
   const safetyReq: Issue[] = [];
   for (const r of s.safetyRequirements) {
     if (r.allocatedTo !== undefined && !known.has(r.allocatedTo))
@@ -185,6 +193,30 @@ function referenceIssues(net: SafetyNet, s: SafetyData): { pairing: Issue[]; saf
       safetyReq.push({ code: "REQ_NOT_ALLOCATED", severity: "warning", message: `ASIL ${r.asil} の安全要求が構造要素に配置されていません`, ref: r.id });
   }
   return { pairing, safetyReq };
+}
+
+/** 分解先の独立性: 配置先が未設定、または一方が他方の祖先/子孫の要素なら独立とみなせない。 */
+function decompositionAllocationIssues(net: SafetyNet, s: SafetyData): Issue[] {
+  const idx = buildIndex(net);
+  const ancestors = (id: string): Set<string> => {
+    const out = new Set<string>();
+    for (let cur = idx.element.get(id); cur && !out.has(cur.id); cur = cur.parentId ? idx.element.get(cur.parentId) : undefined) out.add(cur.id);
+    return out;
+  };
+  const byId = new Map(s.safetyRequirements.map((r) => [r.id, r]));
+  const out: Issue[] = [];
+  for (const d of s.decompositions) {
+    const [c1, c2] = d.childRequirementIds.map((id) => byId.get(id));
+    if (!c1 || !c2) continue;
+    if (c1.allocatedTo === undefined || c2.allocatedTo === undefined) {
+      out.push({ code: "DECOMP_NOT_ALLOCATED", severity: "error", message: "分解先の要求が構造要素に配置されておらず、独立性を確認できません", ref: d.id });
+      continue;
+    }
+    if (c1.allocatedTo === c2.allocatedTo) continue; // 同一要素は validateDecompositions が報告
+    if (ancestors(c1.allocatedTo).has(c2.allocatedTo) || ancestors(c2.allocatedTo).has(c1.allocatedTo))
+      out.push({ code: "DECOMP_NOT_INDEPENDENT", severity: "error", message: "分解先の一方が、もう一方の配置先の上位(または下位)の要素に含まれており、独立性が成立しません", ref: d.id });
+  }
+  return out;
 }
 
 function faultTreeIssues(net: SafetyNet, s: SafetyData): Issue[] {
@@ -204,10 +236,15 @@ function faultTreeIssues(net: SafetyNet, s: SafetyData): Issue[] {
 function compileAp(s: SafetyData): { ap?: ApLookup; issues: Issue[] } {
   if (!s.apTable || s.apTable.length === 0)
     return { issues: [{ code: "AP_TABLE_MISSING", severity: "warning", message: "AIAG-VDA の AP 表が未設定です(RPN のみ表示します)。ハンドブックの正式な表を設定してください" }] };
+  const issues: Issue[] = [];
+  if (!s.apTableSource?.trim())
+    issues.push({ code: "AP_TABLE_SOURCE_UNKNOWN", severity: "warning", message: "AP 表の出典(apTableSource)が未記入です。正式な表であることを確認し、出典を記録してください" });
+  else if (s.apTableSource.includes("非公式"))
+    issues.push({ code: "AP_TABLE_NOT_OFFICIAL", severity: "warning", message: `AP 表は非公式のサンプルです(${s.apTableSource})。実際の分析では、ハンドブックの正式な表に置き換えてください` });
   try {
-    return { ap: compileApTable(s.apTable), issues: [] };
+    return { ap: compileApTable(s.apTable), issues };
   } catch (e) {
-    return { issues: [{ code: "AP_TABLE_INVALID", severity: "error", message: `AP 表が不正です: ${(e as Error).message}` }] };
+    return { issues: [...issues, { code: "AP_TABLE_INVALID", severity: "error", message: `AP 表が不正です: ${(e as Error).message}` }] };
   }
 }
 
@@ -281,7 +318,11 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   const refs = referenceIssues(net, s);
   push("pairing", [...refs.pairing, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
   push("safety-req", refs.safetyReq);
-  push("decomposition", validateDecompositions(s.safetyRequirements, s.decompositions));
+  push("decomposition", [
+    ...validateDecompositions(s.safetyRequirements, s.decompositions),
+    ...validateAsilInheritance(s.safetyRequirements, s.decompositions, s.hara.goals),
+    ...decompositionAllocationIssues(net, s),
+  ]);
   push("fta", faultTreeIssues(net, s));
 
   const { ap, issues: apIssues } = compileAp(s);

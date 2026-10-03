@@ -8,7 +8,7 @@ describe("デモプロジェクトの解析", () => {
   it("エラーは無く、警告は未設定の AP 表と未着手の機能だけ", () => {
     expect(a.issues.filter((i) => i.severity === "error")).toEqual([]);
     const codes = a.issues.map((i) => i.code).sort();
-    expect(codes).toEqual(["AP_TABLE_MISSING", "FUNCTION_WITHOUT_FAILURE"]);
+    expect(codes).toEqual(["AP_TABLE_NOT_OFFICIAL", "FUNCTION_WITHOUT_FAILURE"]);
     expect(a.issues.find((i) => i.code === "FUNCTION_WITHOUT_FAILURE")!.elementId).toBe(SM);
   });
 
@@ -54,7 +54,7 @@ describe("デモプロジェクトの解析", () => {
 
   it("トレース: すべての要求が構造要素に紐づく。分解リンクを持つ", () => {
     expect(a.trace.uncovered).toEqual([]);
-    expect(a.trace.rows).toHaveLength(4 + 4);
+    expect(a.trace.rows).toHaveLength(4 + 5);
     expect(a.trace.links).toEqual(
       expect.arrayContaining([
         { from: "FSR-1", to: "FSR-1a", kind: "derives" },
@@ -68,10 +68,10 @@ describe("デモプロジェクトの解析", () => {
 describe("AP 表の扱い", () => {
   const uniform = (ap: "H" | "M" | "L") => [{ s: [1, 10] as [number, number], o: [1, 10] as [number, number], d: [1, 10] as [number, number], ap }];
   it("正当な AP 表があれば AP を算出し、未設定警告が消える", () => {
-    const s = { ...demoSafety(), apTable: uniform("L") };
+    const s = { ...demoSafety(), apTable: uniform("L"), apTableSource: "テスト用の正式表(想定)" };
     const a = analyzeProject(demoGraph(), s);
     expect(a.apAvailable).toBe(true);
-    expect(a.issues.map((i) => i.code)).not.toContain("AP_TABLE_MISSING");
+    expect(a.issues.map((i) => i.code)).not.toContain("AP_TABLE_NOT_OFFICIAL");
     expect(a.fmea[PT]!.rows[0]!.causes.every((c) => c.ap === "L")).toBe(true);
   });
   it("不正な AP 表はエラー", () => {
@@ -178,5 +178,38 @@ describe("パズルビューの再計算(レイヤー整合性のオン/オフ)"
     const a = analyzeProject(demoGraph(), s);
     expect(recomputePuzzle(a, { excludeSources: ["consistency"] }).cells.system.safety.status).toBe("inconsistent");
     expect(recomputePuzzle(a, { excludeSources: ["hara"] }).cells.system.safety.status).not.toBe("inconsistent");
+  });
+});
+
+describe("安全分析の整合性(専門家レビュー指摘の回帰)", () => {
+  const run = (mutate: (s: ReturnType<typeof demoSafety>) => void) => {
+    const s = structuredClone(demoSafety());
+    mutate(s);
+    return analyzeProject(demoGraph(), s).issues;
+  };
+  it("デモはエラー 0(継承・分解・独立性の検査を通る)", () => {
+    expect(run(() => {}).filter((i) => i.severity === "error")).toEqual([]);
+  });
+  it("FSR-1 を D から A に下げると検出される", () => {
+    expect(run((s) => { s.safetyRequirements[0]!.asil = "A"; }).map((i) => i.code)).toContain("REQ_BELOW_GOAL_ASIL");
+  });
+  it("ASIL D の安全目標から要求を全て消すと検出される", () => {
+    expect(run((s) => { s.safetyRequirements = []; s.decompositions = []; }).map((i) => i.code)).toContain("GOAL_NO_FSR");
+  });
+  it("分解先を祖先・子孫の要素に配置すると独立性エラー", () => {
+    expect(run((s) => { s.safetyRequirements.find((r) => r.id === "FSR-1a")!.allocatedTo = PT; s.safetyRequirements.find((r) => r.id === "FSR-1b")!.allocatedTo = VCU; }).map((i) => i.code)).toContain("DECOMP_NOT_INDEPENDENT");
+  });
+  it("分解先の配置先が無いとエラー", () => {
+    expect(run((s) => { delete s.safetyRequirements.find((r) => r.id === "FSR-1a")!.allocatedTo; }).map((i) => i.code)).toContain("DECOMP_NOT_ALLOCATED");
+  });
+  it("存在しない故障ノードを安全機構が対象にするとエラー", () => {
+    expect(run((s) => { s.mechanisms[0]!.coversFailureIds = ["FM-NOPE"]; }).map((i) => i.code)).toContain("UNKNOWN_REF");
+  });
+  it("ASIL の事象に目標が無いのはエラー", () => {
+    expect(run((s) => { delete s.hara.events[0]!.safetyGoalId; }).find((i) => i.code === "EVENT_NO_GOAL")?.severity).toBe("error");
+  });
+  it("AP 表が非公式サンプルなら警告し、出典が無くても警告する", () => {
+    expect(run(() => {}).map((i) => i.code)).toContain("AP_TABLE_NOT_OFFICIAL");
+    expect(run((s) => { delete s.apTableSource; }).map((i) => i.code)).toContain("AP_TABLE_SOURCE_UNKNOWN");
   });
 });

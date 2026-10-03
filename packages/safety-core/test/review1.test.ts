@@ -1,0 +1,159 @@
+import { describe, expect, it } from "vitest";
+import {
+  determineAsil,
+  minimalCutSets,
+  singlePointFaults,
+  validateAsilInheritance,
+  validateDecompositions,
+  validateHara,
+  faultTreeFromNet,
+  type Asil,
+  type Decomposition,
+  type FaultTree,
+  type SafetyRequirement,
+} from "../src/index.js";
+
+const req = (id: string, asil: Asil, extra: Partial<SafetyRequirement> = {}): SafetyRequirement => ({ id, text: id, level: "fsr", asil, ...extra });
+const codes = (xs: { code: string }[]) => xs.map((x) => x.code).sort();
+
+describe("determineAsil の入力検証", () => {
+  it("NaN・範囲外・小数は例外(QM を返して見逃さない)", () => {
+    expect(() => determineAsil(NaN as 1, 1, 1)).toThrow(RangeError);
+    expect(() => determineAsil(4 as 3, 1, 1)).toThrow(RangeError);
+    expect(() => determineAsil(1, 5 as 4, 1)).toThrow(RangeError);
+    expect(() => determineAsil(1.5 as 1, 1, 1)).toThrow(RangeError);
+  });
+  it("validateHara は範囲外でも例外を投げず HARA_RANGE を報告する", () => {
+    const issues = validateHara({ events: [{ id: "E", hazard: "h", situation: "s", severity: NaN as 1, exposure: 9 as 4, controllability: 1 }], goals: [] });
+    expect(codes(issues)).toContain("HARA_RANGE");
+  });
+  it("ASIL の付いた事象に安全目標が無いのはエラー", () => {
+    const issues = validateHara({ events: [{ id: "E", hazard: "h", situation: "s", severity: 3, exposure: 4, controllability: 3, rationale: "r" }], goals: [] });
+    expect(issues.find((i) => i.code === "EVENT_NO_GOAL")?.severity).toBe("error");
+  });
+});
+
+describe("ASIL の継承規則", () => {
+  const goals = [{ id: "SG-1", asil: "D" as Asil }];
+  const dec: Decomposition = { id: "DEC", parentRequirementId: "F1", childRequirementIds: ["F1a", "F1b"], independenceEvidence: "DFA-PT-001(独立電源)" };
+  it("正しい継承と分解は指摘なし", () => {
+    const reqs = [req("F1", "D", { safetyGoalId: "SG-1" }), req("F1a", "B", { originAsil: "D", parentId: "F1" }), req("F1b", "B", { originAsil: "D", parentId: "F1" })];
+    expect(validateAsilInheritance(reqs, [dec], goals)).toEqual([]);
+  });
+  it("FSR を D から A に黙って下げるとエラー", () => {
+    const issues = validateAsilInheritance([req("F1", "A", { safetyGoalId: "SG-1" })], [], goals);
+    expect(codes(issues)).toContain("REQ_BELOW_GOAL_ASIL");
+  });
+  it("安全目標レベルの要求が目標と異なる ASIL ならエラー", () => {
+    const issues = validateAsilInheritance([req("S1", "QM", { level: "safety-goal", safetyGoalId: "SG-1" })], [], goals);
+    expect(codes(issues)).toEqual(expect.arrayContaining(["SG_REQ_ASIL_MISMATCH", "REQ_BELOW_GOAL_ASIL"]));
+  });
+  it("子が親より低い ASIL(分解によらない)はエラー", () => {
+    const issues = validateAsilInheritance([req("F1", "C", { safetyGoalId: "SG-1" }), req("F2", "A", { parentId: "F1" })], [], goals);
+    expect(codes(issues)).toContain("REQ_ASIL_DOWNGRADE");
+  });
+  it("元 ASIL を名乗るが分解に属さない要求は偽装としてエラー", () => {
+    const issues = validateAsilInheritance([req("F1", "D", { safetyGoalId: "SG-1" }), req("X", "A", { originAsil: "D", parentId: "F1" })], [], goals);
+    expect(codes(issues)).toContain("DECOMP_ORPHAN");
+  });
+  it("ASIL 付きの安全目標に要求が 1 つも無ければエラー", () => {
+    expect(codes(validateAsilInheritance([], [], goals))).toEqual(["GOAL_NO_FSR"]);
+    expect(validateAsilInheritance([], [], [{ id: "SG-9", asil: "QM" }])).toEqual([]);
+  });
+  it("存在しない安全目標への参照はエラー", () => {
+    expect(codes(validateAsilInheritance([req("F1", "D", { safetyGoalId: "NOPE" })], [], goals))).toContain("UNKNOWN_REF");
+  });
+});
+
+describe("デコンポジションの重複と根拠", () => {
+  const reqs = [req("P", "D"), req("A", "B", { originAsil: "D" }), req("B", "B", { originAsil: "D" }), req("C", "B", { originAsil: "D" })];
+  it("空白だけの根拠は未登録、短すぎる根拠は警告", () => {
+    const d = (e: string): Decomposition => ({ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: e });
+    expect(codes(validateDecompositions(reqs, [d(" ")]))).toEqual(["DECOMP_NO_EVIDENCE"]);
+    expect(codes(validateDecompositions(reqs, [d("x")]))).toEqual(["DECOMP_EVIDENCE_WEAK"]);
+  });
+  it("同じ要求の二重分解・分解先の再利用はエラー", () => {
+    const e = "DFA-PT-001(独立電源)";
+    const issues = validateDecompositions(reqs, [
+      { id: "d1", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: e },
+      { id: "d2", parentRequirementId: "P", childRequirementIds: ["B", "C"], independenceEvidence: e },
+    ]);
+    expect(codes(issues)).toEqual(expect.arrayContaining(["DECOMP_DUPLICATE_PARENT", "DECOMP_CHILD_REUSED"]));
+  });
+});
+
+const gate = (id: string, g: "and" | "or", inputs: string[]) => ({ id, label: id, kind: "gate" as const, gate: g, inputs });
+const basic = (id: string) => ({ id, label: id, kind: "basic" as const });
+
+describe("FTA の堅牢性(空の結果を安全と誤読させない)", () => {
+  it("循環は problems に出て、完全でない", () => {
+    const t: FaultTree = { id: "t", name: "t", top: "T", nodes: [gate("T", "or", ["G", "a"]), gate("G", "and", ["T", "b"]), basic("a"), basic("b")] };
+    const r = singlePointFaults(t);
+    expect(r.complete).toBe(false);
+    expect(r.problems.join()).toContain("循環");
+  });
+  it("AND に未知の入力があっても空にせず problems に出す", () => {
+    const t: FaultTree = { id: "t", name: "t", top: "T", nodes: [gate("T", "and", ["a", "ghost"]), basic("a")] };
+    const r = minimalCutSets(t);
+    expect(r.problems.join()).toContain("ghost");
+    expect(r.cutSets).toEqual([]);
+  });
+  it("入力の無いゲートは problems", () => {
+    const t: FaultTree = { id: "t", name: "t", top: "T", nodes: [gate("T", "or", [])] };
+    expect(minimalCutSets(t).problems.length).toBeGreaterThan(0);
+  });
+  it("深い鎖でもスタックオーバーフローしない", () => {
+    const n = 50000;
+    const nodes: FaultTree["nodes"] = [basic("b")];
+    let prev = "b";
+    for (let i = 0; i < n; i++) { nodes.push(gate(`g${i}`, "or", [prev])); prev = `g${i}`; }
+    const r = singlePointFaults({ id: "t", name: "t", top: prev, nodes });
+    expect(r).toEqual({ faults: ["b"], complete: true, problems: [] });
+  });
+  it("大量のカットセットは時間・件数の上限で打ち切られ、完全でないと示される", () => {
+    // 12 個の OR(各 4 入力)の AND = 4^12 のカットセット
+    const nodes: FaultTree["nodes"] = [];
+    const ors: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      const ins = [0, 1, 2, 3].map((j) => `b${i}_${j}`);
+      ins.forEach((b) => nodes.push(basic(b)));
+      nodes.push(gate(`o${i}`, "or", ins));
+      ors.push(`o${i}`);
+    }
+    nodes.push(gate("T", "and", ors));
+    const t0 = Date.now();
+    const r = minimalCutSets({ id: "t", name: "t", top: "T", nodes } as FaultTree, { limit: 5000 });
+    expect(r.truncated).toBe(true);
+    expect(Date.now() - t0).toBeLessThan(5000);
+    expect(singlePointFaults({ id: "t", name: "t", top: "T", nodes } as FaultTree).complete).toBe(false);
+  });
+  it("吸収則が正しく、かつ大きな入力でも速い", () => {
+    const nodes: FaultTree["nodes"] = [basic("a"), basic("b"), basic("c")];
+    nodes.push(gate("ab", "and", ["a", "b"]), gate("T", "or", ["a", "ab", "c"]));
+    expect(minimalCutSets({ id: "t", name: "t", top: "T", nodes } as FaultTree).cutSets).toEqual([["a"], ["c"]]);
+    const many: FaultTree["nodes"] = [];
+    const ins: string[] = [];
+    for (let i = 0; i < 3000; i++) { many.push(basic(`x${i}`), basic(`y${i}`), gate(`p${i}`, "and", [`x${i}`, `y${i}`])); ins.push(`p${i}`); }
+    many.push(gate("T", "or", ins));
+    const t0 = Date.now();
+    expect(minimalCutSets({ id: "t", name: "t", top: "T", nodes: many }).cutSets.length).toBe(3000);
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
+  it("故障ネットに循環があっても、未展開の基本事象として残り、単一点故障 0 件が安全に見えない", () => {
+    const net = {
+      elements: [{ id: "E", name: "E" }],
+      functions: [{ id: "F", ownerId: "E", name: "F" }],
+      failures: [
+        { id: "FM1", functionId: "F", description: "1" },
+        { id: "FM2", functionId: "F", description: "2" },
+      ],
+      links: [
+        { id: "L1", causeId: "FM2", effectId: "FM1" },
+        { id: "L2", causeId: "FM1", effectId: "FM2" },
+      ],
+    };
+    const t = faultTreeFromNet(net as never, "FM1");
+    expect(t.nodes.some((n) => n.undeveloped)).toBe(true);
+    expect(singlePointFaults(t).faults.length).toBeGreaterThan(0);
+  });
+});

@@ -100,7 +100,7 @@ describe("フォールトツリー", () => {
     expect(truncated).toBe(false);
     // TOP = (A+B)·(C+A) = A + B·C
     expect(cutSets).toEqual([["A"], ["B", "C"]]);
-    expect(singlePointFaults(tree())).toEqual(["A"]);
+    expect(singlePointFaults(tree())).toEqual({ faults: ["A"], complete: true, problems: [] });
   });
   it("頂上事象確率の上限", () => {
     // 1 - (1-0.01)(1-0.1*0.2) = 0.0298

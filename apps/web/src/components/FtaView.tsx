@@ -28,12 +28,18 @@ function useFaultTree() {
 }
 
 function Summary({ calc, singles }: { calc: Calc | undefined; singles: Set<string> }) {
+  const incomplete = !!calc?.cuts && (calc.cuts.truncated || calc.cuts.problems.length > 0);
   return (
     <div className="row" role="status">
       <span className="badge undet">最小カットセット {calc?.cuts?.cutSets.length ?? "—"}</span>
-      <span className={`badge ${singles.size ? "err" : "ok"}`}>単一故障 {calc?.cuts ? singles.size : "—"}</span>
+      {incomplete ? (
+        <span className="badge warn" title="結果が不完全なため、単一故障の有無は判定できません">単一故障 判定不可</span>
+      ) : (
+        <span className={`badge ${singles.size ? "err" : "ok"}`}>単一故障 {calc?.cuts ? singles.size : "—"}</span>
+      )}
       {calc?.prob !== undefined && <span className="badge accent" title="独立を仮定した上限(Esary-Proschan)">頂上事象確率の上限 {calc.prob.toExponential(2)} /h</span>}
       {calc?.cuts?.truncated && <span className="badge warn">展開を打ち切りました(結果は不完全)</span>}
+      {calc?.cuts?.problems.map((p) => <span key={p} className="badge err">{p}</span>)}
     </div>
   );
 }

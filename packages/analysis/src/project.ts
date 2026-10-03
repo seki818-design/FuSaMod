@@ -92,6 +92,7 @@ const safetyRequirement = z
     originAsil: asil.optional(),
     parentId: id.optional(),
     allocatedTo: id.optional(),
+    safetyGoalId: id.optional(),
   })
   .strict();
 
@@ -148,6 +149,8 @@ export const SafetyDataSchema = z
     levelOverrides: z.record(z.enum(["system", "subsystem", "component", "detail"])).optional(),
     /** AIAG-VDA の Action Priority 表(ハンドブックの正式な表をユーザーが投入する。ADR-0004) */
     apTable: arr(apRule).optional(),
+    /** AP 表の出典(例: 「AIAG-VDA FMEA ハンドブック 第 1 版 表 …」)。サンプル表は「非公式」と明記する */
+    apTableSource: z.string().max(500).optional(),
   })
   .strict();
 

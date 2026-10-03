@@ -43,7 +43,7 @@ describe("デコンポジション検証", () => {
         req({ id: "a", asil: "B", originAsil: "D", allocatedTo: "e1" }),
         req({ id: "b", asil: "B", originAsil: "D", allocatedTo: "e2" }),
       ],
-      [{ id: "d", parentRequirementId: "p", childRequirementIds: ["a", "b"], independenceEvidence: "DFA-1" }],
+      [{ id: "d", parentRequirementId: "p", childRequirementIds: ["a", "b"], independenceEvidence: "DFA-PT-001(独立電源)" }],
     );
     expect(issues).toEqual([]);
   });
@@ -69,7 +69,7 @@ describe("デコンポジション検証", () => {
         req({ id: "a", asil: "A", originAsil: "D" }),
         req({ id: "b", asil: "A", originAsil: "D" }),
       ],
-      [{ id: "d", parentRequirementId: "p", childRequirementIds: ["a", "b"], independenceEvidence: "x" }],
+      [{ id: "d", parentRequirementId: "p", childRequirementIds: ["a", "b"], independenceEvidence: "DFA-PT-001(独立電源)" }],
     );
     expect(issues.map((i) => i.code)).toEqual(["REDECOMPOSITION"]);
   });

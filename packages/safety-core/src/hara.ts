@@ -11,6 +11,7 @@ export type Controllability = 0 | 1 | 2 | 3;
  * それ以外は S+E+C の合計で決まる: 10=D, 9=C, 8=B, 7=A, 6 以下=QM(表と一致することをテストで全 36 通り確認)。
  */
 export function determineAsil(s: Severity, e: Exposure, c: Controllability): Asil {
+  if (!isValidSec(s, e, c)) throw new RangeError(`S は 0〜3、E は 0〜4、C は 0〜3 の整数: S=${s} E=${e} C=${c}`);
   if (s === 0 || e === 0 || c === 0) return "QM";
   const sum = s + e + c;
   if (sum >= 10) return "D";
@@ -19,6 +20,9 @@ export function determineAsil(s: Severity, e: Exposure, c: Controllability): Asi
   if (sum === 7) return "A";
   return "QM";
 }
+
+const isInt = (v: number, max: number) => Number.isInteger(v) && v >= 0 && v <= max;
+export const isValidSec = (s: number, e: number, c: number): boolean => isInt(s, 3) && isInt(e, 4) && isInt(c, 3);
 
 export interface HazardousEvent {
   id: string;
@@ -55,14 +59,17 @@ export function eventAsil(e: HazardousEvent): Asil {
   return determineAsil(e.severity, e.exposure, e.controllability);
 }
 
+/** 評価値が範囲外の事象では undefined(検証用。例外を投げない)。 */
+export function eventAsilOrUndefined(e: HazardousEvent): Asil | undefined {
+  return isValidSec(e.severity, e.exposure, e.controllability) ? eventAsil(e) : undefined;
+}
+
 /** 安全目標ごとの、紐づく事象の最大 ASIL。事象が無ければ undefined。 */
 export function goalAsilFromEvents(hara: HaraData, goalId: string): Asil | undefined {
-  const asils = hara.events.filter((e) => e.safetyGoalId === goalId).map(eventAsil);
+  const asils = hara.events.filter((e) => e.safetyGoalId === goalId).map(eventAsilOrUndefined).filter((a): a is Asil => a !== undefined);
   if (asils.length === 0) return undefined;
   return asils.reduce((a, b) => (asilRank(b) > asilRank(a) ? b : a));
 }
-
-const inRange = (v: number, max: number) => Number.isInteger(v) && v >= 0 && v <= max;
 
 /** HARA の整合性チェック。 */
 export function validateHara(hara: HaraData): Issue[] {
@@ -84,12 +91,12 @@ export function validateHara(hara: HaraData): Issue[] {
 
   const goals = new Map(hara.goals.map((g) => [g.id, g]));
   for (const e of hara.events) {
-    if (!inRange(e.severity, 3) || !inRange(e.exposure, 4) || !inRange(e.controllability, 3))
-      err("HARA_RANGE", "S は 0〜3、E は 0〜4、C は 0〜3 の整数", e.id);
+    const asil = eventAsilOrUndefined(e);
+    if (asil === undefined) err("HARA_RANGE", "S は 0〜3、E は 0〜4、C は 0〜3 の整数", e.id);
     if (e.safetyGoalId !== undefined && !goals.has(e.safetyGoalId))
       err("UNKNOWN_REF", `安全目標が存在しません: ${e.safetyGoalId}`, e.id);
-    if (eventAsil(e) !== "QM" && e.safetyGoalId === undefined)
-      warn("EVENT_NO_GOAL", `ASIL ${eventAsil(e)} の事象に安全目標がありません`, e.id);
+    if (asil !== undefined && asil !== "QM" && e.safetyGoalId === undefined)
+      err("EVENT_NO_GOAL", `ASIL ${asil} の事象に安全目標がありません(ISO 26262-3: ASIL の付いた事象には安全目標が必要)`, e.id);
     if (!e.rationale) warn("EVENT_NO_RATIONALE", "S/E/C の評価根拠が未記入です", e.id);
   }
   for (const g of hara.goals) {

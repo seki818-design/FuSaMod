@@ -28,7 +28,7 @@ describe("FMEA の出力", () => {
     const row = rows.find((r) => r[2] === "過大トルクを出力する" && String(r[5]).includes("過大なトルク指令"))!;
     expect(row[0]).toBe("powertrain(サブシステム)");
     expect(row[3]).toBe("vehicle: 意図しない加速");
-    expect(row.slice(4)).toEqual([10, "vcu: 過大なトルク指令を出力する", "ソフトウェア静的解析・MC/DC テスト", 3, "指令値の範囲チェックと独立監視", 4, 120, undefined]);
+    expect(row.slice(4)).toEqual([10, "vcu: 過大なトルク指令を出力する", "ソフトウェア静的解析・MC/DC テスト", 3, "指令値の範囲チェックと独立監視", 4, 120, "M"]);
   });
   it("要素を指定して出力できる", () => {
     const csv = fmeaCsv(a, PT);
@@ -46,7 +46,7 @@ describe("トレース・指摘の出力とレポート", () => {
     expect(csv).toContain("allocate");
   });
   it("指摘 CSV", () => {
-    expect(issuesCsv(a)).toContain("AP_TABLE_MISSING");
+    expect(issuesCsv(a)).toContain("AP_TABLE_NOT_OFFICIAL");
   });
   it("Markdown レポート: 概要・パズルビュー・指摘・FMEA", () => {
     const md = reportMarkdown(a, "EV パワートレイン");
@@ -54,6 +54,6 @@ describe("トレース・指摘の出力とレポート", () => {
     expect(md).toContain("人(安全・MBSE の専門家)が確認してください");
     for (const h of ["## 概要", "## パズルビュー", "## 指摘事項", "## FMEA"]) expect(md).toContain(h);
     expect(md).toMatch(/\| システム \| 整合\(\d+\) \| 整合\(1\) \|/);
-    expect(md).toContain("AP_TABLE_MISSING");
+    expect(md).toContain("AP_TABLE_NOT_OFFICIAL");
   });
 });

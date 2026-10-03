@@ -1,4 +1,4 @@
-import { ASILS, determineAsil, eventAsil, goalAsilFromEvents, type Asil } from "@fusamod/safety-core";
+import { ASILS, eventAsilOrUndefined, goalAsilFromEvents, type Asil } from "@fusamod/safety-core";
 import { updateSafety, useStore } from "../store.js";
 import { AsilBadge, nextId } from "../ui.js";
 
@@ -32,7 +32,7 @@ export function HaraView() {
                 <td className="num"><select aria-label={`${e.id} の S`} title={S_HINT[e.severity]} value={e.severity} onChange={(x) => updateSafety((d) => { d.hara.events[i]!.severity = Number(x.target.value) as 0 | 1 | 2 | 3; })}>{S_HINT.map((h, v) => <option key={v} value={v}>{h}</option>)}</select></td>
                 <td className="num"><select aria-label={`${e.id} の E`} title={E_HINT[e.exposure]} value={e.exposure} onChange={(x) => updateSafety((d) => { d.hara.events[i]!.exposure = Number(x.target.value) as 0 | 1 | 2 | 3 | 4; })}>{E_HINT.map((h, v) => <option key={v} value={v}>{h}</option>)}</select></td>
                 <td className="num"><select aria-label={`${e.id} の C`} title={C_HINT[e.controllability]} value={e.controllability} onChange={(x) => updateSafety((d) => { d.hara.events[i]!.controllability = Number(x.target.value) as 0 | 1 | 2 | 3; })}>{C_HINT.map((h, v) => <option key={v} value={v}>{h}</option>)}</select></td>
-                <td><AsilBadge asil={determineAsil(e.severity, e.exposure, e.controllability)} /></td>
+                <td>{eventAsilOrUndefined(e) ? <AsilBadge asil={eventAsilOrUndefined(e)!} /> : <span className="muted">範囲外</span>}</td>
                 <td><select aria-label={`${e.id} の安全目標`} value={e.safetyGoalId ?? ""} onChange={(x) => updateSafety((d) => { const ev = d.hara.events[i]!; if (x.target.value) ev.safetyGoalId = x.target.value; else delete ev.safetyGoalId; })}><option value="">(なし)</option>{hara.goals.map((g) => <option key={g.id} value={g.id}>{g.id}</option>)}</select></td>
                 <td><input type="text" aria-label={`${e.id} の根拠`} value={e.rationale ?? ""} onChange={(x) => updateSafety((d) => { const ev = d.hara.events[i]!; if (x.target.value) ev.rationale = x.target.value; else delete ev.rationale; })} /></td>
                 <td><button className="btn small danger" aria-label={`${e.id} を削除`} onClick={() => { if (window.confirm(`${e.id} を削除しますか?`)) updateSafety((d) => { d.hara.events.splice(i, 1); }); }}>✕</button></td>
@@ -62,7 +62,7 @@ export function HaraView() {
           </tbody>
         </table>
       </div>
-      {hara.events.length > 0 && <div className="muted">事象ごとの ASIL(再計算): {hara.events.map((e) => `${e.id}=${eventAsil(e)}`).join("、")}</div>}
+      {hara.events.length > 0 && <div className="muted">事象ごとの ASIL(再計算): {hara.events.map((e) => `${e.id}=${eventAsilOrUndefined(e) ?? "範囲外"}`).join("、")}</div>}
       {issues.map((i, k) => <div key={k} className={`badge ${i.severity === "error" ? "err" : "warn"}`}>{i.severity === "error" ? "✕" : "▲"} {i.message}{i.ref ? `(${i.ref})` : ""}</div>)}
     </div>
   );

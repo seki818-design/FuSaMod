@@ -219,6 +219,8 @@ export function singlePointFaults(t: FaultTree): SinglePointResult {
  * すべての基本事象に確率がある場合のみ計算する。独立を仮定する。
  */
 export function topProbabilityUpperBound(t: FaultTree): number | undefined {
+  // 展開されていない事象(原因が未分析)や、範囲外の確率があるときは、確率を出さない(過小評価を避ける)
+  if (t.nodes.some((n) => n.kind === "basic" && (n.undeveloped || (n.probability !== undefined && !(n.probability >= 0 && n.probability <= 1))))) return undefined;
   const probs = new Map(t.nodes.filter((n) => n.kind === "basic").map((n) => [n.id, n.probability]));
   const r = minimalCutSets(t);
   if (!isCompleteResult(r)) return undefined;

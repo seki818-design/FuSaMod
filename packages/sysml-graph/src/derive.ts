@@ -44,7 +44,7 @@ interface Graph {
   isAction(qn: string | null | undefined): boolean;
 }
 
-const nameOf = (e: GraphElement) => e.name ?? e.qualifiedName;
+const nameOf = (e: GraphElement) => e.name ?? (e.redefinedFeatures?.[0] ? e.redefinedFeatures[0].split("::").pop()! : e.qualifiedName);
 
 function deriveStructure(x: Graph): StructureElement[] {
   return x.g.elements
@@ -129,7 +129,7 @@ function deriveRequirements(x: Graph, warn: Warn, ownerOfAction: (qn: string) =>
     const list = satisfiedBy.get(s.requirement) ?? [];
     if (!list.includes(target)) satisfiedBy.set(s.requirement, [...list, target]);
   }
-  return x.g.elements
+  const list: DerivedRequirement[] = x.g.elements
     .filter((e) => e.kind === "RequirementUsage")
     .map((e) => ({
       id: e.qualifiedName,
@@ -137,6 +137,16 @@ function deriveRequirements(x: Graph, warn: Warn, ownerOfAction: (qn: string) =>
       ...(e.owner && x.byQn.get(e.owner)?.kind === "RequirementUsage" ? { parentId: e.owner } : {}),
       satisfiedBy: satisfiedBy.get(e.qualifiedName) ?? [],
     }));
+  // 入れ子の requirement は、自身に satisfy が無ければ、親の satisfy を引き継ぐ(親が満たされていれば、子も同じ要素が担う)
+  const byId = new Map(list.map((r) => [r.id, r]));
+  for (const r of list) {
+    const seen = new Set<string>([r.id]);
+    for (let p = r.parentId ? byId.get(r.parentId) : undefined; r.satisfiedBy.length === 0 && p && !seen.has(p.id); p = p.parentId ? byId.get(p.parentId) : undefined) {
+      seen.add(p.id);
+      if (p.satisfiedBy.length > 0) r.satisfiedBy = [...p.satisfiedBy];
+    }
+  }
+  return list;
 }
 
 function deriveCandidates(functions: FunctionNode[], parameters: Record<string, GraphParameter[]>): FailureModeCandidate[] {

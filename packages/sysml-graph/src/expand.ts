@@ -30,7 +30,9 @@ const UNSUPPORTED: Record<string, string> = {
 };
 const MAX_DEPTH = 64;
 
-const lastName = (e: GraphElement) => e.name ?? e.qualifiedName.split("::").pop()!;
+const tail = (qn: string) => qn.split("::").pop()!;
+/** 名前。名前のない再定義(`part :>> ax`)は、再定義している特徴の名前になる。 */
+const lastName = (e: GraphElement) => e.name ?? (e.redefinedFeatures?.[0] ? tail(e.redefinedFeatures[0]) : tail(e.qualifiedName));
 const append = <K, V>(m: Map<K, V[]>, k: K, v: V) => m.set(k, [...(m.get(k) ?? []), v]);
 
 class Expander {
@@ -131,7 +133,7 @@ class Expander {
     return {
       kind: m.kind,
       qualifiedName: id,
-      name: m.name ?? lastName(m),
+      name: lastName(m),
       owner,
       ...(m.doc ? { doc: m.doc } : {}),
       ...(m.types ? { types: m.types } : {}),
@@ -147,13 +149,18 @@ class Expander {
     const c = this.copy(m, id, inst.qualifiedName);
     this.out.push(c);
     append(this.copiesOf, m.qualifiedName, id);
+    const nested: GraphElement[] = [];
     for (const gc of this.descendants(m)) {
       const rel = gc.qualifiedName.slice(m.qualifiedName.length);
       const gcId = id + rel;
-      this.out.push(this.copy(gc, gcId, id + gc.owner!.slice(m.qualifiedName.length)));
+      const copy = this.copy(gc, gcId, id + gc.owner!.slice(m.qualifiedName.length));
+      this.out.push(copy);
+      nested.push(copy);
       append(this.copiesOf, gc.qualifiedName, gcId);
     }
     this.expandInto(c, depth + 1, defStack);
+    // 定義の中の入れ子の part が型付きなら、その型の中身も展開する
+    for (const n of nested) this.expandInto(n, depth + 1, defStack);
   }
 
   private descendants(e: GraphElement): GraphElement[] {
@@ -161,7 +168,7 @@ class Expander {
     const stack = [...(this.children.get(e.qualifiedName) ?? [])];
     while (stack.length) {
       const c = stack.shift()!;
-      if (!USAGES.has(c.kind)) continue;
+      if (!USAGES.has(c.kind) || c.isRef) continue;
       out.push(c);
       stack.push(...(this.children.get(c.qualifiedName) ?? []));
     }
@@ -182,6 +189,12 @@ class Expander {
       if (this.isDefinition(d)) this.instantiated.add(d);
       for (const m of this.children.get(d) ?? []) {
         if (!USAGES.has(m.kind) || names.has(lastName(m))) continue; // 使用側に同名があれば、そちらを優先
+        if (m.isRef) {
+          this.warn("UNSUPPORTED_CONSTRUCT", `定義の中の ref part(参照)は構造に入れません: ${m.qualifiedName}`, m.qualifiedName);
+          continue;
+        }
+        if (m.multiplicityUpper !== undefined && m.multiplicityUpper > 1)
+          this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${m.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${m.qualifiedName}`, m.qualifiedName);
         if (m.redefines) {
           this.warn("REDEFINITION_IGNORED", "再定義(:>>)は解析の対象外です(元の使用をそのまま使います)", m.qualifiedName);
           continue;

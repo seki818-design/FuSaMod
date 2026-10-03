@@ -108,8 +108,12 @@ export function validateDecompositions(
 }
 
 const EVIDENCE_MIN = 8;
-/** 8 文字以上で、4 種類以上の文字を含む(「aaaaaaaa」のような中身の無い文字列を除く)。内容の妥当性は人が判断する。 */
-const isSubstantial = (t: string) => t.length >= EVIDENCE_MIN && new Set(t).size >= 4;
+/**
+ * 形だけの根拠を除く簡易な検査(内容の妥当性は人が判断する)。
+ * 8 文字以上、6 種類以上の文字、数字だけでない、同じ語の繰り返しでない(「abcdabcd」「TODO TODO」「12345678」を除く)。
+ */
+const isSubstantial = (t: string) =>
+  t.length >= EVIDENCE_MIN && new Set(t).size >= 6 && !/^\d+$/.test(t) && !/^(.{2,}?)\s*\1+$/.test(t) && !/^(todo|tbd|n\/a|未定|あとで)/i.test(t);
 
 /** 分解の自己参照と循環(A → B + QM、B → A + … など)。 */
 function checkDecompositionCycles(decomps: Decomposition[], issues: Issue[]) {
@@ -205,11 +209,16 @@ export function validateAsilInheritance(
   checkParentCycles(reqs, byId, issues);
   const covered = new Set<string>();
   for (const r of reqs) {
-    if (r.originAsil !== undefined && !inDecomposedBranch(r))
-      issues.push({ code: "DECOMP_ORPHAN", severity: "error", message: `${r.id} は元 ASIL(${r.originAsil})の表記を持ちますが、どのデコンポジションの分解先でもありません`, ref: r.id });
     const parent = r.parentId !== undefined ? byId.get(r.parentId) : undefined;
-    if (parent && eff(r) < eff(parent))
-      issues.push({ code: "REQ_ASIL_DOWNGRADE", severity: "error", message: `${r.id}(ASIL ${r.originAsil ?? r.asil})が上位の ${parent.id}(ASIL ${parent.originAsil ?? parent.asil})より低く、デコンポジションによらない引き下げです`, ref: r.id });
+    const isChild = decompChildren.has(r.id);
+    if (r.originAsil !== undefined && !isChild && !(parent && inDecomposedBranch(parent) && parent.originAsil === r.originAsil))
+      issues.push({ code: "DECOMP_ORPHAN", severity: "error", message: `${r.id} は元 ASIL(${r.originAsil})の表記を持ちますが、デコンポジションの分解先でも、その子孫(親と同じ元 ASIL)でもありません`, ref: r.id });
+    // 分解先そのものは、元 ASIL で比較する(分解表の妥当性は validateDecompositions が見る)。
+    // その子孫は分解されない限り下がらないので、実際の ASIL で比較する(元 ASIL の表記を盾にした引き下げを許さない)。
+    if (parent && isChild && eff(r) < eff(parent))
+      issues.push({ code: "REQ_ASIL_DOWNGRADE", severity: "error", message: `${r.id}(元 ASIL ${r.originAsil ?? r.asil})が上位の ${parent.id}(ASIL ${parent.originAsil ?? parent.asil})より低く、デコンポジションによらない引き下げです`, ref: r.id });
+    if (parent && !isChild && asilRank(r.asil) < asilRank(parent.asil))
+      issues.push({ code: "REQ_ASIL_DOWNGRADE", severity: "error", message: `${r.id}(ASIL ${r.asil})が上位の ${parent.id}(ASIL ${parent.asil})より低く、デコンポジションによらない引き下げです。下げるにはデコンポジションが必要です`, ref: r.id });
     const gid = goalOf(r);
     if (gid === undefined) continue;
     const g = goalById.get(gid);

@@ -28,7 +28,7 @@ describe("FMEA の出力", () => {
     const row = rows.find((r) => r[2] === "過大トルクを出力する" && String(r[5]).includes("過大なトルク指令"))!;
     expect(row[0]).toBe("powertrain(サブシステム)");
     expect(row[3]).toBe("vehicle: 意図しない加速");
-    expect(row.slice(4)).toEqual([10, "vcu: 過大なトルク指令を出力する", "ソフトウェア静的解析・MC/DC テスト", 3, "指令値の範囲チェックと独立監視", 4, 120, "M"]);
+    expect(row.slice(4)).toEqual([10, "vcu: 過大なトルク指令を出力する", "ソフトウェア静的解析・MC/DC テスト", 3, "指令値の範囲チェックと独立監視", 4, 120, "H"]);
   });
   it("要素を指定して出力できる", () => {
     const csv = fmeaCsv(a, PT);

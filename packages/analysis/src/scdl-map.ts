@@ -23,6 +23,8 @@ interface Item {
   asil?: Asil;
   origin?: Asil;
   element?: ElementId;
+  /** 元の SysML 要求(refines) */
+  modelRef?: string;
 }
 
 interface Ctx {
@@ -68,7 +70,7 @@ function buildPool({ s, pool, err }: Ctx) {
   for (const x of s.mechanisms)
     add({ id: x.id, name: x.name, text: x.name, ...(x.asil ? { asil: x.asil } : {}), ...(x.originAsil ? { origin: x.originAsil } : {}), element: x.elementId }, "安全機構");
   for (const r of s.safetyRequirements)
-    add({ id: r.id, name: shorten(r.text), text: r.text, asil: r.asil, ...(r.originAsil ? { origin: r.originAsil } : {}), ...(r.allocatedTo ? { element: r.allocatedTo } : {}) }, "安全要求");
+    add({ id: r.id, name: shorten(r.text), text: r.text, asil: r.asil, ...(r.originAsil ? { origin: r.originAsil } : {}), ...(r.allocatedTo ? { element: r.allocatedTo } : {}), ...(r.refines ? { modelRef: r.refines } : {}) }, "安全要求");
 }
 
 function mapRequirements({ m, pool, elementIds, err }: Ctx) {
@@ -80,6 +82,7 @@ function mapRequirements({ m, pool, elementIds, err }: Ctx) {
       id: it.id,
       name: it.name,
       ...(it.text ? { text: it.text } : {}),
+      ...(it.modelRef ? { modelRef: it.modelRef } : {}),
       ...(w ? { weight: w } : {}),
       isAllocated: known,
       ...(known ? { allocation: elementIds[it.element!]! } : {}),

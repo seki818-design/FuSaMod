@@ -27,6 +27,8 @@ export interface GraphElement {
   redefines?: boolean;
   /** 再定義している特徴(完全修飾名)。定義側の同名の使用の中身を引き継ぐために使う */
   redefinedFeatures?: string[];
+  /** 多重度の上限(`Cell[4]` なら 4)。解析では 1 つのインスタンスとして扱い、警告する */
+  multiplicityUpper?: number;
   /** `ref part`(参照。構造の入れ子ではない) */
   isRef?: boolean;
 }

@@ -132,3 +132,25 @@ describe("satisfy の経路・特殊化・再定義・ref(公式実装の出力�
     expect(r.requirements.find((x) => x.id === `${T}::r1`)!.satisfiedBy).toEqual([]);
   });
 });
+
+describe("定義の入れ子・ref・多重度・名前のない再定義(公式実装の出力で確認)", () => {
+  const d = deriveNet(ex("nested-definitions.graph.json"));
+  const ids = d.net.elements.map((e) => e.id);
+  it("定義内の入れ子の part の中の型付き使用も展開される", () => {
+    expect(ids).toEqual(expect.arrayContaining(["T3::car1::aux::pack", "T3::car1::aux::pack::bms", "T3::car1::aux::pack::cells", "T3::car1::aux::pack::cells::elec"]));
+  });
+  it("定義内の ref part は、複製の子にも入れず警告する", () => {
+    expect(ids.some((i) => i.endsWith("::charger"))).toBe(false);
+    expect(d.deriveIssues.some((i) => i.code === "UNSUPPORTED_CONSTRUCT" && i.message.includes("charger"))).toBe(true);
+  });
+  it("多重度の上限が 1 を超えると、1 つとして扱うことを警告する", () => {
+    expect(d.deriveIssues.some((i) => i.code === "MULTIPLICITY_IGNORED" && i.message.includes("cells"))).toBe(true);
+  });
+  it("名前のない再定義(part :>> main)は、再定義している特徴の名前になり、中身も引き継ぐ", () => {
+    expect(ids).toEqual(expect.arrayContaining(["T3::car1::main", "T3::car1::main::extra", "T3::car1::main::bms", "T3::car1::main::cells"]));
+    expect(d.net.elements.find((e) => e.id === "T3::car1::main")!.name).toBe("main");
+  });
+  it("入れ子の requirement は、親の satisfy を引き継ぐ(未紐づけと誤判定しない)", () => {
+    expect(d.requirements.find((r) => r.id === "T3::r1::sub")!.satisfiedBy).toEqual(["T3::car1::main"]);
+  });
+});

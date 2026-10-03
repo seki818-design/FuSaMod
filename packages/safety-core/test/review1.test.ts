@@ -3,6 +3,7 @@ import {
   determineAsil,
   minimalCutSets,
   singlePointFaults,
+  topProbabilityUpperBound,
   validateAsilInheritance,
   validateDecompositions,
   validateHara,
@@ -193,5 +194,53 @@ describe("循環・導出・ID(ラウンド 2 の指摘)", () => {
     const t = faultTreeFromNet(net, "TOP");
     expect(Date.now() - t0).toBeLessThan(500);
     expect(t.nodes.length).toBeLessThan(200);
+  });
+});
+
+describe("元 ASIL の表記を盾にした引き下げ(ラウンド 3 の指摘)", () => {
+  const goals = [{ id: "SG-1", asil: "D" as Asil }];
+  const e = "DFA-PT-001(独立電源)";
+  const base = [req("F1", "D", { safetyGoalId: "SG-1" }), req("F1a", "B", { originAsil: "D", parentId: "F1" }), req("F1b", "B", { originAsil: "D", parentId: "F1" })];
+  const dec: Decomposition = { id: "DEC", parentRequirementId: "F1", childRequirementIds: ["F1a", "F1b"], independenceEvidence: e };
+  it("分解先の子孫に QM(D) / A(D) を付けても、実際の ASIL が下がっていればエラー", () => {
+    for (const a of ["QM", "A"] as Asil[]) {
+      const issues = validateAsilInheritance([...base, req("T1", a, { originAsil: "D", parentId: "F1a" })], [dec], goals);
+      expect(codes(issues)).toContain("REQ_ASIL_DOWNGRADE");
+    }
+  });
+  it("分解先の子孫が、実際の ASIL を保ち、同じ元 ASIL の表記を引き継ぐのは正当", () => {
+    expect(validateAsilInheritance([...base, req("T1", "B", { originAsil: "D", parentId: "F1a" })], [dec], goals)).toEqual([]);
+  });
+  it("子孫が、親と異なる元 ASIL を名乗るとエラー", () => {
+    expect(codes(validateAsilInheritance([...base, req("T1", "B", { originAsil: "C", parentId: "F1a" })], [dec], goals))).toContain("DECOMP_ORPHAN");
+  });
+  it("分解に属さない D(D) の子に QM(D) は、偽装としてエラー", () => {
+    const issues = validateAsilInheritance([req("F1", "D", { safetyGoalId: "SG-1" }), req("X", "QM", { originAsil: "D", parentId: "F1" })], [], goals);
+    expect(codes(issues)).toEqual(expect.arrayContaining(["DECOMP_ORPHAN", "REQ_ASIL_DOWNGRADE"]));
+  });
+  it("分解表にない QM + QM への分解は、分解先でもエラー", () => {
+    const reqs = [req("F1", "D", { safetyGoalId: "SG-1" }), req("A", "QM", { originAsil: "D", parentId: "F1" }), req("B", "QM", { originAsil: "D", parentId: "F1" })];
+    expect(codes(validateDecompositions(reqs, [{ id: "d", parentRequirementId: "F1", childRequirementIds: ["A", "B"], independenceEvidence: e }]))).toContain("DECOMP_INVALID");
+  });
+});
+
+describe("形だけの独立性の根拠 / 確率の上限(ラウンド 3)", () => {
+  const e = (t: string) => validateDecompositions(
+    [req("P", "D"), req("A", "B", { originAsil: "D", parentId: "P" }), req("B", "B", { originAsil: "D", parentId: "P" })],
+    [{ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: t }],
+  ).map((i) => i.code);
+  it.each(["abcdabcd", "TODO TODO", "12345678", "aaaaaaaa", "TBD", "x"])("『%s』は形だけの根拠として警告", (t) => {
+    expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK");
+  });
+  it("文書番号つきの根拠は通る", () => {
+    expect(e("DFA-PT-001(独立電源・独立クロック)")).toEqual([]);
+  });
+  it("未展開の事象や範囲外の確率があるとき、確率の上限は出さない", () => {
+    const t: FaultTree = { id: "t", name: "t", top: "G", nodes: [{ id: "G", label: "g", kind: "gate", gate: "or", inputs: ["a", "b"] }, { id: "a", label: "a", kind: "basic", probability: 0.1 }, { id: "b", label: "b", kind: "basic", probability: 0.2, undeveloped: true }] };
+    expect(topProbabilityUpperBound(t)).toBeUndefined();
+    t.nodes[2] = { id: "b", label: "b", kind: "basic", probability: 0.2 };
+    expect(topProbabilityUpperBound(t)).toBeCloseTo(0.28, 5);
+    t.nodes[2] = { id: "b", label: "b", kind: "basic", probability: 2 };
+    expect(topProbabilityUpperBound(t)).toBeUndefined();
   });
 });

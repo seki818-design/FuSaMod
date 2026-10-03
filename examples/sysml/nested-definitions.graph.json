@@ -1,0 +1,135 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "T3",
+      "name": "T3"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "T3::Cell",
+      "name": "Cell",
+      "owner": "T3"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::Cell::elec",
+      "name": "elec",
+      "owner": "T3::Cell"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "T3::Pack",
+      "name": "Pack",
+      "owner": "T3"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::Pack::charger",
+      "name": "charger",
+      "owner": "T3::Pack",
+      "types": [
+        "T3::Cell"
+      ],
+      "isRef": true
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::Pack::cells",
+      "name": "cells",
+      "owner": "T3::Pack",
+      "types": [
+        "T3::Cell"
+      ],
+      "multiplicityUpper": 4
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::Pack::bms",
+      "name": "bms",
+      "owner": "T3::Pack"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "T3::Car",
+      "name": "Car",
+      "owner": "T3"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::Car::aux",
+      "name": "aux",
+      "owner": "T3::Car"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::Car::aux::pack",
+      "name": "pack",
+      "owner": "T3::Car::aux",
+      "types": [
+        "T3::Pack"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::Car::main",
+      "name": "main",
+      "owner": "T3::Car",
+      "types": [
+        "T3::Pack"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::car1",
+      "name": "car1",
+      "owner": "T3",
+      "types": [
+        "T3::Car"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::car1::main",
+      "owner": "T3::car1",
+      "supertypes": [
+        "T3::Car::main"
+      ],
+      "redefines": true,
+      "redefinedFeatures": [
+        "T3::Car::main"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "T3::car1::main::extra",
+      "name": "extra",
+      "owner": "T3::car1::main"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "T3::r1",
+      "name": "r1",
+      "owner": "T3"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "T3::r1::sub",
+      "name": "sub",
+      "owner": "T3::r1"
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [
+    {
+      "requirement": "T3::r1",
+      "by": "T3::car1::main",
+      "byChain": [
+        "T3::car1",
+        "T3::car1::main"
+      ]
+    }
+  ],
+  "performs": []
+}

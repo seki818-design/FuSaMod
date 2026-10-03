@@ -63,6 +63,18 @@ public class SysmlExtract {
         return out;
     }
 
+    /** 多重度の上限(`[4]` や `[0..4]` なら 4)。リテラルでない・無限(*)・宣言なしなら null。 */
+    static Integer multiplicityUpper(Feature f) {
+        Multiplicity m = f.getMultiplicity();
+        if (!(m instanceof MultiplicityRange mr)) return null;
+        Expression ub = mr.getUpperBound();
+        if (ub == null) {
+            for (Element c : mr.getOwnedElement()) if (c instanceof LiteralInteger li) return li.getValue();
+            return null;
+        }
+        return ub instanceof LiteralInteger li ? li.getValue() : null;
+    }
+
     /** 宣言された型(`: Def`)の完全修飾名。 */
     static List<String> typesOf(Feature f) {
         List<String> out = new ArrayList<>();
@@ -106,6 +118,8 @@ public class SysmlExtract {
             if (!red.isEmpty()) n.put("redefinedFeatures", red);
         }
         if (f instanceof PartUsage pu && f.getOwningType() != null && pu.isReference()) n.put("isRef", true);
+        Integer upper = multiplicityUpper(f);
+        if (upper != null) n.put("multiplicityUpper", upper);
         return n;
     }
 

@@ -4,3 +4,4 @@ export * from "./scdl-map.js";
 export * from "./trace.js";
 export * from "./analyze.js";
 export * from "./export.js";
+export * from "./impact.js";

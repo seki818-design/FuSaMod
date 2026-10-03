@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeProject, parseSafetyData, recomputePuzzle } from "../src/index.js";
+import { analyzeProject, impactOfRequirementChange, parseSafetyData, recomputePuzzle } from "../src/index.js";
 import { demoGraph, demoSafety, GD, INV, PT, SM, VCU, VEH } from "./helpers.js";
 
 describe("デモプロジェクトの解析", () => {
@@ -39,17 +39,17 @@ describe("デモプロジェクトの解析", () => {
     expect(cells.detail.structure.count).toBe(2);
   });
 
-  it("SCDL: 階層番号(ITEM/E-1/E-1-1)で生成され、検証を通る(ペアの分解 D → B + B を含む)", () => {
-    expect(a.scdlElementIds).toMatchObject({ [VEH]: "ITEM", [PT]: "E-1", [VCU]: "E-1-1", [INV]: "E-1-2", [GD]: "E-1-2-1", [SM]: "E-1-4" });
+  it("SCDL: 名前に基づく安定した ID(ITEM/powertrain/vcu)で生成され、検証を通る(ペアの分解 D → B + B を含む)", () => {
+    expect(a.scdlElementIds).toMatchObject({ [VEH]: "ITEM", [PT]: "ITEM/powertrain", [VCU]: "ITEM/powertrain/vcu", [INV]: "ITEM/powertrain/inverter", [GD]: "ITEM/powertrain/inverter/gateDriver", [SM]: "ITEM/powertrain/safetyMonitor" });
     expect(a.issues.filter((i) => i.source === "scdl")).toEqual([]);
     const pairing = a.scdl.groupPairings[0]!;
     expect(pairing.set).toEqual(["RG-IF-1", "SRG-SM-1"]);
-    expect(a.scdl.constraints[0]).toMatchObject({ id: "NFSR-PAIR-1", allocation: "E-1", weight: "B(D)" });
+    expect(a.scdl.constraints[0]).toMatchObject({ id: "NFSR-PAIR-1", allocation: "ITEM/powertrain", weight: "B(D)" });
     // 外部の信号源は境界の要求として生成される
     expect(a.scdl.requirements.filter((r) => r.isExternal).map((r) => r.id).sort()).toEqual(["EXT-accelerator", "EXT-inverter-gate"]);
     // エレメントの重み付け: VCU は B(D)、パワートレインは D(FSR-1)
-    expect(a.scdl.elements.find((e) => e.id === "E-1-1")!.weight).toBe("B(D)");
-    expect(a.scdl.elements.find((e) => e.id === "E-1")!.weight).toBe("D");
+    expect(a.scdl.elements.find((e) => e.id === "ITEM/powertrain/vcu")!.weight).toBe("B(D)");
+    expect(a.scdl.elements.find((e) => e.id === "ITEM/powertrain")!.weight).toBe("D");
   });
 
   it("トレース: すべての要求が構造要素に紐づく。分解リンクを持つ", () => {
@@ -211,5 +211,55 @@ describe("安全分析の整合性(専門家レビュー指摘の回帰)", () =>
   it("AP 表が非公式サンプルなら警告し、出典が無くても警告する", () => {
     expect(run(() => {}).map((i) => i.code)).toContain("AP_TABLE_NOT_OFFICIAL");
     expect(run((s) => { delete s.apTableSource; }).map((i) => i.code)).toContain("AP_TABLE_SOURCE_UNKNOWN");
+  });
+});
+
+describe("SCDL の ID は安定で、元のモデルへ追跡できる", () => {
+  it("兄弟の並び順を入れ替えても、エレメントの ID は変わらない", () => {
+    const g = demoGraph();
+    const parts = g.elements.filter((e) => e.kind === "PartUsage" && e.owner === PT);
+    const swapped = { ...g, elements: [...g.elements.filter((e) => !parts.includes(e)), ...[...parts].reverse()] };
+    const a1 = analyzeProject(g, demoSafety());
+    const a2 = analyzeProject(swapped, demoSafety());
+    expect(a2.scdlElementIds).toEqual(a1.scdlElementIds);
+  });
+  it("エレメントの備考に、元の構造要素(完全修飾名)が入る", () => {
+    const a = analyzeProject(demoGraph(), demoSafety());
+    expect(a.scdl.elements.find((e) => e.id === "ITEM/powertrain/vcu")!.text).toContain(VCU);
+  });
+  it("要求の名前は切り詰めない", () => {
+    const a = analyzeProject(demoGraph(), demoSafety());
+    expect(a.scdl.requirements.find((r) => r.id === "FSR-1")!.name).toBe("過大トルクを FTTI 内に検出し、安全状態(トルク 0)へ遷移する");
+  });
+});
+
+describe("要求変更の影響分析とトレース", () => {
+  const a = analyzeProject(demoGraph(), demoSafety());
+  const s = demoSafety();
+  it("SysML 要求 → 詳細化した安全要求 → 分解先 → 配置先の要素 → 機能 → FMEA まで波及する", () => {
+    const r = impactOfRequirementChange(a, s, "EvPowertrainDemo::'REQ-001'")!;
+    expect(r.requirements).toEqual(expect.arrayContaining(["FSR-1", "FSR-1a", "FSR-1b", "TSR-1b"]));
+    expect(r.elements).toEqual(expect.arrayContaining([VEH, VCU, SM]));
+    expect(r.fmeaElements).toEqual(expect.arrayContaining([VCU, PT]));
+    expect(r.intendedFunctions).toContain("IF-1");
+    expect(r.mechanisms).toContain("SM-1");
+    expect(r.decompositions).toContain("DEC-1");
+    expect(r.reasons.join("\n")).toContain("satisfy");
+  });
+  it("安全要求を起点にしても、上位の SysML 要求と満たす要素へたどれる", () => {
+    const r = impactOfRequirementChange(a, s, "TSR-1b")!;
+    expect(r.requirements).toEqual(expect.arrayContaining(["FSR-1b", "FSR-1"]));
+    expect(r.requirements.some((x) => x.endsWith("'REQ-001'"))).toBe(true);
+  });
+  it("存在しない要求は undefined", () => {
+    expect(impactOfRequirementChange(a, s, "NOPE")).toBeUndefined();
+  });
+  it("トレースに SysML 要求 → 安全要求の『詳細化』リンクが出る", () => {
+    expect(a.trace.links).toEqual(expect.arrayContaining([{ from: "EvPowertrainDemo::'REQ-001'", to: "FSR-1", kind: "refines" }]));
+  });
+  it("詳細化元が存在しない SysML 要求ならエラー", () => {
+    const x = structuredClone(demoSafety());
+    x.safetyRequirements[0]!.refines = "NOPE";
+    expect(analyzeProject(demoGraph(), x).issues.find((i) => i.code === "UNKNOWN_REF" && i.message.includes("SysML 要求"))?.severity).toBe("error");
   });
 });

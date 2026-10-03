@@ -116,7 +116,7 @@ describe("導出時の指摘", () => {
   it("part 以外の perform / part 以外への satisfy は無視して警告", () => {
     const g = base();
     g.performs!.push({ performer: F_DRIVE, performed: F_GEN });
-    g.satisfies.push({ requirement: `${P}'REQ-001'`, by: F_DRIVE });
+    g.satisfies.push({ requirement: `${P}'REQ-001'`, by: `${P}'REQ-001'` });
     const codes = deriveNet(g).issues.map((i) => i.code);
     expect(codes).toEqual(expect.arrayContaining(["PERFORM_NOT_PART", "SATISFY_NOT_PART"]));
   });

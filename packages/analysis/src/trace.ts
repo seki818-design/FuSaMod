@@ -19,7 +19,7 @@ export interface TraceCell {
 export interface TraceLink {
   from: string;
   to: string;
-  kind: "derives" | "decomposes";
+  kind: "derives" | "decomposes" | "refines";
 }
 export interface TraceMatrix {
   rows: TraceRow[];
@@ -59,7 +59,11 @@ export function buildTrace(
     const k = `${from}|${to}|${kind}`;
     if (!seen.has(k)) { seen.add(k); links.push({ from, to, kind }); }
   };
-  for (const r of s.safetyRequirements) if (r.parentId) link(r.parentId, r.id, "derives");
+  const sysmlIds = new Set(derived.requirements.map((r) => r.id));
+  for (const r of s.safetyRequirements) {
+    if (r.parentId) link(r.parentId, r.id, "derives");
+    if (r.refines && sysmlIds.has(r.refines)) link(r.refines, r.id, "refines");
+  }
   for (const d of s.decompositions) for (const c of d.childRequirementIds) link(d.parentRequirementId, c, "decomposes");
   const covered = new Set(cells.map((c) => c.requirementId));
   return {

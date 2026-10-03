@@ -9,6 +9,7 @@ import {
   type SafetyNet,
   type StructureElement,
 } from "@fusamod/safety-core";
+import { expandGraph } from "./expand.js";
 import type { ElementGraph, GraphElement, GraphParameter } from "./types.js";
 
 export interface DerivedRequirement {
@@ -112,16 +113,19 @@ function deriveFunctions(x: Graph, warn: Warn): { functions: FunctionNode[]; par
   return { functions, parameters };
 }
 
-function deriveRequirements(x: Graph, warn: Warn): DerivedRequirement[] {
+function deriveRequirements(x: Graph, warn: Warn, ownerOfAction: (qn: string) => string | undefined): DerivedRequirement[] {
   const satisfiedBy = new Map<string, ElementId[]>();
   for (const s of x.g.satisfies) {
     if (!s.requirement || !s.by) continue;
     if (x.byQn.get(s.requirement)?.kind !== "RequirementUsage") continue;
-    if (!x.isPart(s.by)) {
-      warn("SATISFY_NOT_PART", "part 以外への satisfy です(構造ネットには紐づけません)", s.requirement);
+    // action への satisfy は、その action を担当する part への紐づけとして扱う
+    const target = x.isPart(s.by) ? s.by : x.isAction(s.by) ? ownerOfAction(s.by) : undefined;
+    if (!target) {
+      warn("SATISFY_NOT_PART", "part(または担当 part を持つ action)以外への satisfy です(構造ネットには紐づけません)", s.requirement);
       continue;
     }
-    satisfiedBy.set(s.requirement, [...(satisfiedBy.get(s.requirement) ?? []), s.by]);
+    const list = satisfiedBy.get(s.requirement) ?? [];
+    if (!list.includes(target)) satisfiedBy.set(s.requirement, [...list, target]);
   }
   return x.g.elements
     .filter((e) => e.kind === "RequirementUsage")
@@ -147,8 +151,10 @@ function deriveCandidates(functions: FunctionNode[], parameters: Record<string, 
  *    上位機能は、その action を所有する action(機能分解)。
  *  - 要求: requirement と satisfy。
  */
-export function deriveNet(graph: ElementGraph): DerivedNet {
-  const issues: Issue[] = [];
+export function deriveNet(original: ElementGraph): DerivedNet {
+  const expanded = expandGraph(original);
+  const graph = expanded.graph;
+  const issues: Issue[] = [...expanded.issues];
   const warn: Warn = (code, message, ref) => void issues.push({ code, severity: "warning", message, ...(ref ? { ref } : {}) });
   const byQn = new Map<string, GraphElement>(graph.elements.map((e) => [e.qualifiedName, e]));
   const x: Graph = {
@@ -159,7 +165,8 @@ export function deriveNet(graph: ElementGraph): DerivedNet {
   };
   const elements = deriveStructure(x);
   const { functions, parameters } = deriveFunctions(x, warn);
-  const requirements = deriveRequirements(x, warn);
+  const owners = new Map(functions.map((f) => [f.id, f.ownerId]));
+  const requirements = deriveRequirements(x, warn, (qn) => owners.get(qn));
   const candidates = deriveCandidates(functions, parameters);
   if (elements.length === 0) issues.push({ code: "NO_STRUCTURE", severity: "error", message: "構造ネットが空です(part が見つかりません)" });
   const net: SafetyNet = { elements, functions, failures: [], links: [] };

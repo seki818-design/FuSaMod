@@ -7,7 +7,7 @@ import {
   type Asil,
   type ElementId,
 } from "@fusamod/safety-core";
-import { VIEWPOINTS, levelLabel } from "@fusamod/analysis";
+import { VIEWPOINTS, impactOfRequirementChange, levelLabel } from "@fusamod/analysis";
 import type { Operation } from "./operations.js";
 import type { AiContext, AiProvider, AiResult, ProposalDraft } from "./types.js";
 
@@ -132,6 +132,8 @@ export class RuleBasedProvider implements AiProvider {
 
   private impact(ctx: AiContext): AiResult {
     const { net } = ctx.analysis;
+    const req = this.requirementImpact(ctx);
+    if (req) return req;
     const ids = new Set<string>();
     for (const f of net.failures) if (ctx.message.includes(f.id)) ids.add(f.id);
     if (ids.size === 0) {
@@ -152,6 +154,30 @@ export class RuleBasedProvider implements AiProvider {
     return this.result(
       [`変更の影響を受ける FMEA は ${affected.size} 件です: ${names.join("、")}`, "", ...lines, "", "これらの FMEA の該当行を再確認してください(故障ネットの上位・下位のリンクをたどって求めています)。"].join("\n"),
     );
+  }
+
+  /** 要求の ID(安全要求、または SysML 要求の名前)が質問に含まれていれば、要求変更の影響を答える。 */
+  private requirementImpact(ctx: AiContext): AiResult | undefined {
+    const a = ctx.analysis;
+    const msg = ctx.message;
+    const ids = [...a.trace.rows.map((r) => ({ id: r.id, label: r.label }))].filter((r) => msg.includes(r.label) || msg.includes(r.id));
+    const hit = ids.sort((p, q) => q.label.length - p.label.length)[0];
+    if (!hit) return undefined;
+    const r = impactOfRequirementChange(a, ctx.safety, hit.id);
+    if (!r) return undefined;
+    const nm = (id: string) => a.net.elements.find((e) => e.id === id)?.name ?? id;
+    const lines = [
+      `要求 ${hit.label} を変更したときに、影響しうる範囲(機械的にたどった結果。影響の有無は人が判断してください):`,
+      `- 関連する要求: ${r.requirements.map((x) => x.split("::").pop()).join("、") || "なし"}`,
+      `- 構造要素: ${r.elements.map(nm).join("、") || "なし"}`,
+      `- 機能 ${r.functions.length} 件、故障ノード ${r.failures.length} 件`,
+      `- 見直す FMEA: ${r.fmeaElements.map(nm).join("、") || "なし"}`,
+      `- 意図機能: ${r.intendedFunctions.join("、") || "なし"} / 安全機構: ${r.mechanisms.join("、") || "なし"} / ペア: ${r.pairs.join("、") || "なし"} / 分解: ${r.decompositions.join("、") || "なし"}`,
+      "",
+      "経路:",
+      ...r.reasons.slice(0, 12).map((x) => `- ${x}`),
+    ];
+    return this.result(lines.join("\n"));
   }
 
   private summary(ctx: AiContext): AiResult {

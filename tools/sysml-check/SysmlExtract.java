@@ -46,6 +46,53 @@ public class SysmlExtract {
         return m;
     }
 
+    /** 宣言された型(`: Def`)の完全修飾名。 */
+    static List<String> typesOf(Feature f) {
+        List<String> out = new ArrayList<>();
+        for (FeatureTyping t : f.getOwnedTyping()) if (t.getType() != null) out.add(q(t.getType()));
+        return out;
+    }
+
+    /** 宣言された上位の型(`:>`)の完全修飾名。 */
+    static List<String> supertypesOf(Type t) {
+        List<String> out = new ArrayList<>();
+        for (Specialization sp : t.getOwnedSpecialization())
+            if (!(sp instanceof FeatureTyping) && sp.getGeneral() != null) out.add(q(sp.getGeneral()));
+        return out;
+    }
+
+    /** action(定義・使用)の入出力パラメータ。 */
+    static List<Object> parametersOf(Type au) {
+        List<Object> params = new ArrayList<>();
+        for (Feature f : au.getOwnedFeature()) {
+            FeatureDirectionKind dir = f.getDirection();
+            if (dir == null) continue;
+            Map<String, Object> pm = new LinkedHashMap<>();
+            pm.put("name", nameOf(f));
+            pm.put("direction", dir.getName());
+            pm.put("type", f.getType().isEmpty() ? null : f.getType().get(0).getName());
+            params.add(pm);
+        }
+        return params;
+    }
+
+    static Map<String, Object> usageNode(Feature f, String kind) {
+        Map<String, Object> n = node(f, kind);
+        List<String> types = typesOf(f);
+        if (!types.isEmpty()) n.put("types", types);
+        List<String> sup = supertypesOf(f);
+        if (!sup.isEmpty()) n.put("supertypes", sup);
+        if (!f.getOwnedRedefinition().isEmpty()) n.put("redefines", true);
+        return n;
+    }
+
+    static Map<String, Object> definitionNode(Type d, String kind) {
+        Map<String, Object> n = node(d, kind);
+        List<String> sup = supertypesOf(d);
+        if (!sup.isEmpty()) n.put("supertypes", sup);
+        return n;
+    }
+
     public static Map<String, Object> extract(Element root) {
         List<Object> elements = new ArrayList<>();
         List<Object> dependencies = new ArrayList<>();
@@ -90,20 +137,22 @@ public class SysmlExtract {
                 n.put("performer", q(p.getOwningNamespace()));
                 n.put("performed", q(p.getPerformedAction()));
                 performs.add(n);
-            } else if (o instanceof ActionUsage au && "ActionUsage".equals(au.eClass().getName())) {
-                Map<String, Object> n = node(au, "ActionUsage");
-                List<Object> params = new ArrayList<>();
-                for (Feature f : au.getOwnedFeature()) {
-                    FeatureDirectionKind dir = f.getDirection();
-                    if (dir == null) continue;
-                    Map<String, Object> pm = new LinkedHashMap<>();
-                    pm.put("name", nameOf(f));
-                    pm.put("direction", dir.getName());
-                    pm.put("type", f.getType().isEmpty() ? null : f.getType().get(0).getName());
-                    params.add(pm);
+                // `perform action x : Def;` は、その場で action を宣言する。action としても出力する
+                if (p.getPerformedAction() == p) {
+                    Map<String, Object> an = usageNode(p, "ActionUsage");
+                    an.put("parameters", parametersOf(p));
+                    elements.add(an);
                 }
-                n.put("parameters", params);
+            } else if (o instanceof ActionUsage au && "ActionUsage".equals(au.eClass().getName())) {
+                Map<String, Object> n = usageNode(au, "ActionUsage");
+                n.put("parameters", parametersOf(au));
                 elements.add(n);
+            } else if (o instanceof ActionDefinition ad) {
+                Map<String, Object> n = definitionNode(ad, "ActionDefinition");
+                n.put("parameters", parametersOf(ad));
+                elements.add(n);
+            } else if (o instanceof PartDefinition pd) {
+                elements.add(definitionNode(pd, "PartDefinition"));
             } else if (o instanceof Dependency d) {
                 Map<String, Object> n = node(d, "Dependency");
                 List<String> c = new ArrayList<>(), s = new ArrayList<>();
@@ -112,7 +161,12 @@ public class SysmlExtract {
                 n.put("client", c);
                 n.put("supplier", s);
                 dependencies.add(n);
-            } else if (o instanceof PartUsage || o instanceof RequirementUsage || o instanceof org.omg.sysml.lang.sysml.Package) {
+            } else if (o instanceof PartUsage || o instanceof RequirementUsage) {
+                elements.add(usageNode((Feature) o, ((Element) o).eClass().getName()));
+            } else if (o instanceof PortUsage || o instanceof ConnectionUsage || o instanceof StateUsage || o instanceof AllocationUsage) {
+                // 導出の対象外だが、「対象外の構成がある」ことを利用側が警告できるよう、種類と名前だけ出力する
+                elements.add(usageNode((Feature) o, ((Element) o).eClass().getName()));
+            } else if (o instanceof org.omg.sysml.lang.sysml.Package) {
                 elements.add(node((Element) o, ((Element) o).eClass().getName()));
             }
         }

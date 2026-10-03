@@ -13,7 +13,7 @@ export interface ScdlMapResult {
 const weightString = (asil: Asil | undefined, origin?: Asil | undefined): string | undefined =>
   asil === undefined ? undefined : origin !== undefined && origin !== asil ? `${asil}(${origin})` : asil;
 
-const shorten = (s: string, n = 18) => (s.length > n ? `${s.slice(0, n)}…` : s);
+const shorten = (s: string, n = 80) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
 /** 要求のプール(意図機能・安全機構・安全要求)の 1 件。 */
 interface Item {
@@ -35,17 +35,27 @@ interface Ctx {
   pool: Map<string, Item>;
 }
 
-/** エレメントの番号付け: 単一の根は ITEM、子は E-1、その子は E-1-1 …(SCDL の事例の記法)。 */
+/**
+ * エレメントの ID: 単一の根は ITEM、子は「親の ID/名前」(例: ITEM/powertrain/vcu)。
+ * 兄弟の並び順や追加・削除で変わらない(名前を変えたときだけ変わる)。同名の兄弟は #2 のように区別する。
+ */
 function numberElements({ net, elementIds }: Pick<Ctx, "net" | "elementIds">) {
   const children = new Map<string | undefined, string[]>();
+  const byId = new Map(net.elements.map((e) => [e.id, e]));
   for (const e of net.elements) children.set(e.parentId, [...(children.get(e.parentId) ?? []), e.id]);
+  const used = new Set<string>();
+  const unique = (base: string) => {
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}#${n}`;
+    used.add(id);
+    return id;
+  };
   const assign = (id: string, scdlId: string) => {
     elementIds[id] = scdlId;
-    const prefix = scdlId === "ITEM" ? "E" : scdlId;
-    (children.get(id) ?? []).forEach((c, i) => assign(c, `${prefix}-${i + 1}`));
+    for (const c of children.get(id) ?? []) assign(c, unique(`${scdlId}/${byId.get(c)!.name}`));
   };
   const roots = children.get(undefined) ?? [];
-  roots.forEach((r, i) => assign(r, roots.length === 1 ? "ITEM" : `E-${i + 1}`));
+  for (const r of roots) assign(r, unique(roots.length === 1 ? "ITEM" : byId.get(r)!.name));
 }
 
 function buildPool({ s, pool, err }: Ctx) {
@@ -174,6 +184,7 @@ function mapElements({ net, m, pool, elementIds, ancestors }: Ctx) {
     const el: Element = {
       id: elementIds[e.id]!,
       name: e.name,
+      text: `モデル参照: ${e.modelRef ?? e.id}`,
       ...(e.parentId !== undefined && elementIds[e.parentId] ? { parent: elementIds[e.parentId]! } : {}),
       ...(weight ? { weight } : {}),
     };

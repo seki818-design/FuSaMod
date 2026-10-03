@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { levelLabel, parseSafetyData, VIEWPOINTS } from "@fusamod/analysis";
+import { impactOfRequirementChange, levelLabel, parseSafetyData, VIEWPOINTS } from "@fusamod/analysis";
 import { LEVELS } from "@fusamod/analysis";
 import { clearIssueFocus, exportFile, openTab, replaceSafety, restoreRevision, select, useStore, type TabKey } from "../store.js";
 import { AsilBadge, SeverityBadge, last } from "../ui.js";
 
 export function TraceView() {
   const a = useStore((s) => s.analysis);
+  const safety = useStore((s) => s.draftSafety);
   const sel = useStore((s) => s.selectedElementId);
+  const [impactId, setImpactId] = useState<string | undefined>();
   if (!a) return <div className="empty">トレースを表示できません</div>;
   const t = a.trace;
+  const impact = impactId && safety ? impactOfRequirementChange(a, safety, impactId) : undefined;
+  const nm = (id: string) => a.net.elements.find((e) => e.id === id)?.name ?? id;
   return (
     <div className="stack" style={{ minHeight: 0 }}>
       <div className="row">
@@ -21,7 +25,7 @@ export function TraceView() {
           <tbody>
             {t.rows.map((r) => (
               <tr key={r.id} className={t.uncovered.includes(r.id) ? "sel" : ""}>
-                <td title={r.text}>{r.label}{t.uncovered.includes(r.id) && <span className="badge warn" style={{ marginLeft: 6 }}>未紐づけ</span>}</td>
+                <td title={r.text}>{r.label}{t.uncovered.includes(r.id) && <span className="badge warn" style={{ marginLeft: 6 }}>未紐づけ</span>} <button className="btn small" onClick={() => setImpactId(impactId === r.id ? undefined : r.id)} aria-pressed={impactId === r.id} aria-label={`${r.label} を変更したときの影響分析`}>影響</button></td>
                 <td>{r.asil ? <AsilBadge asil={r.asil} origin={r.originAsil} /> : "—"}</td>
                 {t.elements.map((e) => { const c = t.cells.find((x) => x.requirementId === r.id && x.elementId === e.id); return <td key={e.id} className="num" title={c?.relation}>{c ? (c.relation === "satisfy" ? "●" : "◆") : ""}</td>; })}
               </tr>
@@ -30,7 +34,20 @@ export function TraceView() {
         </table>
       </div>
       <div className="muted">● satisfy(SysML) / ◆ allocate(安全要求)</div>
-      {t.links.length > 0 && <div><strong>要求の導出</strong><ul style={{ margin: "4px 0", paddingLeft: 20 }}>{t.links.map((l, i) => <li key={i}>{l.from} → {l.to}({l.kind === "derives" ? "導出" : "ASIL 分解"})</li>)}</ul></div>}
+      {impact && (
+        <div className="banner" role="region" aria-label="要求変更の影響分析">
+          <strong>{impact.requirementId.split("::").pop()} を変更したときに影響しうる範囲</strong>(機械的にたどった結果です。影響の有無は人が判断してください)
+          <ul style={{ margin: "4px 0", paddingLeft: 20 }}>
+            <li>関連する要求: {impact.requirements.map((x) => x.split("::").pop()).join("、") || "なし"}</li>
+            <li>構造要素: {impact.elements.map(nm).join("、") || "なし"}</li>
+            <li>機能 {impact.functions.length} 件 / 故障ノード {impact.failures.length} 件</li>
+            <li>見直す FMEA: {impact.fmeaElements.map(nm).join("、") || "なし"}</li>
+            <li>意図機能: {impact.intendedFunctions.join("、") || "なし"} / 安全機構: {impact.mechanisms.join("、") || "なし"} / ペア: {impact.pairs.join("、") || "なし"} / 分解: {impact.decompositions.join("、") || "なし"}</li>
+          </ul>
+          <details><summary>経路</summary><ul style={{ margin: "4px 0", paddingLeft: 20 }}>{impact.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul></details>
+        </div>
+      )}
+      {t.links.length > 0 && <div><strong>要求の導出</strong><ul style={{ margin: "4px 0", paddingLeft: 20 }}>{t.links.map((l, i) => <li key={i}>{l.from} → {l.to}({l.kind === "derives" ? "導出" : l.kind === "refines" ? "詳細化" : "ASIL 分解"})</li>)}</ul></div>}
     </div>
   );
 }

@@ -57,6 +57,19 @@ function checkDuplicateIds({ m, err }: Ctx) {
   ];
   for (const [label, items] of collections)
     for (const id of dupes(items.map((i) => i.id))) err("DUP_ID", `${label} の ID が重複: ${id}`, id);
+  // エレメント・要求・制約条件・要求グループは、配置・参照で同じ名前空間のように使われるため、種類をまたいでも一意であること
+  const namespaces: [string, { id: string }[]][] = [collections[0]!, collections[1]!, collections[2]!, collections[4]!];
+  const seen = new Map<string, string>();
+  const reported = new Set<string>();
+  for (const [label, items] of namespaces)
+    for (const { id } of items) {
+      const prev = seen.get(id);
+      if (prev !== undefined && prev !== label && !reported.has(id)) {
+        reported.add(id);
+        err("ID_COLLISION", `${prev} と ${label} で ID が重複しています: ${id}(種類をまたいで一意にしてください)`, id);
+      }
+      if (prev === undefined) seen.set(id, label);
+    }
 }
 
 /** A.6.2 Element: 入れ子に自分自身を含まない。 */

@@ -10,15 +10,21 @@ export interface GraphParameter {
 }
 
 export interface GraphElement {
-  /** PartUsage / ActionUsage / RequirementUsage / Package */
+  /** PartUsage / ActionUsage / RequirementUsage / PartDefinition / ActionDefinition / Package。導出の対象外の PortUsage / ConnectionUsage / StateUsage / AllocationUsage なども、種類と名前だけ含む */
   kind: string;
   qualifiedName: string;
   name?: string | null;
   owner?: string | null;
   /** doc コメントの本文 */
   doc?: string;
-  /** ActionUsage の入出力パラメータ */
+  /** ActionUsage / ActionDefinition の入出力パラメータ */
   parameters?: GraphParameter[];
+  /** 使用(usage)の宣言された型(`: Def`)の完全修飾名 */
+  types?: string[];
+  /** 定義・使用の宣言された上位の型(`:>`)の完全修飾名 */
+  supertypes?: string[];
+  /** 再定義(`:>>`)を含む使用 */
+  redefines?: boolean;
 }
 
 export interface GraphDependency extends GraphElement {

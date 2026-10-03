@@ -134,3 +134,10 @@ describe("ASIL 分解との整合", () => {
     expect(codes(m)).toContain("GROUP_MIXED_WEIGHT");
   });
 });
+
+describe("ID の種類をまたぐ重複", () => {
+  it("要求と制約条件が同じ ID だと ID_COLLISION(配置先を取り違えないように)", () => {
+    const m = mutate((m) => m.constraints.push({ id: "MFR-1", isAllocated: true, allocation: "E-1", weight: "B" }));
+    expect(validateScdl(m).map((i) => i.code)).toContain("ID_COLLISION");
+  });
+});

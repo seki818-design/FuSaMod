@@ -170,7 +170,8 @@ function crossLayerIssues(net: SafetyNet, derived: DerivedNet): Issue[] {
 }
 
 /** 意図機能・安全機構・安全要求の参照整合。 */
-function referenceIssues(net: SafetyNet, s: SafetyData): { pairing: Issue[]; safetyReq: Issue[] } {
+function referenceIssues(net: SafetyNet, s: SafetyData, derived: DerivedNet): { pairing: Issue[]; safetyReq: Issue[] } {
+  const sysmlReqs = new Set(derived.requirements.map((r) => r.id));
   const known = new Set(net.elements.map((e) => e.id));
   const reqIds = new Set(s.safetyRequirements.map((r) => r.id));
   const pairing: Issue[] = [];
@@ -187,6 +188,8 @@ function referenceIssues(net: SafetyNet, s: SafetyData): { pairing: Issue[]; saf
   for (const r of s.safetyRequirements) {
     if (r.allocatedTo !== undefined && !known.has(r.allocatedTo))
       safetyReq.push({ code: "UNKNOWN_ELEMENT", severity: "error", message: `配置先の構造要素が存在しません: ${r.allocatedTo}`, ref: r.id });
+    if (r.refines !== undefined && !sysmlReqs.has(r.refines))
+      safetyReq.push({ code: "UNKNOWN_REF", severity: "error", message: `詳細化元の SysML 要求が存在しません: ${r.refines}`, ref: r.id });
     if (r.parentId !== undefined && !reqIds.has(r.parentId))
       safetyReq.push({ code: "UNKNOWN_REF", severity: "error", message: `上位の要求が存在しません: ${r.parentId}`, ref: r.id });
     if (r.asil !== "QM" && r.allocatedTo === undefined)
@@ -315,7 +318,7 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   push("net", validateNet(net));
   push("consistency", crossLayerIssues(net, derived));
   push("hara", validateHara(s.hara));
-  const refs = referenceIssues(net, s);
+  const refs = referenceIssues(net, s, derived);
   push("pairing", [...refs.pairing, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
   push("safety-req", refs.safetyReq);
   push("decomposition", [

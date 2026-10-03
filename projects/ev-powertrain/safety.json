@@ -355,7 +355,8 @@
       "level": "fsr",
       "asil": "D",
       "allocatedTo": "EvPowertrainDemo::vehicle::powertrain",
-      "safetyGoalId": "SG-1"
+      "safetyGoalId": "SG-1",
+      "refines": "EvPowertrainDemo::'REQ-001'"
     },
     {
       "id": "FSR-1a",
@@ -373,7 +374,8 @@
       "asil": "B",
       "originAsil": "D",
       "parentId": "FSR-1",
-      "allocatedTo": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor"
+      "allocatedTo": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
+      "refines": "EvPowertrainDemo::'REQ-003'"
     },
     {
       "id": "TSR-1b",

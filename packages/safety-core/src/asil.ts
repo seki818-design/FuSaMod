@@ -41,6 +41,8 @@ export interface SafetyRequirement {
   allocatedTo?: ElementId;
   /** 紐づく安全目標(HARA の SafetyGoal.id)。親の要求をたどって決まる場合は省略できる */
   safetyGoalId?: string;
+  /** この安全要求が詳細化する SysML の requirement(完全修飾名)。トレースと影響分析でモデルの要求とつなぐ */
+  refines?: string;
 }
 
 export interface Decomposition {

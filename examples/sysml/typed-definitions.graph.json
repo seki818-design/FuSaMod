@@ -1,0 +1,114 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "TypedDefinitions",
+      "name": "TypedDefinitions"
+    },
+    {
+      "kind": "ActionDefinition",
+      "qualifiedName": "TypedDefinitions::Drive",
+      "name": "Drive",
+      "owner": "TypedDefinitions",
+      "parameters": [
+        {
+          "name": "torque",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "TypedDefinitions::Motor",
+      "name": "Motor",
+      "owner": "TypedDefinitions"
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "TypedDefinitions::Motor::generate",
+      "name": "generate",
+      "owner": "TypedDefinitions::Motor",
+      "types": [
+        "TypedDefinitions::Drive"
+      ],
+      "parameters": []
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "TypedDefinitions::Motor::rotor",
+      "name": "rotor",
+      "owner": "TypedDefinitions::Motor"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "TypedDefinitions::Car",
+      "name": "Car",
+      "owner": "TypedDefinitions"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "TypedDefinitions::Car::front",
+      "name": "front",
+      "owner": "TypedDefinitions::Car",
+      "types": [
+        "TypedDefinitions::Motor"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "TypedDefinitions::Car::rear",
+      "name": "rear",
+      "owner": "TypedDefinitions::Car",
+      "types": [
+        "TypedDefinitions::Motor"
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "TypedDefinitions::Car::go",
+      "name": "go",
+      "owner": "TypedDefinitions::Car",
+      "types": [
+        "TypedDefinitions::Drive"
+      ],
+      "parameters": []
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "TypedDefinitions::car",
+      "name": "car",
+      "owner": "TypedDefinitions",
+      "types": [
+        "TypedDefinitions::Car"
+      ]
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "TypedDefinitions::torque",
+      "name": "torque",
+      "owner": "TypedDefinitions",
+      "types": [
+        "TypedDefinitions::TorqueDef"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [
+    {
+      "requirement": "TypedDefinitions::torque",
+      "by": "TypedDefinitions::Car::front"
+    }
+  ],
+  "performs": [
+    {
+      "performer": "TypedDefinitions::Motor",
+      "performed": "TypedDefinitions::Motor::generate"
+    },
+    {
+      "performer": "TypedDefinitions::Car",
+      "performed": "TypedDefinitions::Car::go"
+    }
+  ]
+}

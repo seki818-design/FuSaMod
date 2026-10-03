@@ -112,9 +112,21 @@ function declarationOrder(c: Ctx): Entry[] {
   return out;
 }
 
+function nearestElementAncestor(c: Ctx, qn: string): string | undefined {
+  const seen = new Set<string>();
+  let owner = c.g.elements.find((e) => e.qualifiedName === qn)?.owner;
+  while (owner && !seen.has(owner)) {
+    seen.add(owner);
+    const hit = c.byQn.get(owner);
+    if (hit?.kind === "element") return hit.id;
+    owner = c.g.elements.find((e) => e.qualifiedName === owner)?.owner;
+  }
+  return undefined;
+}
+
 function buildElement(c: Ctx, { qn, id, md }: Entry) {
-  const owner = c.g.elements.find((e) => e.qualifiedName === qn)?.owner;
-  const parent = owner && c.byQn.get(owner)?.kind === "element" ? c.byQn.get(owner)!.id : undefined;
+  // 直接の所有者が @ScdlElement でなくても、祖先をたどって最も近いエレメントを親にする(sysml-import と同じ規則)
+  const parent = nearestElementAncestor(c, qn);
   const w = weightOf(id, md);
   const e: Element = { ...common(id, md), ...(parent ? { parent } : {}), ...(w ? { weight: w } : {}) };
   c.m.elements.push(e);

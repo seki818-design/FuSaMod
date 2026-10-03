@@ -93,6 +93,7 @@ const safetyRequirement = z
     parentId: id.optional(),
     allocatedTo: id.optional(),
     safetyGoalId: id.optional(),
+    refines: id.optional(),
   })
   .strict();
 

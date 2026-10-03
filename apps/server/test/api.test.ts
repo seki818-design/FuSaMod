@@ -46,11 +46,11 @@ describe("基本とプロジェクト", () => {
 
 describe("認証と監査", () => {
   it("トークンを設定すると認証が必要になり、操作者が記録される", async () => {
-    h = await harness({ env: { FUSAMOD_TOKENS: "tok-alice:alice,tok-bob:bob" } });
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:tok-alice-0123456789,bob:tok-bob-0123456789abc" } });
     expect((await h.app.inject("/api/projects")).statusCode).toBe(401);
     expect((await h.app.inject({ url: "/api/projects", headers: { authorization: "Bearer wrong" } })).statusCode).toBe(401);
     expect((await h.app.inject("/api/health")).statusCode).toBe(200);
-    const auth = { authorization: "Bearer tok-bob" };
+    const auth = { authorization: "Bearer tok-bob-0123456789abc" };
     const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: auth }));
     const put = await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: auth, payload: { data: p.safety, message: "bob の更新" } });
     expect(put.statusCode).toBe(200);
@@ -61,7 +61,7 @@ describe("認証と監査", () => {
   });
   it("トークンの設定が不正なら起動時に失敗する", async () => {
     const { loadConfig } = await import("../src/config.js");
-    expect(() => loadConfig({ FUSAMOD_TOKENS: "novalue" })).toThrow(/トークン:ユーザー名/);
+    expect(() => loadConfig({ FUSAMOD_TOKENS: "novalue" })).toThrow(/ユーザー名/);
     expect(() => loadConfig({ FUSAMOD_SYSML: "x" })).toThrow();
   });
 });
@@ -192,9 +192,9 @@ describe("AI アシスタント(提案 → 承認)", () => {
   const chat = (message: string) => h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/ai/chat", payload: { message } });
 
   it("提案は承認するまでデータを変えず、承認で適用され、監査ログに残る", async () => {
-    h = await harness({ env: { FUSAMOD_TOKENS: "t1:alice,t2:bob" } });
-    const A = { authorization: "Bearer t1" };
-    const B = { authorization: "Bearer t2" };
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:t1-0123456789abcdef,bob:t2-0123456789abcdef" } });
+    const A = { authorization: "Bearer t1-0123456789abcdef" };
+    const B = { authorization: "Bearer t2-0123456789abcdef" };
     const c = await h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/ai/chat", headers: A, payload: { message: "safetyMonitor の FMEA を実施して" } });
     expect(c.statusCode).toBe(200);
     const proposal: Proposal = json(c).proposals[0];
@@ -262,5 +262,46 @@ describe("AI アシスタント(提案 → 承認)", () => {
     const r2 = await chat("要約");
     expect(r2.statusCode).toBe(500);
     expect(r2.body).not.toContain("sk-ant");
+  });
+});
+
+describe("認証の堅牢性・役割", () => {
+  it("FUSAMOD_TOKENS の書式: ユーザー名:トークン。短い・重複・不正な書式は起動時に拒否", async () => {
+    const { parseTokens } = await import("../src/config.js");
+    expect(parseTokens("alice:0123456789abcdef0,bob/viewer:abcdef0123456789x")).toEqual([
+      { user: "alice", role: "editor", token: "0123456789abcdef0" },
+      { user: "bob", role: "viewer", token: "abcdef0123456789x" },
+    ]);
+    expect(() => parseTokens("alice:short")).toThrow(/16 文字以上/);
+    expect(() => parseTokens("alice:0123456789abcdef0,bob:0123456789abcdef0")).toThrow(/同じトークン/);
+    expect(() => parseTokens("alice:0123456789abcdef0,alice:abcdef0123456789x")).toThrow(/重複/);
+    expect(() => parseTokens("alice/root:0123456789abcdef0")).toThrow(/ユーザー名/);
+    expect(() => parseTokens(":0123456789abcdef0")).toThrow();
+  });
+  it("秘密のトークンが利用者名として監査ログに残らない(書式の取り違えの回帰)", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:tok-alice-0123456789" } });
+    const auth = { authorization: "Bearer tok-alice-0123456789" };
+    const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: auth }));
+    await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: auth, payload: { data: p.safety } });
+    const events = json(await h.app.inject({ url: "/api/projects/ev-powertrain/audit", headers: auth })).events;
+    expect(JSON.stringify(events)).not.toContain("tok-alice");
+    expect(events.at(-1).actor).toBe("alice");
+  });
+  it("読み取り専用の役割は、保存できないが、読み取りと解析はできる", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "vera/viewer:tok-viewer-0123456789" } });
+    const auth = { authorization: "Bearer tok-viewer-0123456789" };
+    const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: auth }));
+    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: auth, payload: { data: p.safety } })).statusCode).toBe(403);
+    expect((await h.app.inject({ method: "POST", url: "/api/projects", headers: auth, payload: { id: "x1" } })).statusCode).toBe(403);
+    expect((await h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/analyze", headers: auth, payload: { safety: p.safety } })).statusCode).toBe(200);
+  });
+  it("認証の失敗が続くと 429 になる(総当たり対策)", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:tok-alice-0123456789" } });
+    const codes: number[] = [];
+    for (let i = 0; i < 12; i++) codes.push((await h.app.inject({ url: "/api/projects", headers: { authorization: `Bearer wrong-${i}` } })).statusCode);
+    expect(codes.slice(0, 10).every((c) => c === 401)).toBe(true);
+    expect(codes.slice(10)).toEqual([429, 429]);
+    // 正しいトークンは、失敗の制限とは別に通る
+    expect((await h.app.inject({ url: "/api/projects", headers: { authorization: "Bearer tok-alice-0123456789" } })).statusCode).toBe(200);
   });
 });

@@ -46,6 +46,8 @@ export interface State {
   chat: ChatMsg[];
   proposals: Proposal[];
   history: RevisionMeta[];
+  /** 監査ログのハッシュ連鎖の検証結果 */
+  auditChain: { ok: boolean; lines: number; brokenAtLine?: number } | undefined;
   refs: { name: string; text: string }[];
   puzzleOnlyProblems: boolean;
   layerConsistency: boolean;
@@ -69,6 +71,7 @@ const initial: State = {
   chat: [],
   proposals: [],
   history: [],
+  auditChain: undefined,
   refs: [],
   puzzleOnlyProblems: false,
   layerConsistency: true,
@@ -199,6 +202,7 @@ async function loadHistory() {
   if (!id) return;
   try {
     set({ history: (await api.history(id)).history });
+    set({ auditChain: (await api.audit(id)).chain });
   } catch (e) {
     fail(e);
   }

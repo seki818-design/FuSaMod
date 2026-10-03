@@ -24,6 +24,7 @@ function fakeServer(opts: { authRequired?: boolean; conflictOnSave?: boolean } =
     if (url === "/api/projects") return json(200, { projects: [{ id: "demo", revision }] });
     if (url === "/api/projects/demo" && method === "GET") return json(200, view());
     if (url.endsWith("/history")) return json(200, { history: [] });
+    if (url.endsWith("/audit")) return json(200, { events: [], chain: { ok: true, lines: 0 } });
     if (url.endsWith("/ai/proposals")) return json(200, { proposals: [] });
     if (url.endsWith("/refs")) return json(200, { refs: [] });
     if (url.endsWith("/model") && method === "PUT") {

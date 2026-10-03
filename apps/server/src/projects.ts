@@ -19,6 +19,8 @@ export interface RevisionMeta {
   message: string;
   kind: "model" | "safety" | "restore" | "create";
   modelSha256: string;
+  /** 安全分析データ(safety.json)のハッシュ。途中で落ちた保存を検出して、確定済みの内容に戻すために使う */
+  safetySha256?: string;
 }
 
 export interface ProjectSummary {
@@ -32,11 +34,15 @@ export interface AuditEvent {
   actor: string;
   action: string;
   details?: Record<string, unknown>;
+  /** 直前の行のハッシュ(ハッシュ連鎖。改ざん・欠落を検出する) */
+  prev?: string;
 }
 
-const HISTORY_KEEP = 100;
+/** 残す履歴の数(環境変数 FUSAMOD_HISTORY_KEEP で変更)。超えた分は古い順に削除する。 */
+const HISTORY_KEEP = Math.max(10, Number(process.env["FUSAMOD_HISTORY_KEEP"] ?? 500) || 500);
 const MAX_MODEL_BYTES = 2 * 1024 * 1024;
 
+const GENESIS = "genesis";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
 /** 1 プロジェクト = 1 ディレクトリ(model.sysml / safety.json / model.graph.json / refs / .history / audit.jsonl)。 */
@@ -86,16 +92,26 @@ export class ProjectStore {
     return out.sort((a, b) => a.id.localeCompare(b.id));
   }
 
+  /** 最新リビジョン(ディレクトリ名は 0 埋めの連番なので、一覧を読むだけで最新の 1 件に着ける)。 */
   async latestMeta(id: string): Promise<RevisionMeta | undefined> {
-    const h = await this.history(id);
-    return h[0];
+    const hd = join(this.dir(id), ".history");
+    if (!(await this.exists(hd))) return undefined;
+    const names = (await readdir(hd)).filter((n) => /^\d{6}$/.test(n)).sort().reverse();
+    for (const name of names) {
+      try {
+        return JSON.parse(await readFile(join(hd, name, "meta.json"), "utf8")) as RevisionMeta;
+      } catch {
+        /* 壊れた履歴は飛ばして、その前のものを使う */
+      }
+    }
+    return undefined;
   }
 
   async history(id: string): Promise<RevisionMeta[]> {
     const hd = join(this.dir(id), ".history");
     if (!(await this.exists(hd))) return [];
     const metas: RevisionMeta[] = [];
-    for (const name of await readdir(hd)) {
+    for (const name of (await readdir(hd)).filter((n) => /^\d{6}$/.test(n))) {
       try {
         metas.push(JSON.parse(await readFile(join(hd, name, "meta.json"), "utf8")) as RevisionMeta);
       } catch {
@@ -105,15 +121,27 @@ export class ProjectStore {
     return metas.sort((a, b) => b.revision - a.revision);
   }
 
+  /**
+   * 現在のプロジェクト。保存は「履歴(確定)→現在のファイル」の順に書くので、途中で落ちて両者が食い違っていたら、
+   * 確定済みの履歴の内容を返す(次の保存で現在のファイルも揃う)。
+   */
   async read(id: string): Promise<{ model: string; safety: SafetyData; revision: number; graph?: ElementGraph }> {
     const d = this.dir(id);
     if (!(await this.exists(join(d, "model.sysml")))) throw new HttpError(404, `プロジェクトが見つかりません: ${id}`);
-    const model = await readFile(join(d, "model.sysml"), "utf8");
+    const meta = await this.latestMeta(id);
+    let src = d;
+    let model = await readFile(join(d, "model.sysml"), "utf8");
+    let safetyText = (await this.exists(join(d, "safety.json"))) ? await readFile(join(d, "safety.json"), "utf8") : undefined;
+    if (meta && (meta.modelSha256 !== sha(model) || (meta.safetySha256 !== undefined && safetyText !== undefined && meta.safetySha256 !== sha(safetyText)))) {
+      src = join(d, ".history", String(meta.revision).padStart(6, "0"));
+      model = await readFile(join(src, "model.sysml"), "utf8");
+      safetyText = await readFile(join(src, "safety.json"), "utf8");
+    }
     let safety = emptySafetyData();
-    if (await this.exists(join(d, "safety.json"))) {
+    if (safetyText !== undefined) {
       let raw: unknown;
       try {
-        raw = JSON.parse(await readFile(join(d, "safety.json"), "utf8"));
+        raw = JSON.parse(safetyText);
       } catch {
         throw new HttpError(500, "safety.json が JSON として壊れています");
       }
@@ -121,10 +149,9 @@ export class ProjectStore {
       if (!r.ok) throw new HttpError(500, "safety.json の内容が不正です", r.errors);
       safety = r.data;
     }
-    const meta = await this.latestMeta(id);
     let graph: ElementGraph | undefined;
     try {
-      const g = JSON.parse(await readFile(join(d, "model.graph.json"), "utf8")) as ElementGraph & { _modelSha256?: string };
+      const g = JSON.parse(await readFile(join(src, "model.graph.json"), "utf8")) as ElementGraph & { _modelSha256?: string };
       if (g._modelSha256 === undefined || g._modelSha256 === sha(model)) graph = g;
     } catch {
       /* キャッシュなし */
@@ -137,30 +164,48 @@ export class ProjectStore {
     if (await this.exists(d)) throw new HttpError(409, `プロジェクトは既に存在します: ${id}`);
     if (Buffer.byteLength(model) > MAX_MODEL_BYTES) throw new HttpError(413, "モデルが大きすぎます");
     await mkdir(d, { recursive: true });
-    await this.atomicWrite(join(d, "model.sysml"), model);
-    await this.atomicWrite(join(d, "safety.json"), JSON.stringify(emptySafetyData(), null, 2) + "\n");
-    await this.snapshot(id, { kind: "create", actor, message: "プロジェクトを作成" });
+    const safety = JSON.stringify(emptySafetyData(), null, 2) + "\n";
+    await this.commit(id, { model, safety }, { kind: "create", actor, message: "プロジェクトを作成" });
     await this.audit(id, { actor, action: "project.create" });
   }
 
-  /** 履歴の 1 リビジョンを書く(現在の model.sysml / safety.json のコピー)。 */
-  private async snapshot(id: string, m: Pick<RevisionMeta, "kind" | "actor" | "message">): Promise<RevisionMeta> {
+  /**
+   * 1 リビジョンを確定する。先に履歴ディレクトリを一時名で書いて rename で確定し(ここが確定点)、
+   * そのあと現在のファイルを揃える。確定前に落ちれば何も変わらず、確定後に落ちても read が確定済みの内容を返す。
+   */
+  private async commit(
+    id: string,
+    c: { model: string; safety: string; graph?: string | undefined },
+    m: Pick<RevisionMeta, "kind" | "actor" | "message">,
+  ): Promise<RevisionMeta> {
     const d = this.dir(id);
     const prev = await this.latestMeta(id);
     const revision = (prev?.revision ?? 0) + 1;
-    const model = await readFile(join(d, "model.sysml"), "utf8");
-    const rd = join(d, ".history", String(revision).padStart(6, "0"));
-    await mkdir(rd, { recursive: true });
-    await writeFile(join(rd, "model.sysml"), model, "utf8");
-    await writeFile(join(rd, "safety.json"), await readFile(join(d, "safety.json"), "utf8"), "utf8");
-    // 解析済みのグラフも残す(復元後に、Java が無い環境でも解析できるように)
-    if (await this.exists(join(d, "model.graph.json"))) await writeFile(join(rd, "model.graph.json"), await readFile(join(d, "model.graph.json"), "utf8"), "utf8");
-    const meta: RevisionMeta = { revision, ts: new Date().toISOString(), modelSha256: sha(model), ...m };
-    await writeFile(join(rd, "meta.json"), JSON.stringify(meta, null, 2) + "\n", "utf8");
-    // 古い履歴を間引く
-    const all = (await readdir(join(d, ".history"))).sort();
-    for (const old of all.slice(0, Math.max(0, all.length - HISTORY_KEEP))) await rm(join(d, ".history", old), { recursive: true, force: true });
+    const hd = join(d, ".history");
+    await mkdir(hd, { recursive: true });
+    const tmp = join(hd, `.tmp-${randomUUID()}`);
+    await mkdir(tmp);
+    const meta: RevisionMeta = { revision, ts: new Date().toISOString(), modelSha256: sha(c.model), safetySha256: sha(c.safety), ...m };
+    await writeFile(join(tmp, "model.sysml"), c.model, "utf8");
+    await writeFile(join(tmp, "safety.json"), c.safety, "utf8");
+    if (c.graph !== undefined) await writeFile(join(tmp, "model.graph.json"), c.graph, "utf8");
+    await writeFile(join(tmp, "meta.json"), JSON.stringify(meta, null, 2) + "\n", "utf8");
+    await rename(tmp, join(hd, String(revision).padStart(6, "0"))); // 確定
+    await this.atomicWrite(join(d, "model.sysml"), c.model);
+    await this.atomicWrite(join(d, "safety.json"), c.safety);
+    if (c.graph !== undefined) await this.atomicWrite(join(d, "model.graph.json"), c.graph);
+    else await rm(join(d, "model.graph.json"), { force: true });
+    await this.prune(id);
     return meta;
+  }
+
+  /** 古い履歴の削除と、確定前に落ちた一時ディレクトリの掃除。 */
+  private async prune(id: string) {
+    const hd = join(this.dir(id), ".history");
+    const all = await readdir(hd);
+    for (const t of all.filter((n) => n.startsWith(".tmp-"))) await rm(join(hd, t), { recursive: true, force: true });
+    const nums = all.filter((n) => /^\d{6}$/.test(n)).sort();
+    for (const old of nums.slice(0, Math.max(0, nums.length - HISTORY_KEEP))) await rm(join(hd, old), { recursive: true, force: true });
   }
 
   private checkBase(current: number, base: number | undefined) {
@@ -171,14 +216,11 @@ export class ProjectStore {
   async saveModel(id: string, text: string, actor: string, message: string, baseRevision: number | undefined, graph?: ElementGraph): Promise<RevisionMeta> {
     if (Buffer.byteLength(text) > MAX_MODEL_BYTES) throw new HttpError(413, "モデルが大きすぎます");
     return this.withLock(id, async () => {
-      const cur = (await this.latestMeta(id))?.revision ?? 0;
-      await this.read(id); // 存在確認
-      this.checkBase(cur, baseRevision);
-      const d = this.dir(id);
-      await this.atomicWrite(join(d, "model.sysml"), text);
-      if (graph) await this.atomicWrite(join(d, "model.graph.json"), JSON.stringify({ ...graph, _modelSha256: sha(text) }, null, 2) + "\n");
-      else await rm(join(d, "model.graph.json"), { force: true });
-      const meta = await this.snapshot(id, { kind: "model", actor, message });
+      const cur = await this.read(id); // 存在確認と、確定済みの内容の取得
+      this.checkBase(cur.revision, baseRevision);
+      const safety = JSON.stringify(cur.safety, null, 2) + "\n";
+      const g = graph ? JSON.stringify({ ...graph, _modelSha256: sha(text) }, null, 2) + "\n" : undefined;
+      const meta = await this.commit(id, { model: text, safety, graph: g }, { kind: "model", actor, message });
       await this.audit(id, { actor, action: "model.save", details: { revision: meta.revision, message } });
       return meta;
     });
@@ -186,11 +228,10 @@ export class ProjectStore {
 
   async saveSafety(id: string, data: SafetyData, actor: string, message: string, baseRevision: number | undefined): Promise<RevisionMeta> {
     return this.withLock(id, async () => {
-      const cur = (await this.latestMeta(id))?.revision ?? 0;
-      await this.read(id);
-      this.checkBase(cur, baseRevision);
-      await this.atomicWrite(join(this.dir(id), "safety.json"), JSON.stringify(data, null, 2) + "\n");
-      const meta = await this.snapshot(id, { kind: "safety", actor, message });
+      const cur = await this.read(id);
+      this.checkBase(cur.revision, baseRevision);
+      const g = cur.graph ? JSON.stringify({ ...cur.graph, _modelSha256: sha(cur.model) }, null, 2) + "\n" : undefined;
+      const meta = await this.commit(id, { model: cur.model, safety: JSON.stringify(data, null, 2) + "\n", graph: g }, { kind: "safety", actor, message });
       await this.audit(id, { actor, action: "safety.save", details: { revision: meta.revision, message } });
       return meta;
     });
@@ -198,14 +239,14 @@ export class ProjectStore {
 
   async restore(id: string, revision: number, actor: string): Promise<RevisionMeta> {
     return this.withLock(id, async () => {
-      const d = this.dir(id);
-      const rd = join(d, ".history", String(revision).padStart(6, "0"));
+      const rd = join(this.dir(id), ".history", String(revision).padStart(6, "0"));
       if (!(await this.exists(rd))) throw new HttpError(404, `リビジョン ${revision} が見つかりません`);
-      await this.atomicWrite(join(d, "model.sysml"), await readFile(join(rd, "model.sysml"), "utf8"));
-      await this.atomicWrite(join(d, "safety.json"), await readFile(join(rd, "safety.json"), "utf8"));
-      if (await this.exists(join(rd, "model.graph.json"))) await this.atomicWrite(join(d, "model.graph.json"), await readFile(join(rd, "model.graph.json"), "utf8"));
-      else await rm(join(d, "model.graph.json"), { force: true });
-      const meta = await this.snapshot(id, { kind: "restore", actor, message: `リビジョン ${revision} に戻す` });
+      const graph = (await this.exists(join(rd, "model.graph.json"))) ? await readFile(join(rd, "model.graph.json"), "utf8") : undefined;
+      const meta = await this.commit(
+        id,
+        { model: await readFile(join(rd, "model.sysml"), "utf8"), safety: await readFile(join(rd, "safety.json"), "utf8"), graph },
+        { kind: "restore", actor, message: `リビジョン ${revision} に戻す` },
+      );
       await this.audit(id, { actor, action: "project.restore", details: { from: revision, revision: meta.revision } });
       return meta;
     });
@@ -221,10 +262,41 @@ export class ProjectStore {
     };
   }
 
-  /** 追記専用の監査ログ(JSON Lines)。 */
-  async audit(id: string, e: Omit<AuditEvent, "ts">): Promise<void> {
-    const line = JSON.stringify({ ts: new Date().toISOString(), ...e } satisfies AuditEvent);
-    await appendFile(join(this.dir(id), "audit.jsonl"), line + "\n", "utf8");
+  /**
+   * 追記専用の監査ログ(JSON Lines)。各行に直前の行の SHA-256 を持たせ(ハッシュ連鎖)、
+   * 途中の行の改ざん・削除を verifyAudit で検出できる。末尾の削除や全面的な作り直しは、外部へのバックアップ・転送で補う必要がある。
+   */
+  async audit(id: string, e: Omit<AuditEvent, "ts" | "prev">): Promise<void> {
+    await this.withLock(`${id}:audit`, async () => {
+      const p = join(this.dir(id), "audit.jsonl");
+      const last = (await this.exists(p)) ? (await readFile(p, "utf8")).split("\n").filter(Boolean).at(-1) : undefined;
+      const line = JSON.stringify({ ts: new Date().toISOString(), ...e, prev: last ? sha(last) : GENESIS } satisfies AuditEvent);
+      await appendFile(p, line + "\n", "utf8");
+    });
+  }
+
+  /** 監査ログの連鎖を検証する。 */
+  async verifyAudit(id: string): Promise<{ ok: boolean; lines: number; brokenAtLine?: number }> {
+    const p = join(this.dir(id), "audit.jsonl");
+    if (!(await this.exists(p))) return { ok: true, lines: 0 };
+    const lines = (await readFile(p, "utf8")).split("\n").filter(Boolean);
+    let prev = GENESIS;
+    for (let i = 0; i < lines.length; i++) {
+      let e: AuditEvent;
+      try {
+        e = JSON.parse(lines[i]!) as AuditEvent;
+      } catch {
+        return { ok: false, lines: lines.length, brokenAtLine: i + 1 };
+      }
+      // 連鎖の導入前に書かれた行(prev なし)は、先頭の連続部分に限って許す
+      if (e.prev === undefined && prev === GENESIS) {
+        prev = sha(lines[i]!);
+        continue;
+      }
+      if (e.prev !== prev) return { ok: false, lines: lines.length, brokenAtLine: i + 1 };
+      prev = sha(lines[i]!);
+    }
+    return { ok: true, lines: lines.length };
   }
 
   async readAudit(id: string, limit = 200): Promise<AuditEvent[]> {

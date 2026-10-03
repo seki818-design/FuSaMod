@@ -34,15 +34,18 @@ export interface AppDeps {
 
 const sha = (s: string) => createHash("sha256").update(s).digest();
 
-/** トークンを定数時間で照合し、ユーザー名を返す。 */
-function authenticate(tokens: Config["tokens"], header: string | undefined): string | undefined {
+/** トークンを定数時間で照合し、ユーザーを返す。 */
+function authenticate(tokens: Config["tokens"], header: string | undefined): Config["tokens"][number] | undefined {
   const m = /^Bearer\s+(.+)$/i.exec(header ?? "");
   if (!m) return undefined;
   const given = sha(m[1]!);
-  let user: string | undefined;
-  for (const t of tokens) if (timingSafeEqual(given, sha(t.token))) user = t.user; // 全件を比較する
-  return user;
+  let found: Config["tokens"][number] | undefined;
+  for (const t of tokens) if (timingSafeEqual(given, sha(t.token))) found = t; // 全件を比較する
+  return found;
 }
+
+/** 読み取り専用の役割でも使える操作(解析のみ。保存しない)。 */
+const readOnlyOk = (method: string, url: string) => method === "GET" || method === "HEAD" || (method === "POST" && /\/analyze(\?|$)/.test(url));
 
 class RateLimiter {
   private hits = new Map<string, number[]>();
@@ -78,6 +81,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     bodyLimit: config.bodyLimit,
   });
   const aiLimiter = new RateLimiter(20, 60_000);
+  const authFailLimiter = new RateLimiter(10, 60_000); // 認証失敗(総当たり対策): 1 分に 10 回まで
+  const apiLimiter = new RateLimiter(600, 60_000); // API 全体: 1 分に 600 回まで(利用者または接続元ごと)
 
   // --- セキュリティヘッダ・CORS ---
   app.addHook("onSend", async (req, reply) => {
@@ -99,10 +104,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.decorateRequest("actor", "local");
   app.addHook("onRequest", async (req, reply) => {
     if (!req.url.startsWith("/api/") || req.url === "/api/health" || req.method === "OPTIONS") return;
-    if (config.tokens.length === 0) return;
-    const user = authenticate(config.tokens, req.headers.authorization);
-    if (!user) return reply.code(401).header("WWW-Authenticate", "Bearer").send({ error: "認証が必要です" });
-    (req as FastifyRequest & { actor: string }).actor = user;
+    const r = req as FastifyRequest & { actor: string };
+    if (config.tokens.length > 0) {
+      const found = authenticate(config.tokens, req.headers.authorization);
+      if (!found) {
+        if (!authFailLimiter.allow(req.ip)) return reply.code(429).header("Retry-After", "60").send({ error: "認証の失敗が多すぎます。しばらくしてからやり直してください" });
+        return reply.code(401).header("WWW-Authenticate", "Bearer").send({ error: "認証が必要です" });
+      }
+      r.actor = found.user;
+      if (found.role === "viewer" && !readOnlyOk(req.method, req.url)) return reply.code(403).send({ error: "この利用者は読み取り専用です" });
+    }
+    if (!apiLimiter.allow(r.actor === "local" ? req.ip : r.actor)) return reply.code(429).header("Retry-After", "60").send({ error: "リクエストが多すぎます" });
   });
   const actorOf = (req: FastifyRequest) => (req as FastifyRequest & { actor: string }).actor;
 
@@ -205,7 +217,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const { p, out } = await requireAnalysis(id);
     return { restored: meta, ...view(id, p, out) };
   });
-  app.get("/api/projects/:id/audit", async (req) => ({ events: await store.readAudit(idParam.parse(req.params).id) }));
+  app.get("/api/projects/:id/audit", async (req) => {
+    const { id } = idParam.parse(req.params);
+    return { events: await store.readAudit(id), chain: await store.verifyAudit(id) };
+  });
 
   // --- エクスポート ---
   const needAnalysis = async (id: string): Promise<ProjectAnalysis> => {

@@ -46,4 +46,9 @@ writeFileSync(resolve(root, "docs/quality/evidence/coverage.md"), md);
 console.log(md);
 const min = Math.min(...rows.map((r) => r.lines.pct));
 console.log(`最小の行カバレッジ: ${min}%`);
+const THRESHOLD = 80;
+if (min < THRESHOLD) {
+  console.error(`行カバレッジが基準(${THRESHOLD}%)を下回っています`);
+  failed = true;
+}
 process.exit(failed ? 1 : 0);

@@ -1,17 +1,21 @@
-# アーキテクチャ
+# アーキテクチャ(実装済みの構成)
 
 ```
-[Frontend: React + TypeScript]
-  Explorer / Viewspace(図+テキスト) / AI Chat / Puzzle View / FMEA シート・ネットビュー
-        │ REST・WebSocket
-[Backend]
-  ├─ Model Service   ─ SysML v2 アダプタ(ADR-0002)
-  ├─ Safety Service  ─ @fusamod/safety-core(ネット・FMEA・ASIL・ペア)
-  ├─ Trace/Impact    ─ 要素 ID 基準のトレースグラフ
-  ├─ AI Service      ─ Claude API + ツール呼び出し + RAG
-  └─ Auth / Audit / Versioning
-[Storage] Git(.sysml テキスト)+ PostgreSQL(索引・安全分析・監査ログ)
+[ブラウザ: React + TypeScript(Vite)]
+  エクスプローラ / ビューペース(構造図・SysML テキスト) / AI チャット / パズルビュー
+  分析タブ(FMEA・ネット・FTA・HARA・コンセプト・SCDL・トレース・指摘・履歴・データ)
+  ※ 安全分析データの編集は、ブラウザ内で analyzeProject を再実行して即時に反映(@fusamod/analysis)
+        │ REST(JSON、ベアラートークン)
+[サーバー: Node.js + Fastify]
+  ├─ プロジェクトストア  ファイルシステム(model.sysml / safety.json / model.graph.json / .history / audit.jsonl / refs)
+  ├─ 解析サービス        SysML 解析 → 要素グラフ → deriveNet → analyzeProject(LRU キャッシュ)
+  ├─ SysML 常駐プロセス  公式パイロット実装(Java 21、JSON Lines)。無い場合はスナップショット(保存済みグラフ)に縮退
+  ├─ AI                  ルールベース(既定)/ Claude(tool_use、zod 検証)。提案 → 承認、監査ログ
+  └─ 認証・レート制限・セキュリティヘッダ・楽観的排他制御(baseRevision)
 ```
+
+保存先は **ファイルシステムのみ**(WebSocket・PostgreSQL・Git 連携は実装していない。バックアップはディレクトリのコピーまたは Git 管理で行う)。
+リアルタイムの共同編集は無く、競合は `baseRevision` による 409 で通知する。
 
 ## 原則
 
@@ -38,4 +42,4 @@
 |---|---|
 | `@fusamod/safety-core` | 構造/機能/エラーネット、FMEA ビュー、ASIL 分解、意図機能と安全機構のペア |
 | `@fusamod/sysml-graph` | 公式 SysML 実装が出力する要素グラフの型と、安全分析ネットの導出(`deriveNet`、ADR-0008)(`safety-core` に依存) |
-| `@fusamod/scdl` | ASAM SCDL v1.6.0 のメタモデル、検証、SysML v2 ステレオタイプとの相互変換(`safety-core` に依存)。描画は P6 |
+| `@fusamod/scdl` | ASAM SCDL v1.6.0 のメタモデル、検証、SysML v2 ステレオタイプとの相互変換(`safety-core` に依存)。描画は `apps/web` |

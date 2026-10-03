@@ -20,6 +20,26 @@ jobs:
       - run: pnpm bench
       - run: pnpm audit --prod
       - run: pnpm build
+      - run: pnpm --filter @fusamod/server build
       - name: E2E (Chromium)
         working-directory: apps/web
         run: npx playwright install --with-deps chromium && pnpm e2e
+
+  sysml-integration:
+    # 公式 SysML v2 実装(Java 21)との結合テスト。初回に約 120MB の jar を取得する。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: sudo apt-get update && sudo apt-get install -y unzip zstd
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:integration
+      - run: ./tools/sysml-check/run.sh

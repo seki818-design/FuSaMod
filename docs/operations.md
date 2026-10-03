@@ -7,12 +7,15 @@ Node.js 22 + pnpm。サーバー(Fastify)が API と Web UI(`apps/web/dist`)を�
 [`.env.example`](../.env.example) を参照。
 
 ## 認証とネットワーク
-- `FUSAMOD_TOKENS`(`利用者名:トークン` のカンマ区切り)を設定すると、全 API にベアラートークンが必要。比較は定数時間。操作者名は監査ログに記録される。
+- `FUSAMOD_TOKENS`(`ユーザー名[/viewer]:トークン` のカンマ区切り。例: `alice:<24 バイト以上の乱数>,bob/viewer:<乱数>`)を設定すると、全 API にベアラートークンが必要。トークンは 16 文字以上・重複不可(`openssl rand -hex 24` など)。比較は定数時間。`viewer` は読み取りと解析のみ(保存・AI の承認などは 403)。操作者名(トークンではなくユーザー名)が監査ログに記録される。認証の失敗は 1 分に 10 回まで(超えると 429)、API 全体は 1 分に 600 回まで。
 - 未設定のときは認証無し。`HOST=127.0.0.1` のまま、ローカル専用で使うこと。外部公開するときは TLS 終端(リバースプロキシ)と `FUSAMOD_TOKENS` が必須。
 - レート制限、セキュリティヘッダ(CSP 等)、入力サイズ上限、zod による入力検証を実装済み。
 
 ## データとバックアップ
-`FUSAMOD_PROJECTS/<id>/` に `model.sysml`、`model.graph.json`、`safety.json`、`history/`(全リビジョン)、`audit.jsonl`、`refs/` を保存。ディレクトリを丸ごとコピー(または Git 管理)すればバックアップになる。リビジョンは「履歴」タブから復元できる(復元も新しいリビジョンとして記録)。同時編集は `baseRevision` による楽観的排他制御。
+`FUSAMOD_PROJECTS/<id>/` に `model.sysml`、`model.graph.json`、`safety.json`、`.history/`(リビジョン。既定で直近 500 件、`FUSAMOD_HISTORY_KEEP` で変更)、`audit.jsonl`、`refs/` を保存。保存は「履歴を一時ディレクトリに書いて rename で確定 → 現在のファイルを更新」の順で、途中で落ちても確定済みの履歴の内容が読まれる。ディレクトリを丸ごとコピー(または Git 管理)すればバックアップになる。リビジョンは「履歴」タブから復元できる(復元も新しいリビジョンとして記録)。同時編集は `baseRevision` による楽観的排他制御。
+
+## 監査ログ
+`audit.jsonl` は各行に直前の行のハッシュを持つ(ハッシュ連鎖)。`GET /api/projects/:id/audit` の `chain.ok` で途中の行の改ざん・削除を検出できる(画面の「履歴」タブにも表示)。**末尾の削除や全面的な作り直しは検出できない**ため、重要な運用では外部のログ基盤へ転送すること。
 
 ## 監視
 `GET /api/health` が状態(sysml モード、AI、認証要否)を返す。
@@ -23,5 +26,6 @@ Node.js 22 + pnpm。サーバー(Fastify)が API と Web UI(`apps/web/dist`)を�
 ## 品質確認コマンド
 `pnpm quality`(型・lint・テスト・カバレッジ・性能)、`pnpm e2e`(Playwright と axe)、`pnpm test:integration`(公式実装との結合、Java 必要)、`pnpm audit --prod`。
 
-## パッケージング
-Dockerfile は未提供(検証できていないため)。`pnpm build && pnpm start` で動作する。
+## ビルドと配布
+- `pnpm build`(Web UI)と `pnpm --filter @fusamod/server build`(サーバーを `apps/server/dist/server.mjs` の 1 ファイルにまとめる。実行時に `tsx` は不要。`fastify` と `@fastify/static` のみ外部依存)。`node apps/server/dist/server.mjs` で起動。`FUSAMOD_WEB_DIST` で Web UI の配置先を変えられる。
+- `Dockerfile` を同梱(Java 21 + Node 22。公式 SysML 実装の取得に初回ネットワークが必要)。**このリポジトリの開発環境では Docker デーモンが無く、イメージのビルドは未検証**。使う前に `docker build` と `/api/health` の確認を行うこと。

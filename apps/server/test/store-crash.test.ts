@@ -1,0 +1,82 @@
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { emptySafetyData } from "@fusamod/analysis";
+import { ProjectStore } from "../src/projects.js";
+
+let dir: string;
+afterEach(() => rmSync(dir, { recursive: true, force: true }));
+const mk = async () => {
+  dir = mkdtempSync(join(tmpdir(), "fusamod-store-"));
+  const s = new ProjectStore(dir);
+  await s.create("p1", "package P { part a; }", "tester");
+  return s;
+};
+
+describe("保存の原子性と回復(途中で落ちても履歴と現在の状態が食い違わない)", () => {
+  it("履歴を確定した後、現在のファイルを書く前に落ちた場合、確定済みの内容が読まれる", async () => {
+    const s = await mk();
+    const base = (await s.read("p1")).revision;
+    // 保存の途中: 履歴 000002 だけ確定し、現在のファイルは古いまま
+    const rd = join(dir, "p1", ".history", "000002");
+    mkdirSync(rd);
+    const model = "package P { part committed; }";
+    const safety = JSON.stringify(emptySafetyData(), null, 2) + "\n";
+    const { createHash } = await import("node:crypto");
+    const sha = (x: string) => createHash("sha256").update(x).digest("hex");
+    writeFileSync(join(rd, "model.sysml"), model);
+    writeFileSync(join(rd, "safety.json"), safety);
+    writeFileSync(join(rd, "meta.json"), JSON.stringify({ revision: base + 1, ts: new Date().toISOString(), actor: "x", message: "m", kind: "model", modelSha256: sha(model), safetySha256: sha(safety) }));
+    const r = await s.read("p1");
+    expect(r.model).toBe(model);
+    expect(r.revision).toBe(base + 1);
+    // 次の保存で現在のファイルも揃う
+    await s.saveSafety("p1", emptySafetyData(), "tester", "続き", base + 1);
+    expect(readFileSync(join(dir, "p1", "model.sysml"), "utf8")).toBe(model);
+  });
+  it("履歴の確定前に落ちた一時ディレクトリは無視され、次の保存で掃除される", async () => {
+    const s = await mk();
+    mkdirSync(join(dir, "p1", ".history", ".tmp-dead"));
+    expect((await s.history("p1")).map((h) => h.revision)).toEqual([1]);
+    await s.saveModel("p1", "package P { part b; }", "tester", "m", 1);
+    expect(readdirSync(join(dir, "p1", ".history")).some((n) => n.startsWith(".tmp-"))).toBe(false);
+  });
+  it("壊れた最新の履歴があっても、その前のリビジョンから続けられる", async () => {
+    const s = await mk();
+    await s.saveModel("p1", "package P { part b; }", "tester", "m", 1);
+    writeFileSync(join(dir, "p1", ".history", "000002", "meta.json"), "{broken");
+    expect((await s.latestMeta("p1"))?.revision).toBe(1);
+  });
+  it("保存の所要時間が履歴の増加で悪化しない(100 回保存しても、最後の 10 回が最初の 10 回の 5 倍以内)", async () => {
+    const s = await mk();
+    const times: number[] = [];
+    for (let i = 0; i < 100; i++) {
+      const t = performance.now();
+      await s.saveModel("p1", `package P { part a${i}; }`, "tester", "m", i + 1);
+      times.push(performance.now() - t);
+    }
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    expect(avg(times.slice(-10))).toBeLessThan(avg(times.slice(0, 10)) * 5 + 20);
+  });
+});
+
+describe("監査ログのハッシュ連鎖", () => {
+  it("正常なら検証に通り、途中の行の改ざん・削除を検出する", async () => {
+    const s = await mk();
+    await s.saveModel("p1", "package P { part b; }", "alice", "m", 1);
+    await s.saveModel("p1", "package P { part c; }", "alice", "m", 2);
+    expect(await s.verifyAudit("p1")).toMatchObject({ ok: true, lines: 3 });
+    const f = join(dir, "p1", "audit.jsonl");
+    const lines = readFileSync(f, "utf8").split("\n").filter(Boolean);
+    writeFileSync(f, [lines[0], lines[1]!.replace("alice", "mallory"), lines[2]].join("\n") + "\n");
+    expect(await s.verifyAudit("p1")).toMatchObject({ ok: false, brokenAtLine: 3 });
+    writeFileSync(f, [lines[0], lines[2]].join("\n") + "\n");
+    expect((await s.verifyAudit("p1")).ok).toBe(false);
+  });
+  it("同時に書いても連鎖が崩れない", async () => {
+    const s = await mk();
+    await Promise.all(Array.from({ length: 20 }, (_, i) => s.audit("p1", { actor: "a", action: `x${i}` })));
+    expect(await s.verifyAudit("p1")).toMatchObject({ ok: true, lines: 21 });
+  });
+});

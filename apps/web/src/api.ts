@@ -124,7 +124,7 @@ export const api = {
   proposals: (id: string) => req<{ proposals: Proposal[] }>("GET", `${P(id)}/ai/proposals`),
   apply: (id: string, pid: string) => req<ProjectView & { proposal: Proposal }>("POST", `${P(id)}/ai/proposals/${encodeURIComponent(pid)}/apply`),
   reject: (id: string, pid: string) => req<{ proposal: Proposal }>("POST", `${P(id)}/ai/proposals/${encodeURIComponent(pid)}/reject`),
-  audit: (id: string) => req<{ events: { ts: string; actor: string; action: string }[] }>("GET", `${P(id)}/audit`),
+  audit: (id: string) => req<{ events: { ts: string; actor: string; action: string }[]; chain: { ok: boolean; lines: number; brokenAtLine?: number } }>("GET", `${P(id)}/audit`),
 };
 
 /** 認証が必要なエンドポイントからのダウンロード(ヘッダにトークンを付けるため、fetch で取得して保存する)。 */

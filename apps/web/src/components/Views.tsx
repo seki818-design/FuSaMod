@@ -75,10 +75,18 @@ export function IssuesView() {
 export function HistoryView() {
   const h = useStore((s) => s.history);
   const rev = useStore((s) => s.server?.revision);
+  const chain = useStore((s) => s.auditChain);
   if (h.length === 0) return <div className="empty">履歴がありません</div>;
   const KIND = { model: "モデル", safety: "安全データ", restore: "復元", create: "作成" } as const;
   return (
     <div style={{ overflow: "auto" }} tabIndex={0} role="region" aria-label="履歴(スクロールできます)">
+      {chain && (
+        <div className="row" role="status" style={{ margin: "4px 0" }}>
+          <span className={`badge ${chain.ok ? "ok" : "err"}`} title="監査ログの各行は直前の行のハッシュを持ち、途中の行の改ざん・削除を検出できます(末尾の削除は検出できません)">
+            監査ログ {chain.ok ? `整合(${chain.lines} 件)` : `不整合(${chain.brokenAtLine} 行目)`}
+          </span>
+        </div>
+      )}
       <table className="grid" aria-label="履歴">
         <thead><tr><th className="num">rev</th><th>日時</th><th>操作者</th><th>種別</th><th>メッセージ</th><th><span className="sr-only">操作</span></th></tr></thead>
         <tbody>

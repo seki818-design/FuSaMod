@@ -41,23 +41,30 @@ interface Ctx {
  * エレメントの ID: 根は構造要素の名前、子は「親の ID/名前」(例: vehicle/powertrain/vcu)。
  * 兄弟の並び順、根の追加・削除、他の要素の追加では変わらない(名前を変えたときだけ変わる)。同名の兄弟は #2 のように区別する。
  */
-function numberElements({ net, elementIds }: Pick<Ctx, "net" | "elementIds">) {
+function numberElements({ net, elementIds, s }: Pick<Ctx, "net" | "elementIds" | "s">) {
   const children = new Map<string | undefined, string[]>();
   const byId = new Map(net.elements.map((e) => [e.id, e]));
   for (const e of net.elements) children.set(e.parentId, [...(children.get(e.parentId) ?? []), e.id]);
+  // 要求・制約条件・要求グループ・ペアなど、SCDL 側で使う ID と衝突しないよう予約する(ID_COLLISION を避ける)
+  const reserved = new Set<string>();
+  for (const x of [...s.safetyRequirements, ...s.intendedFunctions, ...s.mechanisms, ...s.pairs, ...s.signalFlows]) reserved.add(x.id);
+  for (const f of s.intendedFunctions) reserved.add(`RG-${f.id}`);
+  for (const m of s.mechanisms) reserved.add(`SRG-${m.id}`);
+  for (const p of s.pairs) { reserved.add(`NFSR-${p.id}`); reserved.add(`CP-${p.id}`); }
   const used = new Set<string>();
   const unique = (base: string) => {
-    let id = base;
+    let id = reserved.has(base) ? `${base}@E` : base;
     for (let n = 2; used.has(id); n++) id = `${base}#${n}`;
     used.add(id);
     return id;
   };
+  // 同名の兄弟の区別(#2 …)が並び順に依存しないよう、完全修飾名の順に割り当てる
+  const sorted = (ids: string[]) => [...ids].sort((p, q) => (p < q ? -1 : p > q ? 1 : 0));
   const assign = (id: string, scdlId: string) => {
     elementIds[id] = scdlId;
-    for (const c of children.get(id) ?? []) assign(c, unique(`${scdlId}/${byId.get(c)!.name}`));
+    for (const c of sorted(children.get(id) ?? [])) assign(c, unique(`${scdlId}/${byId.get(c)!.name}`));
   };
-  const roots = children.get(undefined) ?? [];
-  for (const r of roots) assign(r, unique(byId.get(r)!.name));
+  for (const r of sorted(children.get(undefined) ?? [])) assign(r, unique(byId.get(r)!.name));
 }
 
 function buildPool({ s, pool, err }: Ctx) {

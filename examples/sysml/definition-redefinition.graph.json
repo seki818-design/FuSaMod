@@ -1,0 +1,118 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "DefRedefinition",
+      "name": "DefRedefinition"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "DefRedefinition::Cell",
+      "name": "Cell",
+      "owner": "DefRedefinition"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "DefRedefinition::Pack",
+      "name": "Pack",
+      "owner": "DefRedefinition"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::Pack::cells",
+      "name": "cells",
+      "owner": "DefRedefinition::Pack",
+      "types": [
+        "DefRedefinition::Cell"
+      ],
+      "multiplicityUpper": 4
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::Pack::bms",
+      "name": "bms",
+      "owner": "DefRedefinition::Pack"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "DefRedefinition::BigPack",
+      "name": "BigPack",
+      "owner": "DefRedefinition",
+      "supertypes": [
+        "DefRedefinition::Pack"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::BigPack::cells",
+      "owner": "DefRedefinition::BigPack",
+      "supertypes": [
+        "DefRedefinition::Pack::cells"
+      ],
+      "redefines": true,
+      "redefinedFeatures": [
+        "DefRedefinition::Pack::cells"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::BigPack::cells::extra",
+      "name": "extra",
+      "owner": "DefRedefinition::BigPack::cells"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::v",
+      "name": "v",
+      "owner": "DefRedefinition",
+      "types": [
+        "DefRedefinition::BigPack"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::v2",
+      "name": "v2",
+      "owner": "DefRedefinition",
+      "types": [
+        "DefRedefinition::BigPack"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefRedefinition::wheels",
+      "name": "wheels",
+      "owner": "DefRedefinition",
+      "types": [
+        "DefRedefinition::Cell"
+      ],
+      "multiplicityUpper": 4
+    },
+    {
+      "kind": "RequirementDefinition",
+      "qualifiedName": "DefRedefinition::Rd",
+      "name": "Rd",
+      "owner": "DefRedefinition",
+      "doc": "定義の本文"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "DefRedefinition::Rd::subA",
+      "name": "subA",
+      "owner": "DefRedefinition::Rd"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "DefRedefinition::ra",
+      "name": "ra",
+      "owner": "DefRedefinition",
+      "types": [
+        "DefRedefinition::Rd"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [],
+  "performs": []
+}

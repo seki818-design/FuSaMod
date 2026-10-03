@@ -64,7 +64,7 @@ describe("対応しない構成は黙らずに警告する", () => {
     expect(d.deriveIssues.map((i) => i.code)).toContain("RECURSIVE_DEFINITION");
     expect(d.net.elements.length).toBeLessThan(10);
   });
-  it("上位の型(:>)の中身も展開され、再定義は警告される", () => {
+  it("上位の型(:>)の中身も展開され、定義内の再定義も(別の名前の使用として)反映される", () => {
     const d = deriveNet(
       graph([
         el("Package", "M", null),
@@ -76,8 +76,7 @@ describe("対応しない構成は黙らずに警告する", () => {
         el("PartUsage", "M::root", "M", { types: ["M::Sub"] }),
       ]),
     );
-    expect(d.net.elements.map((e) => e.id).sort()).toEqual(["M::root", "M::root::b", "M::root::s"]);
-    expect(d.deriveIssues.map((i) => i.code)).toContain("REDEFINITION_IGNORED");
+    expect(d.net.elements.map((e) => e.id).sort()).toEqual(["M::root", "M::root::b", "M::root::r", "M::root::s"]);
   });
 });
 
@@ -152,5 +151,32 @@ describe("定義の入れ子・ref・多重度・名前のない再定義(公式
   });
   it("入れ子の requirement は、親の satisfy を引き継ぐ(未紐づけと誤判定しない)", () => {
     expect(d.requirements.find((r) => r.id === "T3::r1::sub")!.satisfiedBy).toEqual(["T3::car1::main"]);
+  });
+});
+
+describe("定義の中の再定義・最上位の多重度・requirement def(公式実装の出力で確認)", () => {
+  const T = "DefRedefinition";
+  const d = deriveNet(ex("definition-redefinition.graph.json"));
+  const ids = d.net.elements.map((e) => e.id);
+  it("定義の中の再定義(:>> cells)が、すべてのインスタンスに同じように反映される", () => {
+    for (const v of ["v", "v2"]) {
+      expect(ids).toEqual(expect.arrayContaining([`${T}::${v}::cells`, `${T}::${v}::cells::extra`, `${T}::${v}::bms`]));
+    }
+    expect(d.deriveIssues.some((i) => i.code === "REDEFINITION_IGNORED")).toBe(false);
+  });
+  it("最上位の多重度(wheels : Cell [4])も警告する", () => {
+    expect(d.deriveIssues.some((i) => i.code === "MULTIPLICITY_IGNORED" && i.message.includes("wheels"))).toBe(true);
+  });
+  it("requirement def の本文と入れ子の要求が、型付きの requirement に展開される(幽霊要求を作らない)", () => {
+    const ids = d.requirements.map((r) => r.id);
+    expect(ids).toEqual(expect.arrayContaining([`${T}::ra`, `${T}::ra::subA`]));
+    expect(ids.some((i) => i.startsWith(`${T}::Rd`))).toBe(false);
+    expect(d.requirements.find((r) => r.id === `${T}::ra`)!.text).toBe("定義の本文");
+    expect(d.requirements.find((r) => r.id === `${T}::ra::subA`)!.parentId).toBe(`${T}::ra`);
+  });
+  it("完全修飾名の無い要素があっても落ちず、警告する", () => {
+    const g = ex("definition-redefinition.graph.json");
+    const r = deriveNet({ ...g, elements: [...g.elements, { kind: "PartUsage", name: "broken", owner: null } as never] });
+    expect(r.deriveIssues.some((i) => i.code === "INVALID_ELEMENT")).toBe(true);
   });
 });

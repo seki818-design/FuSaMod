@@ -28,8 +28,9 @@ export interface RequirementImpact {
 type Rel = [from: string, to: string, label: string];
 
 /** 要求間の関係(詳細化・導出・分解)。 */
-function requirementRelations(s: SafetyData): Rel[] {
+function requirementRelations(s: SafetyData, derived: ProjectAnalysis["derived"]): Rel[] {
   const rel: Rel[] = [];
+  for (const r of derived.requirements) if (r.parentId) rel.push([r.parentId, r.id, "入れ子"]);
   for (const r of s.safetyRequirements) {
     if (r.refines) rel.push([r.refines, r.id, "詳細化"]);
     if (r.parentId) rel.push([r.parentId, r.id, "導出"]);
@@ -117,7 +118,7 @@ export function impactOfRequirementChange(a: ProjectAnalysis, s: SafetyData, req
   if (!isSysml && !s.safetyRequirements.some((r) => r.id === requirementId)) return undefined;
 
   const reasons: string[] = [];
-  const rel = requirementRelations(s);
+  const rel = requirementRelations(s, a.derived);
   const reqs = walk(requirementId, rel, true, reasons);
   const upstream = walk(requirementId, rel, false, reasons);
   // 分解の相手: 起点(または下位)を分解先に持つ分解の、もう一方の分解先

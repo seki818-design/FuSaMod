@@ -18,8 +18,8 @@ export interface ExpandResult {
   issues: Issue[];
 }
 
-const DEFINITIONS = new Set(["PartDefinition", "ActionDefinition"]);
-const USAGES = new Set(["PartUsage", "ActionUsage"]);
+const DEFINITIONS = new Set(["PartDefinition", "ActionDefinition", "RequirementDefinition"]);
+const USAGES = new Set(["PartUsage", "ActionUsage", "RequirementUsage"]);
 const UNSUPPORTED: Record<string, string> = {
   PortUsage: "port",
   ConnectionUsage: "connection",
@@ -45,8 +45,13 @@ class Expander {
   private readonly typeChain = new Map<string, Set<string>>();
   private readonly instantiated = new Set<string>();
   private readonly out: GraphElement[] = [];
-
-  constructor(private readonly g: ElementGraph) {
+  private readonly g: ElementGraph;
+  constructor(g0: ElementGraph) {
+    // 完全修飾名の無い要素(不正なモデルで出力されることがある)は、黙って捨てず警告して除く
+    const bad = g0.elements.filter((e) => typeof e.qualifiedName !== "string" || e.qualifiedName === "");
+    const g: ElementGraph = bad.length ? { ...g0, elements: g0.elements.filter((e) => !bad.includes(e)) } : g0;
+    this.g = g;
+    if (bad.length) this.warn("INVALID_ELEMENT", `完全修飾名の無い要素が ${bad.length} 件あります(同じ名前の重複など、モデルの誤りの可能性)。無視しました`);
     this.byQn = new Map(g.elements.map((e) => [e.qualifiedName, e]));
     for (const e of g.elements) if (e.owner) append(this.children, e.owner, e);
   }
@@ -93,8 +98,20 @@ class Expander {
     const typed = kept.some((e) => USAGES.has(e.kind) && (e.types?.some((t) => this.isDefinition(t)) || e.supertypes?.length || e.redefinedFeatures?.length));
     if (!typed && !this.g.elements.some((e) => DEFINITIONS.has(e.kind))) return { graph: { ...this.g, elements: kept }, issues: this.issues };
 
+    const warnedTop = new Set<string>();
     for (const e of kept) {
-      this.out.push(e.kind === "ActionUsage" && !e.parameters?.length ? { ...e, parameters: this.parametersOf(e) } : e);
+      if (e.multiplicityUpper !== undefined && e.multiplicityUpper > 1 && USAGES.has(e.kind) && !warnedTop.has(e.qualifiedName)) {
+        warnedTop.add(e.qualifiedName);
+        this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${e.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${e.qualifiedName}`, e.qualifiedName);
+      }
+      let el = e;
+      if (e.kind === "ActionUsage" && !e.parameters?.length) el = { ...e, parameters: this.parametersOf(e) };
+      // requirement def の本文は、型付きの requirement が自身の本文を持たなければ引き継ぐ
+      if (e.kind === "RequirementUsage" && !e.doc) {
+        const doc = this.sourcesOf(e).map((t) => this.byQn.get(t)?.doc).find((d) => d);
+        if (doc) el = { ...e, doc };
+      }
+      this.out.push(el);
       if (USAGES.has(e.kind)) this.expandInto(e, 0, []);
     }
     this.warnUnusedDefinitions();
@@ -195,10 +212,6 @@ class Expander {
         }
         if (m.multiplicityUpper !== undefined && m.multiplicityUpper > 1)
           this.warn("MULTIPLICITY_IGNORED", `多重度(上限 ${m.multiplicityUpper})は解析の対象外です。1 つのインスタンスとして扱います: ${m.qualifiedName}`, m.qualifiedName);
-        if (m.redefines) {
-          this.warn("REDEFINITION_IGNORED", "再定義(:>>)は解析の対象外です(元の使用をそのまま使います)", m.qualifiedName);
-          continue;
-        }
         names.add(lastName(m));
         this.instantiateMember(inst, m, depth, [...defStack, d]);
       }

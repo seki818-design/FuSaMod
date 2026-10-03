@@ -84,6 +84,13 @@
       ]
     },
     {
+      "kind": "RequirementDefinition",
+      "qualifiedName": "TypedDefinitions::TorqueDef",
+      "name": "TorqueDef",
+      "owner": "TypedDefinitions",
+      "doc": "駆動トルクを出力する"
+    },
+    {
       "kind": "RequirementUsage",
       "qualifiedName": "TypedDefinitions::torque",
       "name": "torque",

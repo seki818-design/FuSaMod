@@ -7,7 +7,7 @@ const SAFETY = JSON.parse(readFileSync(new URL("../../../projects/ev-powertrain/
 /** 各テストの前に、デモプロジェクトの安全データを元に戻す。 */
 test.beforeEach(async ({ request }) => {
   const p = await (await request.get("/api/projects/ev-powertrain")).json();
-  await request.put("/api/projects/ev-powertrain/safety", { data: { data: SAFETY, baseRevision: p.revision, message: "テストの初期化" } });
+  await request.put("/api/projects/ev-powertrain/safety", { data: { data: { ...SAFETY, ...(p.safety.aiChanges ? { aiChanges: p.safety.aiChanges } : {}) }, baseRevision: p.revision, message: "テストの初期化" } });
 });
 
 async function open(page: Page) {

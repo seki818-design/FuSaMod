@@ -322,3 +322,35 @@ describe("診断カバレッジと検出度の整合(FMEA-MSR の一部)", () =>
     expect(l ? a.issues.some((i) => i.code === "MECH_DC_D_MISMATCH") : true).toBe(true);
   });
 });
+
+describe("SCDL の ID: 衝突の回避と、並び順に依存しない区別(ラウンド 4)", () => {
+  const withParts = (names: string[]) => {
+    const g = demoGraph();
+    const root = VEH.split("::")[0]!;
+    return { ...g, elements: [...g.elements, ...names.map((n) => ({ kind: "PartUsage", qualifiedName: `${root}::${n}`, name: n, owner: root }))] };
+  };
+  it("part の名前が要求・グループの ID(IF-1、RG-IF-1 など)と同じでも ID_COLLISION にならない", () => {
+    const a = analyzeProject(withParts(["IF-1", "RG-IF-1", "FSR-1"]), demoSafety());
+    expect(a.issues.filter((i) => i.code === "ID_COLLISION")).toEqual([]);
+    expect(a.scdlElementIds[`${VEH.split("::")[0]}::IF-1`]).toBe("IF-1@E");
+  });
+  it("同名の兄弟の区別(#2)は、並び順ではなく完全修飾名の順", () => {
+    const g = demoGraph();
+    const root = VEH.split("::")[0]!;
+    const mk = (pkg: string) => ({ kind: "PartUsage", qualifiedName: `${pkg}::Dup`, name: "Dup", owner: pkg });
+    const ids = (order: string[]) => analyzeProject({ ...g, elements: [...g.elements, ...order.map(mk)] }, demoSafety()).scdlElementIds;
+    const a = ids([`${root}`, "Other"]);
+    const b = ids(["Other", `${root}`]);
+    expect(a).toEqual(b);
+  });
+});
+describe("入れ子の requirement は影響分析にも入る", () => {
+  it("SysML の親 requirement を変えると、入れ子の子が下位に入る", () => {
+    const g = demoGraph();
+    const parent = g.elements.find((e) => e.kind === "RequirementUsage")!;
+    const child = { kind: "RequirementUsage", qualifiedName: `${parent.qualifiedName}::sub`, name: "sub", owner: parent.qualifiedName };
+    const a = analyzeProject({ ...g, elements: [...g.elements, child] }, demoSafety());
+    const r = impactOfRequirementChange(a, demoSafety(), parent.qualifiedName)!;
+    expect(r.requirements).toContain(child.qualifiedName);
+  });
+});

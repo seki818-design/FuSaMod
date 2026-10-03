@@ -50,12 +50,17 @@
 - 名前のない再定義(`part :>> main`)は、再定義している特徴の名前を使う。
 - 入れ子の `requirement` は、自身に `satisfy` が無ければ親の `satisfy` を引き継ぐ。
 
+- 再定義(`part :>> cells`)は、**定義の中でも使用の側でも反映**する(名前は再定義している特徴の名前、中身は元の使用+追加分)。
+- 多重度の上限が 1 を超える使用は、最上位でも定義内でも 1 つとして扱い、`MULTIPLICITY_IGNORED` で警告する。
+- `requirement def` は展開する(型付き requirement に本文と入れ子の要求を引き継ぐ)。定義側の要求は構造・トレースに現れない(幽霊要求を作らない)。
+- 完全修飾名の無い要素(不正なモデルで出力されることがある)は、落とさず警告して除く(`INVALID_ELEMENT`)。
+- `verify` / `derive` / `refine` などの SysML 標準の要求間関係は**導出していない**(入れ子と `satisfy` のみ)。
+
 ## 導出しない構成(黙って捨てず、必ず警告する)
 
 | 構成 | 扱い | 警告コード |
 |---|---|---|
 | `port` / `connection` / `interface` / `flow` / `allocation` / `state` | 無視。インターフェースや状態からの故障モード候補は出ない | `UNSUPPORTED_CONSTRUCT`(種類ごとに件数つき) |
-| 再定義(`:>>`) | 元の使用をそのまま使う | `REDEFINITION_IGNORED` |
 | どこからも使われていない `part def` | 構造に入れない | `DEFINITION_NOT_INSTANTIATED` |
 | 自分自身を含む定義 | 展開を止める | `RECURSIVE_DEFINITION` |
 | part・action 以外の `perform` / `satisfy` | 無視 | `PERFORM_NOT_PART` / `PERFORM_NOT_ACTION` / `SATISFY_NOT_PART` |

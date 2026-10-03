@@ -198,6 +198,8 @@ public class SysmlExtract {
                 elements.add(n);
             } else if (o instanceof PartDefinition pd) {
                 elements.add(definitionNode(pd, "PartDefinition"));
+            } else if (o instanceof RequirementDefinition rd) {
+                elements.add(definitionNode(rd, "RequirementDefinition"));
             } else if (o instanceof Dependency d) {
                 Map<String, Object> n = node(d, "Dependency");
                 List<String> c = new ArrayList<>(), s = new ArrayList<>();

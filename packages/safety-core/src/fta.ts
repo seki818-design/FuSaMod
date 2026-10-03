@@ -244,11 +244,14 @@ export function topProbabilityUpperBound(t: FaultTree): number | undefined {
 export function faultTreeFromNet(net: SafetyNet, topFailureId: FailureId, name?: string): FaultTree {
   const idx = buildIndex(net);
   const nodes = new Map<string, FaultTreeNode>();
+  /** 故障ノード → 作ったノードの ID(共有された原因は同じノードを再利用する。菱形の構造でも指数時間にならない) */
+  const built = new Map<FailureId, string>();
   const visiting = new Set<FailureId>();
   const build = (fid: FailureId): string | undefined => {
     const f = idx.failure.get(fid);
     if (!f) return undefined;
-    if (nodes.has(fid)) return fid;
+    const done = built.get(fid);
+    if (done !== undefined) return done;
     const causes = idx.causesOf.get(fid) ?? [];
     if (visiting.has(fid)) {
       // 循環は切るが、黙って落とさず「循環(未展開)」の基本事象として残す
@@ -264,6 +267,7 @@ export function faultTreeFromNet(net: SafetyNet, topFailureId: FailureId, name?:
         failureId: fid,
         ...(f.isBasicCause ? {} : { undeveloped: true }),
       });
+      built.set(fid, fid);
       return fid;
     }
     visiting.add(fid);
@@ -271,6 +275,7 @@ export function faultTreeFromNet(net: SafetyNet, topFailureId: FailureId, name?:
     visiting.delete(fid);
     const gateId = `G:${fid}`;
     nodes.set(gateId, { id: gateId, label: f.description, kind: "gate", gate: "or", inputs });
+    built.set(fid, gateId);
     return gateId;
   };
   const top = build(topFailureId) ?? topFailureId;

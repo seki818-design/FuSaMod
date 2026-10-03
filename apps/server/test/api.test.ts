@@ -335,3 +335,27 @@ describe("/api/me", () => {
     await h2.close();
   });
 });
+
+describe("AI の来歴と承認者の分離", () => {
+  const chatOf = (hdr: Record<string, string>) => h.app.inject({ method: "POST", url: "/api/projects/ev-powertrain/ai/chat", headers: hdr, payload: { message: "safetyMonitor の FMEA を実施して" } });
+  it("適用すると、提案者・承認者・時刻が safety.json に残る", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:t1-0123456789abcdef,bob:t2-0123456789abcdef" } });
+    const A = { authorization: "Bearer t1-0123456789abcdef" };
+    const B = { authorization: "Bearer t2-0123456789abcdef" };
+    const proposal: Proposal = json(await chatOf(A)).proposals[0];
+    expect(proposal.requestedBy).toBe("alice");
+    const ap = await h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/ai/proposals/${proposal.id}/apply`, headers: B });
+    expect(ap.statusCode).toBe(200);
+    const s = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: B })).safety;
+    expect(s.aiChanges.at(-1)).toMatchObject({ proposalId: proposal.id, requestedBy: "alice", approvedBy: "bob" });
+  });
+  it("FUSAMOD_AI_SEPARATE_APPROVER=1 なら、依頼した本人は承認できない", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:t1-0123456789abcdef,bob:t2-0123456789abcdef", FUSAMOD_AI_SEPARATE_APPROVER: "1" } });
+    const A = { authorization: "Bearer t1-0123456789abcdef" };
+    const B = { authorization: "Bearer t2-0123456789abcdef" };
+    const proposal: Proposal = json(await chatOf(A)).proposals[0];
+    const self = await h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/ai/proposals/${proposal.id}/apply`, headers: A });
+    expect(self.statusCode).toBe(403);
+    expect((await h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/ai/proposals/${proposal.id}/apply`, headers: B })).statusCode).toBe(200);
+  });
+});

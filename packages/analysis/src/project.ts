@@ -132,6 +132,19 @@ const apRule = z
   })
   .strict();
 
+/** AI の提案を適用した記録(来歴)。提案者(依頼した人)と承認者を残す。 */
+const aiChange = z
+  .object({
+    proposalId: id,
+    title: text,
+    provider: z.string().max(200),
+    requestedBy: z.string().max(200),
+    approvedBy: z.string().max(200),
+    at: z.string().max(40),
+    operations: z.number().int().min(0),
+  })
+  .strict();
+
 /** プロジェクトの安全分析データ(model.sysml に対応する safety.json)。 */
 export const SafetyDataSchema = z
   .object({
@@ -152,6 +165,8 @@ export const SafetyDataSchema = z
     apTable: arr(apRule).optional(),
     /** AP 表の出典(例: 「AIAG-VDA FMEA ハンドブック 第 1 版 表 …」)。サンプル表は「非公式」と明記する */
     apTableSource: z.string().max(500).optional(),
+    /** AI の提案を適用した履歴(新しいものが後ろ。最大 500 件) */
+    aiChanges: arr(aiChange).optional(),
   })
   .strict();
 

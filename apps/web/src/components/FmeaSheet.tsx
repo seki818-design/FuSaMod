@@ -52,7 +52,13 @@ export function FmeaSheet() {
         <button className="btn small" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>＋ 故障モードを追加</button>
         <button className="btn small" onClick={() => void exportFile("fmea.csv", `?element=${encodeURIComponent(focus)}`)}>この要素を CSV 出力</button>
         <button className="btn small" onClick={() => openTab("net")}>エラーネットで見る</button>
-        <span className="muted">{a.apAvailable ? "AP: 設定済み" : "AP 表が未設定(RPN のみ)"}</span>
+        {a.apStatus === "none" && <span className="muted">AP 表が未設定(RPN のみ)</span>}
+        {a.apStatus === "declared" && <span className="muted" title={safety.apTableSource}>AP: 設定済み(出典あり)</span>}
+        {(a.apStatus === "unofficial" || a.apStatus === "unknown") && (
+          <span className="badge warn" title={safety.apTableSource ?? "出典が未記入"}>
+            ▲ AP は {a.apStatus === "unofficial" ? "非公式のサンプル表" : "出典が未確認の表"} による値です(実際の分析では正式な表に置き換え)
+          </span>
+        )}
       </div>
       {!a.apAvailable && (
         <div className="banner" role="note">

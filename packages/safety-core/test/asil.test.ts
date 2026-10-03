@@ -40,8 +40,8 @@ describe("デコンポジション検証", () => {
     const issues = validateDecompositions(
       [
         req({ id: "p" }),
-        req({ id: "a", asil: "B", originAsil: "D", allocatedTo: "e1" }),
-        req({ id: "b", asil: "B", originAsil: "D", allocatedTo: "e2" }),
+        req({ id: "a", parentId: "p", asil: "B", originAsil: "D", allocatedTo: "e1" }),
+        req({ id: "b", parentId: "p", asil: "B", originAsil: "D", allocatedTo: "e2" }),
       ],
       [{ id: "d", parentRequirementId: "p", childRequirementIds: ["a", "b"], independenceEvidence: "DFA-PT-001(独立電源)" }],
     );
@@ -52,22 +52,23 @@ describe("デコンポジション検証", () => {
     const issues = validateDecompositions(
       [
         req({ id: "p" }),
-        req({ id: "a", asil: "B", originAsil: "D", allocatedTo: "e1" }),
-        req({ id: "b", asil: "A", originAsil: "C", allocatedTo: "e1" }),
+        req({ id: "a", parentId: "p", asil: "B", originAsil: "D", allocatedTo: "e1" }),
+        req({ id: "b", parentId: "p", asil: "A", originAsil: "C", allocatedTo: "e1" }),
       ],
       [{ id: "d", parentRequirementId: "p", childRequirementIds: ["a", "b"] }],
     );
     expect(issues.map((i) => i.code).sort()).toEqual(
       ["DECOMP_INVALID", "DECOMP_NOT_INDEPENDENT", "DECOMP_NO_EVIDENCE", "DECOMP_ORIGIN"].sort(),
     );
+    expect(issues.find((i) => i.code === "DECOMP_NO_EVIDENCE")?.severity).toBe("error");
   });
 
   it("再分解は専門家確認の警告", () => {
     const issues = validateDecompositions(
       [
         req({ id: "p", asil: "B", originAsil: "D" }),
-        req({ id: "a", asil: "A", originAsil: "D" }),
-        req({ id: "b", asil: "A", originAsil: "D" }),
+        req({ id: "a", parentId: "p", asil: "A", originAsil: "D" }),
+        req({ id: "b", parentId: "p", asil: "A", originAsil: "D" }),
       ],
       [{ id: "d", parentRequirementId: "p", childRequirementIds: ["a", "b"], independenceEvidence: "DFA-PT-001(独立電源)" }],
     );

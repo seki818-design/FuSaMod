@@ -49,6 +49,8 @@ export interface Config {
   webDist: string | undefined;
   ai: { provider: "rule" | "claude"; model: string; apiKey: string | undefined; maxRefChars: number };
   bodyLimit: number;
+  /** true なら、AI の提案を依頼した人と承認する人を別にする(認証を設定しているときのみ有効) */
+  aiSeparateApprover: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -76,5 +78,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       maxRefChars: Number(env["FUSAMOD_AI_MAX_REF_CHARS"] ?? 6000),
     },
     bodyLimit: 5 * 1024 * 1024,
+    aiSeparateApprover: env["FUSAMOD_AI_SEPARATE_APPROVER"] === "1",
   };
 }

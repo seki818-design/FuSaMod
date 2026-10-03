@@ -96,15 +96,47 @@ export function validateDecompositions(
     if (c1.allocatedTo && c1.allocatedTo === c2.allocatedTo)
       err("DECOMP_NOT_INDEPENDENT", "分解先が同一の要素に割り当てられており、独立性が成立しません");
     const evidence = d.independenceEvidence?.trim() ?? "";
-    if (evidence === "") warn("DECOMP_NO_EVIDENCE", "独立性の根拠(依存故障解析/FFI)が未登録です");
-    else if (evidence.length < EVIDENCE_MIN)
-      warn("DECOMP_EVIDENCE_WEAK", `独立性の根拠が短すぎます(${EVIDENCE_MIN} 文字以上。文書番号や解析名を記入してください)`);
+    if (evidence === "") err("DECOMP_NO_EVIDENCE", "独立性の根拠(依存故障解析/FFI)が未登録です。ISO 26262-9 の分解には、独立性の根拠が必要です");
+    else if (!isSubstantial(evidence))
+      warn("DECOMP_EVIDENCE_WEAK", `独立性の根拠が形だけに見えます(${EVIDENCE_MIN} 文字以上で、文書番号や解析名などの具体的な内容を記入してください)`);
+    if (c1.parentId !== parent.id || c2.parentId !== parent.id)
+      err("DECOMP_CHILD_NOT_DERIVED", "分解先の要求が、分解元の要求から導出(parentId)されていません。分解先は分解元の下に置いてください");
   }
   checkDecompositionReuse(decomps, issues);
+  checkDecompositionCycles(decomps, issues);
   return issues;
 }
 
 const EVIDENCE_MIN = 8;
+/** 8 文字以上で、4 種類以上の文字を含む(「aaaaaaaa」のような中身の無い文字列を除く)。内容の妥当性は人が判断する。 */
+const isSubstantial = (t: string) => t.length >= EVIDENCE_MIN && new Set(t).size >= 4;
+
+/** 分解の自己参照と循環(A → B + QM、B → A + … など)。 */
+function checkDecompositionCycles(decomps: Decomposition[], issues: Issue[]) {
+  const next = new Map<string, string[]>();
+  for (const d of decomps) next.set(d.parentRequirementId, [...(next.get(d.parentRequirementId) ?? []), ...d.childRequirementIds]);
+  const reported = new Set<string>();
+  for (const d of decomps) {
+    if (d.childRequirementIds.includes(d.parentRequirementId)) {
+      issues.push({ code: "DECOMP_CYCLE", severity: "error", message: "要求が自分自身に分解されています", ref: d.id });
+      continue;
+    }
+    // d の分解先から、分解元に戻れるか
+    const seen = new Set<string>();
+    const stack = [...d.childRequirementIds];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      if (cur === d.parentRequirementId && !reported.has(d.id)) {
+        reported.add(d.id);
+        issues.push({ code: "DECOMP_CYCLE", severity: "error", message: "分解が循環しています(分解先をたどると分解元に戻ります)", ref: d.id });
+        break;
+      }
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      stack.push(...(next.get(cur) ?? []));
+    }
+  }
+}
 
 /** 同じ要求を二度分解する、分解先を別の分解でも使う、といった重複の検出。 */
 function checkDecompositionReuse(decomps: Decomposition[], issues: Issue[]) {
@@ -118,6 +150,20 @@ function checkDecompositionReuse(decomps: Decomposition[], issues: Issue[]) {
       const used = children.get(c);
       if (used && used !== d.id) issues.push({ code: "DECOMP_CHILD_REUSED", severity: "error", message: `${c} は ${used} の分解先としても使われています`, ref: d.id });
       else children.set(c, d.id);
+    }
+  }
+}
+
+/** 要求の親(parentId)をたどって循環する(自己親を含む)ものを報告する。 */
+function checkParentCycles(reqs: SafetyRequirement[], byId: Map<string, SafetyRequirement>, issues: Issue[]) {
+  for (const r of reqs) {
+    const seen = new Set<string>([r.id]);
+    for (let cur = r.parentId !== undefined ? byId.get(r.parentId) : undefined; cur; cur = cur.parentId !== undefined ? byId.get(cur.parentId) : undefined) {
+      if (seen.has(cur.id)) {
+        issues.push({ code: "REQ_PARENT_CYCLE", severity: "error", message: `要求の親子が循環しています(${r.id} から ${cur.id} に戻ります)`, ref: r.id });
+        break;
+      }
+      seen.add(cur.id);
     }
   }
 }
@@ -156,6 +202,7 @@ export function validateAsilInheritance(
     }
     return false;
   };
+  checkParentCycles(reqs, byId, issues);
   const covered = new Set<string>();
   for (const r of reqs) {
     if (r.originAsil !== undefined && !inDecomposedBranch(r))

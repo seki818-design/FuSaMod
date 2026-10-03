@@ -51,7 +51,8 @@ export function fmeaRows(a: ProjectAnalysis, views: Record<string, FmeaView> = a
 
 export function fmeaCsv(a: ProjectAnalysis, elementId?: string): string {
   const views = elementId ? Object.fromEntries(Object.entries(a.fmea).filter(([k]) => k === elementId)) : a.fmea;
-  return toCsv([FMEA_HEADER, ...fmeaRows(a, views)]);
+  const apLabel = a.apStatus === "unofficial" ? "AP(非公式のサンプル表)" : a.apStatus === "unknown" ? "AP(出典未確認)" : "AP";
+  return toCsv([FMEA_HEADER.map((h) => (h === "AP" ? apLabel : h)), ...fmeaRows(a, views)]);
 }
 
 export function traceCsv(a: ProjectAnalysis): string {
@@ -97,7 +98,8 @@ export function reportMarkdown(a: ProjectAnalysis, projectName: string): string 
   L.push(`| 構造要素 | ${a.summary.elements} |`, `| 機能 | ${a.summary.functions} |`, `| 故障ノード | ${a.summary.failures} |`, `| 要求 | ${a.summary.requirements} |`);
   L.push(`| エラー | ${a.summary.errors} |`, `| 警告 | ${a.summary.warnings} |`);
   if (a.summary.maxRpn !== undefined) L.push(`| 最大 RPN | ${a.summary.maxRpn} |`);
-  L.push(`| AP 表 | ${a.apAvailable ? "設定済み" : "未設定(RPN のみ)"} |`, "");
+  const apText = { none: "未設定(RPN のみ)", declared: "設定済み(出典あり)", unofficial: "**非公式のサンプル表**(実際の分析では正式な表に置き換えてください)", unknown: "**出典が未確認**の表" }[a.apStatus];
+  L.push(`| AP 表 | ${apText} |`, "");
   L.push("## パズルビュー(視点 × 階層の整合)", "");
   L.push(`| 階層 | ${VIEWPOINTS.map((v) => v.label).join(" | ")} |`, `|---|${VIEWPOINTS.map(() => "---").join("|")}|`);
   for (const l of LEVELS)

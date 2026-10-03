@@ -263,7 +263,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const refs = new RefIndex(await store.refs(id));
     const result = await ai.propose({ message: body.message, projectName: id, analysis: out.analysis, safety: p.safety, refs });
     const now = new Date().toISOString();
-    const proposals: Proposal[] = result.proposals.map((d) => ({ ...d, id: `P-${randomUUID().slice(0, 8)}`, status: "pending", createdAt: now, provider: result.provider }));
+    const proposals: Proposal[] = result.proposals.map((d) => ({ ...d, id: `P-${randomUUID().slice(0, 8)}`, status: "pending", createdAt: now, provider: result.provider, requestedBy: actor }));
     if (proposals.length)
       await store.updateProposals<Proposal, void>(id, (list) => ({ list: [...list, ...proposals], result: undefined }));
     await store.audit(id, {
@@ -295,6 +295,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const proposal = (await store.readProposals<Proposal>(id)).find((x) => x.id === pid);
     if (!proposal) throw new HttpError(404, `提案が見つかりません: ${pid}`);
     if (proposal.status !== "pending") throw new HttpError(409, "この提案は既に処理済みです");
+    if (config.aiSeparateApprover && config.tokens.length > 0 && proposal.requestedBy === actor)
+      throw new HttpError(403, "AI の提案は、依頼した人とは別の人が承認してください(FUSAMOD_AI_SEPARATE_APPROVER)");
     const p = await store.read(id);
     const before = await analysis.analyze(p.model, p.safety, p.graph);
     const applied = applyOperations(p.safety, proposal.operations);
@@ -305,7 +307,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const existing = new Set((before.analysis?.issues ?? []).filter((i) => i.severity === "error").map(key));
     const added = (after.analysis?.issues ?? []).filter((i) => i.severity === "error" && !existing.has(key(i)));
     if (added.length > 0) throw new HttpError(422, "この提案を適用すると、新しいエラーが発生するため適用しません", added.map((i) => `${i.code}: ${i.message}`));
-    await store.saveSafety(id, applied.data, actor, `AI 提案を適用: ${proposal.title}`, p.revision);
+    // 来歴を safety.json に残す(提案者・承認者・時刻)。履歴にも残る
+    const change = { proposalId: pid, title: proposal.title.slice(0, 5000), provider: `${proposal.provider.name}${proposal.provider.model ? `/${proposal.provider.model}` : ""}`, requestedBy: proposal.requestedBy ?? "不明", approvedBy: actor, at: new Date().toISOString(), operations: proposal.operations.length };
+    const withProvenance = { ...applied.data, aiChanges: [...(applied.data.aiChanges ?? []), change].slice(-500) };
+    await store.saveSafety(id, withProvenance, actor, `AI 提案を適用: ${proposal.title}`, p.revision);
     const done = await decide(id, pid, "applied", actor);
     await store.audit(id, { actor, action: "ai.apply", details: { proposal: pid, title: proposal.title, provider: proposal.provider, operations: proposal.operations.length } });
     const fresh = await requireAnalysis(id);

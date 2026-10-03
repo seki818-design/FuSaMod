@@ -57,6 +57,8 @@ export interface ProjectAnalysis {
   /** 機能を持つ構造要素ごとの FMEA(ネットの射影) */
   fmea: Record<ElementId, FmeaView>;
   apAvailable: boolean;
+  /** AP 表の状態: none=未設定 / declared=出典あり / unofficial=非公式のサンプル / unknown=出典が未記入 */
+  apStatus: "none" | "declared" | "unofficial" | "unknown";
   puzzle: Puzzle;
   trace: TraceMatrix;
   scdl: ScdlModel;
@@ -170,6 +172,30 @@ function crossLayerIssues(net: SafetyNet, derived: DerivedNet): Issue[] {
 }
 
 /** 意図機能・安全機構・安全要求の参照整合。 */
+/** 同じ種類の ID の重複(要求・分解・意図機能・安全機構・ペア・信号フロー・故障ノード・リンク・フォールトツリー)。 */
+function duplicateIdIssues(s: SafetyData): Issue[] {
+  const out: Issue[] = [];
+  const groups: [string, { id: string }[]][] = [
+    ["安全要求", s.safetyRequirements],
+    ["デコンポジション", s.decompositions],
+    ["意図機能", s.intendedFunctions],
+    ["安全機構", s.mechanisms],
+    ["ペア", s.pairs],
+    ["信号フロー", s.signalFlows],
+    ["故障ノード", s.failures],
+    ["故障リンク", s.links],
+    ["フォールトツリー", s.faultTrees],
+  ];
+  for (const [label, items] of groups) {
+    const seen = new Set<string>();
+    for (const { id } of items) {
+      if (seen.has(id)) out.push({ code: "DUP_ID", severity: "error", message: `${label} の ID が重複しています: ${id}`, ref: id });
+      seen.add(id);
+    }
+  }
+  return out;
+}
+
 function referenceIssues(net: SafetyNet, s: SafetyData, derived: DerivedNet): { pairing: Issue[]; safetyReq: Issue[] } {
   const sysmlReqs = new Set(derived.requirements.map((r) => r.id));
   const known = new Set(net.elements.map((e) => e.id));
@@ -234,6 +260,12 @@ function faultTreeIssues(net: SafetyNet, s: SafetyData): Issue[] {
     out.push(...list.map((i) => (i.ref !== undefined && t.nodes.some((n) => n.id === i.ref) ? { ...i, ref: t.id } : i)));
   }
   return out;
+}
+
+function apStatusOf(s: SafetyData, available: boolean): ProjectAnalysis["apStatus"] {
+  if (!available) return "none";
+  const src = s.apTableSource?.trim();
+  return !src ? "unknown" : src.includes("非公式") ? "unofficial" : "declared";
 }
 
 function compileAp(s: SafetyData): { ap?: ApLookup; issues: Issue[] } {
@@ -320,7 +352,7 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   push("hara", validateHara(s.hara));
   const refs = referenceIssues(net, s, derived);
   push("pairing", [...refs.pairing, ...validatePairing(s.intendedFunctions, s.mechanisms, s.pairs)]);
-  push("safety-req", refs.safetyReq);
+  push("safety-req", [...refs.safetyReq, ...duplicateIdIssues(s)]);
   push("decomposition", [
     ...validateDecompositions(s.safetyRequirements, s.decompositions),
     ...validateAsilInheritance(s.safetyRequirements, s.decompositions, s.hara.goals),
@@ -349,6 +381,7 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   return {
     net, derived, levelOf, issues, fmea,
     apAvailable: ap !== undefined,
+    apStatus: apStatusOf(s, ap !== undefined),
     puzzle: buildPuzzle({ net, levelOf, issues, derived }, s),
     trace,
     scdl: mapped.model,

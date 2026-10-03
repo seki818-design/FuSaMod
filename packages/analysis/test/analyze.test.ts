@@ -263,3 +263,32 @@ describe("要求変更の影響分析とトレース", () => {
     expect(analyzeProject(demoGraph(), x).issues.find((i) => i.code === "UNKNOWN_REF" && i.message.includes("SysML 要求"))?.severity).toBe("error");
   });
 });
+
+describe("ラウンド 2 の指摘への回帰", () => {
+  const run = (mutate: (s: ReturnType<typeof demoSafety>) => void) => {
+    const s = structuredClone(demoSafety());
+    mutate(s);
+    return analyzeProject(demoGraph(), s);
+  };
+  it("同じ ID の重複(要求・分解・安全機構など)をエラーにする", () => {
+    const a = run((s) => { s.safetyRequirements.push({ ...s.safetyRequirements[0]! }); s.mechanisms.push({ ...s.mechanisms[0]! }); s.decompositions.push({ ...s.decompositions[0]! }); });
+    expect(a.issues.filter((i) => i.code === "DUP_ID" && i.severity === "error").length).toBeGreaterThanOrEqual(3);
+  });
+  it("AP 表の状態を持つ(サンプルは非公式)", () => {
+    expect(run(() => {}).apStatus).toBe("unofficial");
+    expect(run((s) => { s.apTableSource = "AIAG-VDA FMEA ハンドブック 第 1 版"; }).apStatus).toBe("declared");
+    expect(run((s) => { delete s.apTableSource; }).apStatus).toBe("unknown");
+    expect(run((s) => { delete s.apTable; delete s.apTableSource; }).apStatus).toBe("none");
+  });
+  it("非公式の AP 表は、CSV の見出しとレポートに明記される", async () => {
+    const { fmeaCsv, reportMarkdown } = await import("../src/index.js");
+    const a = run(() => {});
+    expect(fmeaCsv(a)).toContain("AP(非公式のサンプル表)");
+    expect(reportMarkdown(a, "x")).toContain("非公式のサンプル表");
+  });
+  it("AI の来歴(aiChanges)を持つデータを読み込める", () => {
+    const s = structuredClone(demoSafety());
+    s.aiChanges = [{ proposalId: "P-1", title: "t", provider: "rule-based", requestedBy: "alice", approvedBy: "bob", at: "2026-01-01T00:00:00Z", operations: 2 }];
+    expect(parseSafetyData(JSON.parse(JSON.stringify(s))).ok).toBe(true);
+  });
+});

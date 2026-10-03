@@ -27,6 +27,8 @@ export interface Proposal extends ProposalDraft {
   createdAt: string;
   decidedAt?: string;
   decidedBy?: string;
+  /** 提案を AI に依頼した人 */
+  requestedBy?: string;
   provider: { name: string; model?: string };
 }
 

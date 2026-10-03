@@ -66,11 +66,12 @@ describe("ASIL の継承規則", () => {
 });
 
 describe("デコンポジションの重複と根拠", () => {
-  const reqs = [req("P", "D"), req("A", "B", { originAsil: "D" }), req("B", "B", { originAsil: "D" }), req("C", "B", { originAsil: "D" })];
+  const reqs = [req("P", "D"), req("A", "B", { originAsil: "D", parentId: "P" }), req("B", "B", { originAsil: "D", parentId: "P" }), req("C", "B", { originAsil: "D", parentId: "P" })];
   it("空白だけの根拠は未登録、短すぎる根拠は警告", () => {
     const d = (e: string): Decomposition => ({ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: e });
     expect(codes(validateDecompositions(reqs, [d(" ")]))).toEqual(["DECOMP_NO_EVIDENCE"]);
     expect(codes(validateDecompositions(reqs, [d("x")]))).toEqual(["DECOMP_EVIDENCE_WEAK"]);
+    expect(codes(validateDecompositions(reqs, [d("aaaaaaaaaa")]))).toEqual(["DECOMP_EVIDENCE_WEAK"]);
   });
   it("同じ要求の二重分解・分解先の再利用はエラー", () => {
     const e = "DFA-PT-001(独立電源)";
@@ -155,5 +156,42 @@ describe("FTA の堅牢性(空の結果を安全と誤読させない)", () => {
     const t = faultTreeFromNet(net as never, "FM1");
     expect(t.nodes.some((n) => n.undeveloped)).toBe(true);
     expect(singlePointFaults(t).faults.length).toBeGreaterThan(0);
+  });
+});
+
+describe("循環・導出・ID(ラウンド 2 の指摘)", () => {
+  const e = "DFA-PT-001(独立電源)";
+  it("自分自身への分解と、分解の循環はエラー", () => {
+    const reqs = [req("P", "D"), req("A", "B", { originAsil: "D", parentId: "P" }), req("B", "B", { originAsil: "D", parentId: "P" })];
+    expect(codes(validateDecompositions(reqs, [{ id: "d", parentRequirementId: "P", childRequirementIds: ["P", "A"], independenceEvidence: e }]))).toContain("DECOMP_CYCLE");
+    const cyc = validateDecompositions(reqs, [
+      { id: "d1", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: e },
+      { id: "d2", parentRequirementId: "A", childRequirementIds: ["P", "B"], independenceEvidence: e },
+    ]);
+    expect(codes(cyc)).toContain("DECOMP_CYCLE");
+  });
+  it("分解先が分解元から導出(parentId)されていなければエラー", () => {
+    const reqs = [req("P", "D"), req("A", "B", { originAsil: "D" }), req("B", "B", { originAsil: "D", parentId: "P" })];
+    expect(codes(validateDecompositions(reqs, [{ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: e }]))).toContain("DECOMP_CHILD_NOT_DERIVED");
+  });
+  it("要求の親子の循環・自己親はエラー", () => {
+    const issues = validateAsilInheritance([req("X", "B", { parentId: "Y" }), req("Y", "B", { parentId: "X" }), req("Z", "B", { parentId: "Z" })], [], []);
+    expect(codes(issues).filter((c) => c === "REQ_PARENT_CYCLE").length).toBe(3);
+  });
+  it("菱形に共有された原因があっても、FTA の導出は線形時間(30 段)", () => {
+    const failures = [{ id: "F0", functionId: "fn", description: "base", isBasicCause: true }];
+    const links: { id: string; causeId: string; effectId: string }[] = [];
+    for (let i = 1; i <= 30; i++) {
+      failures.push({ id: `A${i}`, functionId: "fn", description: "a" } as never, { id: `B${i}`, functionId: "fn", description: "b" } as never);
+      const prev = i === 1 ? ["F0", "F0"] : [`A${i - 1}`, `B${i - 1}`];
+      links.push({ id: `LA${i}`, causeId: prev[0]!, effectId: `A${i}` }, { id: `LB${i}`, causeId: prev[1]!, effectId: `B${i}` });
+    }
+    failures.push({ id: "TOP", functionId: "fn", description: "top" } as never);
+    links.push({ id: "LT1", causeId: "A30", effectId: "TOP" }, { id: "LT2", causeId: "B30", effectId: "TOP" });
+    const net = { elements: [{ id: "E", name: "E" }], functions: [{ id: "fn", ownerId: "E", name: "fn" }], failures, links } as never;
+    const t0 = Date.now();
+    const t = faultTreeFromNet(net, "TOP");
+    expect(Date.now() - t0).toBeLessThan(500);
+    expect(t.nodes.length).toBeLessThan(200);
   });
 });

@@ -147,6 +147,13 @@ export function validateScdl(m: ScdlModel): Issue[] {
     if (!constrainedPairings.has(p.id))
       warn("PAIRING_NO_CONSTRAINT", "要求グループペアリングに独立性の制約条件がありません", p.id);
 
+  // 役割(拡張)が両方指定されているペアは、意図機能と安全機構の組であること
+  for (const p of m.groupPairings) {
+    const [a, b] = p.set.map((g) => group.get(g)?.role);
+    if (a && b && a === b)
+      warn("PAIR_ROLES", `ペアの両端がどちらも ${a} です(意図機能と安全機構の組が想定されます)`, p.id);
+  }
+
   // ペアリングの ASIL 分解の整合(ヒューリスティック: 元 ASIL を持つ要求の最大 ASIL を群の ASIL とみなす)
   const groupAsil = (gid: ScdlId) => {
     const g = group.get(gid);

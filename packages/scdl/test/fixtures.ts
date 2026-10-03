@@ -64,12 +64,12 @@ export function redundantArchitecture(): ScdlModel {
       { id: "I-13", source: "SR-33", targets: ["X-ACT"] },
     ],
     groups: [
-      { id: "RG-1", name: "Main Function", requirements: ["MFR-1"] },
-      { id: "SRG-1", name: "Safety Mechanism", requirements: ["SR-11", "SR-12"] },
-      { id: "RG-2", name: "Main Function", requirements: ["MFR-2"] },
-      { id: "SRG-2", name: "Safety Mechanism", requirements: ["SR-21", "SR-22"] },
-      { id: "RG-3", name: "Main Function", requirements: ["MFR-3"] },
-      { id: "SRG-3", name: "Safety Mechanism", requirements: ["SR-31", "SR-32", "SR-33"] },
+      { id: "RG-1", name: "Main Function", role: "intendedFunction", requirements: ["MFR-1"] },
+      { id: "SRG-1", name: "Safety Mechanism", role: "safetyMechanism", requirements: ["SR-11", "SR-12"] },
+      { id: "RG-2", name: "Main Function", role: "intendedFunction", requirements: ["MFR-2"] },
+      { id: "SRG-2", name: "Safety Mechanism", role: "safetyMechanism", requirements: ["SR-21", "SR-22"] },
+      { id: "RG-3", name: "Main Function", role: "intendedFunction", requirements: ["MFR-3"] },
+      { id: "SRG-3", name: "Safety Mechanism", role: "safetyMechanism", requirements: ["SR-31", "SR-32", "SR-33"] },
     ],
     groupPairings: [
       { id: "P-1", set: ["RG-1", "SRG-1"] },

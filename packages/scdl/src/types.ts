@@ -47,9 +47,14 @@ export interface Interaction extends ScdlType {
   targets: ScdlId[];
 }
 
+/** 要求グループの役割(拡張)。SCDL は名称("Main Function" / "Safety Mechanism")で区別している。 */
+export type GroupRole = "intendedFunction" | "safetyMechanism";
+
 /** 要求グループ。意図機能側と安全機構側のまとまりを表す。 */
 export interface RequirementGroup extends ScdlType {
   requirements: ScdlId[];
+  /** 拡張属性。ペアリングの両端が意図機能と安全機構の組かを検査するために使う。 */
+  role?: GroupRole;
 }
 
 /** 冗長な 2 つの要求グループの組み合わせ(ISO 26262-9 の分解に対応)。 */

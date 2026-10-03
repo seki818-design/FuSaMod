@@ -103,6 +103,10 @@ export interface IntendedFunction {
   name: string;
   elementId: ElementId;
   asil: Asil;
+  /** 分解済みの場合、分解前の元 ASIL(表記 B(D) の括弧内) */
+  originAsil?: Asil;
+  /** この意図機能の要求グループに属する追加の安全要求(SafetyRequirement.id) */
+  requirementIds?: string[];
 }
 
 export interface SafetyMechanism {
@@ -115,12 +119,18 @@ export interface SafetyMechanism {
   safeState?: string;
   /** FMEA-MSR 用: この安全機構が検出/対処する故障モード */
   coversFailureIds?: string[];
+  /** 安全機構の要求グループに属する安全要求(SafetyRequirement.id) */
+  requirementIds?: string[];
+  asil?: Asil;
+  originAsil?: Asil;
 }
 
 export interface FunctionMechanismPair {
   id: string;
   intendedFunctionId: string;
   mechanismId: string;
+  /** 両者の独立性の要求(例: 「同時侵害となる従属故障なきこと」)。SCDL の制約条件になる */
+  independence?: string;
 }
 
 export function validatePairing(

@@ -1,0 +1,255 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "EvPowertrainDemo",
+      "name": "EvPowertrainDemo"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle",
+      "name": "vehicle",
+      "owner": "EvPowertrainDemo",
+      "doc": "車両(システム)"
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'",
+      "name": "drive vehicle",
+      "owner": "EvPowertrainDemo::vehicle",
+      "doc": "運転者の要求に従って車両を駆動する",
+      "parameters": [
+        {
+          "name": "accelerator request",
+          "direction": "in",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'",
+      "name": "output drive torque",
+      "owner": "EvPowertrainDemo::vehicle::'drive vehicle'",
+      "doc": "要求に応じた駆動トルクを出力する",
+      "parameters": [
+        {
+          "name": "drive torque",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'compute torque request'",
+      "name": "compute torque request",
+      "owner": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'",
+      "doc": "アクセル要求から目標トルクを演算する",
+      "parameters": [
+        {
+          "name": "torque request",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'",
+      "name": "convert power",
+      "owner": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'",
+      "doc": "直流電力を三相交流に変換する",
+      "parameters": [
+        {
+          "name": "phase current",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'drive gate signals'",
+      "name": "drive gate signals",
+      "owner": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'",
+      "doc": "目標トルクに応じたゲート信号を生成する",
+      "parameters": [
+        {
+          "name": "gate signal",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'switch power'",
+      "name": "switch power",
+      "owner": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'",
+      "doc": "パワー素子で電力をスイッチングする",
+      "parameters": [
+        {
+          "name": "switched current",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'generate torque'",
+      "name": "generate torque",
+      "owner": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'",
+      "doc": "三相交流からトルクを発生する",
+      "parameters": [
+        {
+          "name": "motor torque",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'monitor torque'",
+      "name": "monitor torque",
+      "owner": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'",
+      "doc": "推定トルクと指令を独立に比較し、逸脱時にゲートを遮断する",
+      "parameters": [
+        {
+          "name": "gate shutdown",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::powertrain",
+      "name": "powertrain",
+      "owner": "EvPowertrainDemo::vehicle",
+      "doc": "パワートレイン(サブシステム)"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::powertrain::vcu",
+      "name": "vcu",
+      "owner": "EvPowertrainDemo::vehicle::powertrain",
+      "doc": "車両制御ユニット"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::powertrain::inverter",
+      "name": "inverter",
+      "owner": "EvPowertrainDemo::vehicle::powertrain",
+      "doc": "インバータ"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::powertrain::inverter::gateDriver",
+      "name": "gateDriver",
+      "owner": "EvPowertrainDemo::vehicle::powertrain::inverter",
+      "doc": "ゲートドライバ"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::powertrain::inverter::powerStage",
+      "name": "powerStage",
+      "owner": "EvPowertrainDemo::vehicle::powertrain::inverter",
+      "doc": "パワーステージ(IGBT/SiC)"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::powertrain::motor",
+      "name": "motor",
+      "owner": "EvPowertrainDemo::vehicle::powertrain",
+      "doc": "駆動モータ"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
+      "name": "safetyMonitor",
+      "owner": "EvPowertrainDemo::vehicle::powertrain",
+      "doc": "独立した監視マイコン(VCU とは電源・クロック・ソフトウェアが独立)"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "EvPowertrainDemo::'REQ-001'",
+      "name": "REQ-001",
+      "owner": "EvPowertrainDemo",
+      "doc": "加速要求に対して、意図しない過大トルクを出力しないこと"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "EvPowertrainDemo::'REQ-002'",
+      "name": "REQ-002",
+      "owner": "EvPowertrainDemo",
+      "doc": "モータは要求トルクに従ってトルクを発生すること"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "EvPowertrainDemo::'REQ-003'",
+      "name": "REQ-003",
+      "owner": "EvPowertrainDemo",
+      "doc": "過大トルクを検出した場合、FTTI 内に安全状態へ遷移すること"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "EvPowertrainDemo::'REQ-004'",
+      "name": "REQ-004",
+      "owner": "EvPowertrainDemo",
+      "doc": "パワートレインは、指令トルクに対して所定の精度でトルクを出力すること"
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [
+    {
+      "requirement": "EvPowertrainDemo::'REQ-001'",
+      "by": "EvPowertrainDemo::vehicle"
+    },
+    {
+      "requirement": "EvPowertrainDemo::'REQ-002'",
+      "by": "EvPowertrainDemo::vehicle::powertrain::motor"
+    },
+    {
+      "requirement": "EvPowertrainDemo::'REQ-003'",
+      "by": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor"
+    },
+    {
+      "requirement": "EvPowertrainDemo::'REQ-004'",
+      "by": "EvPowertrainDemo::vehicle::powertrain"
+    }
+  ],
+  "performs": [
+    {
+      "performer": "EvPowertrainDemo::vehicle::powertrain",
+      "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'"
+    },
+    {
+      "performer": "EvPowertrainDemo::vehicle::powertrain::vcu",
+      "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'compute torque request'"
+    },
+    {
+      "performer": "EvPowertrainDemo::vehicle::powertrain::inverter",
+      "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'"
+    },
+    {
+      "performer": "EvPowertrainDemo::vehicle::powertrain::inverter::gateDriver",
+      "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'drive gate signals'"
+    },
+    {
+      "performer": "EvPowertrainDemo::vehicle::powertrain::inverter::powerStage",
+      "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'switch power'"
+    },
+    {
+      "performer": "EvPowertrainDemo::vehicle::powertrain::motor",
+      "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'generate torque'"
+    },
+    {
+      "performer": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
+      "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'monitor torque'"
+    }
+  ]
+}

@@ -8,6 +8,31 @@ importers:
 
   .: {}
 
+  packages/analysis:
+    dependencies:
+      '@fusamod/safety-core':
+        specifier: workspace:*
+        version: link:../safety-core
+      '@fusamod/scdl':
+        specifier: workspace:*
+        version: link:../scdl
+      '@fusamod/sysml-graph':
+        specifier: workspace:*
+        version: link:../sysml-graph
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.5)
+
   packages/safety-core:
     devDependencies:
       typescript:
@@ -548,6 +573,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -944,3 +972,5 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  zod@3.25.76: {}

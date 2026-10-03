@@ -26,7 +26,9 @@ export interface DerivedNet {
   requirements: DerivedRequirement[];
   /** 故障モード候補(機能単位 + 出力パラメータ単位)。確定は人が行う。 */
   candidates: FailureModeCandidate[];
-  /** 導出時の指摘と、導出したネットの validateNet の結果(未着手の故障モード等)を含む */
+  /** 導出時の指摘のみ(担当 part を決められない action など) */
+  deriveIssues: Issue[];
+  /** deriveIssues と、導出したネットの validateNet の結果(未着手の故障モード等)を合わせたもの */
   issues: Issue[];
 }
 
@@ -144,7 +146,7 @@ export function deriveNet(graph: ElementGraph): DerivedNet {
   }
 
   const net: SafetyNet = { elements, functions, failures: [], links: [] };
-  issues.push(...validateNet(net));
   if (elements.length === 0) error("NO_STRUCTURE", "構造ネットが空です(part が見つかりません)");
-  return { net, parameters, requirements, candidates, issues };
+  const deriveIssues = [...issues];
+  return { net, parameters, requirements, candidates, deriveIssues, issues: [...deriveIssues, ...validateNet(net)] };
 }

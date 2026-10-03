@@ -1,0 +1,491 @@
+{
+  "version": 1,
+  "hara": {
+    "events": [
+      {
+        "id": "HE-1",
+        "hazard": "意図しない過大な駆動トルク",
+        "situation": "市街地走行中(歩行者・他車が近い)",
+        "severity": 3,
+        "exposure": 4,
+        "controllability": 3,
+        "rationale": "S3: 意図しない加速による衝突で生命に関わる / E4: 日常的な走行状況 / C3: 運転者が制御を取り戻すのは困難",
+        "safetyGoalId": "SG-1"
+      },
+      {
+        "id": "HE-2",
+        "hazard": "駆動トルクの喪失",
+        "situation": "高速道路を走行中",
+        "severity": 2,
+        "exposure": 3,
+        "controllability": 2,
+        "rationale": "S2: 追突の恐れで重傷の可能性 / E3: 時折ある状況 / C2: 通常は制御可能(減速・退避)",
+        "safetyGoalId": "SG-2"
+      }
+    ],
+    "goals": [
+      {
+        "id": "SG-1",
+        "text": "意図しない過大な駆動トルクを出力しない",
+        "asil": "D",
+        "ftti": 100,
+        "safeState": "駆動トルクを 0 にする(ゲート遮断)"
+      },
+      {
+        "id": "SG-2",
+        "text": "駆動トルクの喪失を運転者に警告する",
+        "asil": "A",
+        "ftti": 500,
+        "safeState": "警告表示と出力制限(リンプホーム)"
+      }
+    ]
+  },
+  "failures": [
+    {
+      "id": "FE-1",
+      "description": "意図しない加速",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'",
+      "severity": 10
+    },
+    {
+      "id": "FE-2",
+      "description": "駆動力の喪失(走行不能)",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'",
+      "severity": 8
+    },
+    {
+      "id": "FM-PT-1",
+      "description": "過大トルクを出力する",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'"
+    },
+    {
+      "id": "FM-PT-2",
+      "description": "トルクが出ない",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'"
+    },
+    {
+      "id": "FM-VCU-1",
+      "description": "過大なトルク指令を出力する",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'compute torque request'"
+    },
+    {
+      "id": "FM-VCU-2",
+      "description": "トルク指令を出力しない",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'compute torque request'"
+    },
+    {
+      "id": "FC-VCU-1",
+      "description": "目標トルク演算のソフトウェア不具合",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'compute torque request'",
+      "isBasicCause": true
+    },
+    {
+      "id": "FC-VCU-2",
+      "description": "VCU マイコンの電源喪失",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'compute torque request'",
+      "isBasicCause": true
+    },
+    {
+      "id": "FM-INV-1",
+      "description": "過大な相電流を出力する",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'"
+    },
+    {
+      "id": "FM-INV-2",
+      "description": "相電流が出ない",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'"
+    },
+    {
+      "id": "FM-GD-1",
+      "description": "ゲート信号が ON に固着する",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'drive gate signals'"
+    },
+    {
+      "id": "FM-GD-2",
+      "description": "ゲート信号が出ない",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'drive gate signals'"
+    },
+    {
+      "id": "FC-GD-1",
+      "description": "ゲートドライバ IC 出力段のショート故障",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'drive gate signals'",
+      "isBasicCause": true
+    },
+    {
+      "id": "FC-GD-2",
+      "description": "ゲート駆動電源の電圧低下",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'drive gate signals'",
+      "isBasicCause": true
+    },
+    {
+      "id": "FM-PS-1",
+      "description": "パワー素子が短絡故障する",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'switch power'"
+    },
+    {
+      "id": "FM-PS-2",
+      "description": "パワー素子がオープン故障する",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'switch power'"
+    },
+    {
+      "id": "FC-PS-1",
+      "description": "素子接合部の熱疲労(はんだ劣化)",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'switch power'",
+      "isBasicCause": true
+    },
+    {
+      "id": "FC-PS-2",
+      "description": "ボンディングワイヤの断線",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'convert power'::'switch power'",
+      "isBasicCause": true
+    },
+    {
+      "id": "FM-MOT-1",
+      "description": "トルクを発生しない",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'generate torque'"
+    },
+    {
+      "id": "FC-MOT-1",
+      "description": "巻線の断線",
+      "functionId": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'generate torque'",
+      "isBasicCause": true
+    }
+  ],
+  "links": [
+    {
+      "id": "L01",
+      "causeId": "FM-PT-1",
+      "effectId": "FE-1",
+      "occurrence": 3,
+      "detection": 3,
+      "preventionControl": "機能安全設計(ASIL D)",
+      "detectionControl": "独立監視によるトルク比較"
+    },
+    {
+      "id": "L02",
+      "causeId": "FM-PT-2",
+      "effectId": "FE-2",
+      "occurrence": 3,
+      "detection": 2,
+      "detectionControl": "運転者への警告・診断"
+    },
+    {
+      "id": "L03",
+      "causeId": "FM-VCU-1",
+      "effectId": "FM-PT-1",
+      "occurrence": 3,
+      "detection": 4,
+      "preventionControl": "ソフトウェア静的解析・MC/DC テスト",
+      "detectionControl": "指令値の範囲チェックと独立監視"
+    },
+    {
+      "id": "L04",
+      "causeId": "FM-VCU-2",
+      "effectId": "FM-PT-2",
+      "occurrence": 3,
+      "detection": 2,
+      "detectionControl": "指令喪失の診断"
+    },
+    {
+      "id": "L05",
+      "causeId": "FC-VCU-1",
+      "effectId": "FM-VCU-1",
+      "occurrence": 3,
+      "detection": 5,
+      "preventionControl": "コーディング規約・レビュー",
+      "detectionControl": "独立監視マイコンでのトルク比較"
+    },
+    {
+      "id": "L06",
+      "causeId": "FC-VCU-2",
+      "effectId": "FM-VCU-2",
+      "occurrence": 2,
+      "detection": 2,
+      "preventionControl": "電源の冗長化",
+      "detectionControl": "電源電圧監視"
+    },
+    {
+      "id": "L07",
+      "causeId": "FM-INV-1",
+      "effectId": "FM-PT-1",
+      "occurrence": 3,
+      "detection": 4,
+      "detectionControl": "相電流監視と独立監視"
+    },
+    {
+      "id": "L08",
+      "causeId": "FM-INV-2",
+      "effectId": "FM-PT-2",
+      "occurrence": 3,
+      "detection": 2,
+      "detectionControl": "相電流の診断"
+    },
+    {
+      "id": "L09",
+      "causeId": "FM-GD-1",
+      "effectId": "FM-INV-1",
+      "occurrence": 3,
+      "detection": 4,
+      "preventionControl": "ゲート駆動のアクティブ・ミラークランプ",
+      "detectionControl": "ゲート信号の読み返し診断"
+    },
+    {
+      "id": "L10",
+      "causeId": "FM-GD-2",
+      "effectId": "FM-INV-2",
+      "occurrence": 3,
+      "detection": 2,
+      "detectionControl": "ゲート電源監視"
+    },
+    {
+      "id": "L11",
+      "causeId": "FC-GD-1",
+      "effectId": "FM-GD-1",
+      "occurrence": 2,
+      "detection": 4,
+      "preventionControl": "部品選定(AEC-Q100)",
+      "detectionControl": "出力のリードバック"
+    },
+    {
+      "id": "L12",
+      "causeId": "FC-GD-2",
+      "effectId": "FM-GD-2",
+      "occurrence": 3,
+      "detection": 2,
+      "preventionControl": "電源の電圧マージン",
+      "detectionControl": "電圧監視"
+    },
+    {
+      "id": "L13",
+      "causeId": "FM-PS-1",
+      "effectId": "FM-INV-1",
+      "occurrence": 2,
+      "detection": 4,
+      "detectionControl": "デサチュレーション検出"
+    },
+    {
+      "id": "L14",
+      "causeId": "FM-PS-2",
+      "effectId": "FM-INV-2",
+      "occurrence": 3,
+      "detection": 3,
+      "detectionControl": "相電流の診断"
+    },
+    {
+      "id": "L15",
+      "causeId": "FC-PS-1",
+      "effectId": "FM-PS-1",
+      "occurrence": 3,
+      "detection": 5,
+      "preventionControl": "パワーサイクル試験・熱設計",
+      "detectionControl": "結合部温度の推定"
+    },
+    {
+      "id": "L16",
+      "causeId": "FC-PS-2",
+      "effectId": "FM-PS-2",
+      "occurrence": 2,
+      "detection": 5,
+      "preventionControl": "ワイヤボンディング工程管理",
+      "detectionControl": "導通検査"
+    },
+    {
+      "id": "L17",
+      "causeId": "FM-MOT-1",
+      "effectId": "FM-PT-2",
+      "occurrence": 3,
+      "detection": 2,
+      "detectionControl": "トルク推定の乖離検出"
+    },
+    {
+      "id": "L18",
+      "causeId": "FC-MOT-1",
+      "effectId": "FM-MOT-1",
+      "occurrence": 2,
+      "detection": 3,
+      "preventionControl": "巻線の絶縁・固定の設計基準",
+      "detectionControl": "相電流のアンバランス診断"
+    }
+  ],
+  "intendedFunctions": [
+    {
+      "id": "IF-1",
+      "name": "要求トルクの制御",
+      "elementId": "EvPowertrainDemo::vehicle::powertrain::vcu",
+      "asil": "B",
+      "originAsil": "D",
+      "requirementIds": [
+        "FSR-1a"
+      ]
+    }
+  ],
+  "mechanisms": [
+    {
+      "id": "SM-1",
+      "name": "独立トルク監視",
+      "elementId": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
+      "asil": "B",
+      "originAsil": "D",
+      "ftti": 100,
+      "diagnosticCoverage": "high",
+      "safeState": "ゲート遮断によりトルク 0",
+      "coversFailureIds": [
+        "FM-VCU-1",
+        "FM-INV-1",
+        "FM-GD-1",
+        "FM-PS-1"
+      ],
+      "requirementIds": [
+        "FSR-1b",
+        "TSR-1b"
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "id": "PAIR-1",
+      "intendedFunctionId": "IF-1",
+      "mechanismId": "SM-1",
+      "independence": "IF-1 と SM-1 が同時侵害となる従属故障がないこと(電源・クロック・ソフトウェアの独立)"
+    }
+  ],
+  "safetyRequirements": [
+    {
+      "id": "FSR-1",
+      "text": "過大トルクを FTTI 内に検出し、安全状態(トルク 0)へ遷移する",
+      "level": "fsr",
+      "asil": "D",
+      "allocatedTo": "EvPowertrainDemo::vehicle::powertrain"
+    },
+    {
+      "id": "FSR-1a",
+      "text": "トルク制御経路は、指令を超える過大トルクを出力しない",
+      "level": "fsr",
+      "asil": "B",
+      "originAsil": "D",
+      "parentId": "FSR-1",
+      "allocatedTo": "EvPowertrainDemo::vehicle::powertrain::vcu"
+    },
+    {
+      "id": "FSR-1b",
+      "text": "独立監視経路は、過大トルクを検出し、ゲートを遮断する",
+      "level": "fsr",
+      "asil": "B",
+      "originAsil": "D",
+      "parentId": "FSR-1",
+      "allocatedTo": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor"
+    },
+    {
+      "id": "TSR-1b",
+      "text": "監視マイコンは 10 ms 周期で推定トルクと指令を比較し、逸脱が 50 ms 続いたらゲートを遮断する",
+      "level": "tsr",
+      "asil": "B",
+      "originAsil": "D",
+      "parentId": "FSR-1b",
+      "allocatedTo": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor"
+    }
+  ],
+  "decompositions": [
+    {
+      "id": "DEC-1",
+      "parentRequirementId": "FSR-1",
+      "childRequirementIds": [
+        "FSR-1a",
+        "FSR-1b"
+      ],
+      "independenceEvidence": "DFA-PT-001(独立電源・独立クロック・別マイコン)"
+    }
+  ],
+  "signalFlows": [
+    {
+      "id": "SF-1",
+      "name": "アクセル要求",
+      "from": "ext:accelerator",
+      "to": [
+        "IF-1"
+      ]
+    },
+    {
+      "id": "SF-2",
+      "name": "トルク指令",
+      "from": "IF-1",
+      "to": [
+        "SM-1"
+      ]
+    },
+    {
+      "id": "SF-3",
+      "name": "ゲート遮断",
+      "from": "SM-1",
+      "to": [
+        "ext:inverter-gate"
+      ]
+    }
+  ],
+  "faultTrees": [
+    {
+      "id": "FT-1",
+      "name": "意図しない加速(SG-1)に至る故障の組み合わせ(デモ用の仮の確率 [/h])",
+      "top": "TOP",
+      "nodes": [
+        {
+          "id": "TOP",
+          "label": "意図しない過大トルクが継続する",
+          "kind": "gate",
+          "gate": "and",
+          "inputs": [
+            "G-CTRL",
+            "G-MON"
+          ]
+        },
+        {
+          "id": "G-CTRL",
+          "label": "過大トルクが発生する",
+          "kind": "gate",
+          "gate": "or",
+          "inputs": [
+            "B-VCU",
+            "B-GD",
+            "B-PS"
+          ]
+        },
+        {
+          "id": "G-MON",
+          "label": "監視が機能しない",
+          "kind": "gate",
+          "gate": "or",
+          "inputs": [
+            "B-SM"
+          ]
+        },
+        {
+          "id": "B-VCU",
+          "label": "目標トルク演算のソフトウェア不具合",
+          "kind": "basic",
+          "failureId": "FC-VCU-1",
+          "probability": 1e-06
+        },
+        {
+          "id": "B-GD",
+          "label": "ゲートドライバ出力段のショート故障",
+          "kind": "basic",
+          "failureId": "FC-GD-1",
+          "probability": 5e-07
+        },
+        {
+          "id": "B-PS",
+          "label": "パワー素子の短絡故障",
+          "kind": "basic",
+          "failureId": "FM-PS-1",
+          "probability": 2e-07
+        },
+        {
+          "id": "B-SM",
+          "label": "監視マイコンの故障(潜在)",
+          "kind": "basic",
+          "probability": 1e-06
+        }
+      ]
+    }
+  ]
+}

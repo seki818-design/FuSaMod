@@ -1,0 +1,182 @@
+import { z } from "zod";
+
+const id = z.string().min(1).max(600);
+const text = z.string().max(5000);
+const asil = z.enum(["QM", "A", "B", "C", "D"]);
+const arr = <T extends z.ZodTypeAny>(t: T) => z.array(t).max(50000);
+
+const failureNode = z
+  .object({
+    id,
+    description: text,
+    functionId: id,
+    severity: z.number().int().min(1).max(10).optional(),
+    isBasicCause: z.boolean().optional(),
+  })
+  .strict();
+
+const failureLink = z
+  .object({
+    id,
+    causeId: id,
+    effectId: id,
+    occurrence: z.number().int().min(1).max(10).optional(),
+    detection: z.number().int().min(1).max(10).optional(),
+    preventionControl: text.optional(),
+    detectionControl: text.optional(),
+  })
+  .strict();
+
+const lit3 = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
+const lit4 = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
+
+const hazardousEvent = z
+  .object({
+    id,
+    hazard: text,
+    situation: text,
+    severity: lit3,
+    exposure: lit4,
+    controllability: lit3,
+    rationale: text.optional(),
+    safetyGoalId: id.optional(),
+  })
+  .strict();
+
+const safetyGoal = z
+  .object({
+    id,
+    text,
+    asil,
+    ftti: z.number().positive().optional(),
+    safeState: text.optional(),
+  })
+  .strict();
+
+const intendedFunction = z
+  .object({
+    id,
+    name: text,
+    elementId: id,
+    asil,
+    originAsil: asil.optional(),
+    requirementIds: arr(id).optional(),
+  })
+  .strict();
+
+const mechanism = z
+  .object({
+    id,
+    name: text,
+    elementId: id,
+    ftti: z.number().positive().optional(),
+    diagnosticCoverage: z.enum(["low", "medium", "high"]).optional(),
+    safeState: text.optional(),
+    coversFailureIds: arr(id).optional(),
+    requirementIds: arr(id).optional(),
+    asil: asil.optional(),
+    originAsil: asil.optional(),
+  })
+  .strict();
+
+const pair = z
+  .object({ id, intendedFunctionId: id, mechanismId: id, independence: text.optional() })
+  .strict();
+
+const safetyRequirement = z
+  .object({
+    id,
+    text,
+    level: z.enum(["safety-goal", "fsr", "tsr", "hw", "sw"]),
+    asil,
+    originAsil: asil.optional(),
+    parentId: id.optional(),
+    allocatedTo: id.optional(),
+  })
+  .strict();
+
+const decomposition = z
+  .object({
+    id,
+    parentRequirementId: id,
+    childRequirementIds: z.tuple([id, id]),
+    independenceEvidence: text.optional(),
+  })
+  .strict();
+
+const signalFlow = z.object({ id, name: text.optional(), from: id, to: z.array(id).min(1).max(1000) }).strict();
+
+const faultTreeNode = z
+  .object({
+    id,
+    label: text,
+    kind: z.enum(["gate", "basic"]),
+    gate: z.enum(["and", "or"]).optional(),
+    inputs: arr(id).optional(),
+    failureId: id.optional(),
+    probability: z.number().min(0).max(1).optional(),
+    undeveloped: z.boolean().optional(),
+  })
+  .strict();
+
+const faultTree = z.object({ id, name: text, top: id, nodes: arr(faultTreeNode) }).strict();
+
+const apRule = z
+  .object({
+    s: z.tuple([z.number().int().min(1).max(10), z.number().int().min(1).max(10)]),
+    o: z.tuple([z.number().int().min(1).max(10), z.number().int().min(1).max(10)]),
+    d: z.tuple([z.number().int().min(1).max(10), z.number().int().min(1).max(10)]),
+    ap: z.enum(["H", "M", "L"]),
+  })
+  .strict();
+
+/** プロジェクトの安全分析データ(model.sysml に対応する safety.json)。 */
+export const SafetyDataSchema = z
+  .object({
+    version: z.literal(1),
+    hara: z.object({ events: arr(hazardousEvent), goals: arr(safetyGoal) }).strict(),
+    failures: arr(failureNode),
+    links: arr(failureLink),
+    intendedFunctions: arr(intendedFunction),
+    mechanisms: arr(mechanism),
+    pairs: arr(pair),
+    safetyRequirements: arr(safetyRequirement),
+    decompositions: arr(decomposition),
+    signalFlows: arr(signalFlow),
+    faultTrees: arr(faultTree),
+    /** 要素 ID → 階層レベルの上書き(自動の階層レベルを変えたい場合のみ) */
+    levelOverrides: z.record(z.enum(["system", "subsystem", "component", "detail"])).optional(),
+    /** AIAG-VDA の Action Priority 表(ハンドブックの正式な表をユーザーが投入する。ADR-0004) */
+    apTable: arr(apRule).optional(),
+  })
+  .strict();
+
+export type SafetyData = z.infer<typeof SafetyDataSchema>;
+
+export function emptySafetyData(): SafetyData {
+  return {
+    version: 1,
+    hara: { events: [], goals: [] },
+    failures: [],
+    links: [],
+    intendedFunctions: [],
+    mechanisms: [],
+    pairs: [],
+    safetyRequirements: [],
+    decompositions: [],
+    signalFlows: [],
+    faultTrees: [],
+  };
+}
+
+export type ParseResult = { ok: true; data: SafetyData } | { ok: false; errors: string[] };
+
+/** 外部から入ってきた JSON を検証して SafetyData にする。不正なら、パス付きのエラー一覧を返す。 */
+export function parseSafetyData(input: unknown): ParseResult {
+  const r = SafetyDataSchema.safeParse(input);
+  if (r.success) return { ok: true, data: r.data };
+  return {
+    ok: false,
+    errors: r.error.issues.slice(0, 50).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
+  };
+}

@@ -6,3 +6,5 @@ export * from "./fmea-view.js";
 export * from "./rating.js";
 export * from "./guidewords.js";
 export * from "./asil.js";
+export * from "./hara.js";
+export * from "./fta.js";

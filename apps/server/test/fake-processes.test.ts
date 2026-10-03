@@ -77,6 +77,21 @@ describe("JavaSysmlService(代役のサーバーで、プロトコルと回復�
     const s = make("hang", { requestTimeoutMs: 400 });
     await expect(s.analyze("x")).rejects.toThrow(/タイムアウト/);
   });
+  it("タイムアウト後・プロセス死亡後の次のリクエストで、サーバーが落ちない(EPIPE を握りつぶさず、エラーか再起動で返す)", async () => {
+    const s = make("hang", { requestTimeoutMs: 300 });
+    await expect(s.analyze("x")).rejects.toThrow();
+    await expect(s.analyze("y")).rejects.toThrow(); // 死んだプロセスに書き込まない。ハングせず、例外で返る
+    const d = make("die-after-reply");
+    await d.analyze("a");
+    await new Promise((r) => setTimeout(r, 2)); // 終了直前・直後を狙う
+    const r = await d.analyze("b").then(() => "ok", () => "error");
+    expect(["ok", "error"]).toContain(r);
+  });
+  it("タイムアウトは SysmlTimeoutError(モデルの誤りと区別できる)", async () => {
+    const { SysmlTimeoutError } = await import("../src/sysml/types.js");
+    const s = make("hang", { requestTimeoutMs: 200 });
+    await expect(s.analyze("x")).rejects.toBeInstanceOf(SysmlTimeoutError);
+  });
   it("不正な出力の行は無視して続ける", async () => {
     const s = make("bad-line");
     expect((await s.analyze("package P {}")).ok).toBe(true);

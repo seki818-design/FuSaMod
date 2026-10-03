@@ -7,6 +7,11 @@ if (mode === "bad-line") console.log("not json");
 createInterface({ input: process.stdin }).on("line", (line) => {
   const { id, text } = JSON.parse(line);
   if (mode === "hang") return;
+  if (mode === "die-after-reply") {
+    console.log(JSON.stringify({ id, ok: true, diagnostics: [], graph: { elements: [], dependencies: [], metadata: [], satisfies: [] } }));
+    setTimeout(() => process.exit(0), 5);
+    return;
+  }
   if (text.includes("BAD")) console.log(JSON.stringify({ id, ok: false, diagnostics: [{ severity: "ERROR", message: "bad" }] }));
   else console.log(JSON.stringify({ id, ok: true, diagnostics: [], graph: { elements: [{ kind: "PartUsage", qualifiedName: "P::a", name: "a", owner: "P" }], dependencies: [], metadata: [], satisfies: [] } }));
 });

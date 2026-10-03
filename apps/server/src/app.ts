@@ -24,7 +24,7 @@ import { ConvertBusyError, ConvertError, convertModel } from "./sysml/convert.js
 import type { Config } from "./config.js";
 import { HttpError, ProjectStore } from "./projects.js";
 import { AnalysisService, requireSafety } from "./services.js";
-import { SysmlUnavailableError } from "./sysml/types.js";
+import { SysmlTimeoutError, SysmlUnavailableError } from "./sysml/types.js";
 
 export interface AppDeps {
   config: Config;
@@ -165,6 +165,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (err instanceof ZodError) return reply.code(400).send({ error: "リクエストが不正です", details: err.issues.slice(0, 20).map((i) => `${i.path.join(".")}: ${i.message}`) });
     if (err instanceof ConvertBusyError) return reply.code(429).header("Retry-After", "30").send({ error: err.message });
     if (err instanceof ConvertError) return reply.code(422).send({ error: err.message });
+    if (err instanceof SysmlTimeoutError) return reply.code(504).send({ error: err.message });
     if (err instanceof SysmlUnavailableError) return reply.code(503).send({ error: err.message });
     if (err instanceof AiProviderError) return reply.code(err.retryable ? 503 : 502).send({ error: err.message });
     if (err instanceof ScdlSysmlError) return reply.code(422).send({ error: `SCDL を書き出せません: ${err.message}` });
@@ -311,6 +312,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         const p = await store.read(id);
         // 誤りのあるモデルは、部分的な出力を返さず 409(他の書き出しと同じ)
         const check = await analysis.analyze(p.model, p.safety, p.graph);
+        // 解析自体が失敗した(タイムアウト・Java の停止など)ときは、モデルの誤りではないので 503
+        if (!check.modelOk && check.diagnostics.length === 0 && check.sysmlError) throw new HttpError(503, `SysML の解析に失敗しました: ${check.sysmlError}`);
         if (!check.modelOk) throw new HttpError(409, "モデルにエラーがあるため、標準形式に書き出せません。先にモデルのエラーを直してください");
         const xmi = name === "model.xmi";
         const out = await convertModel(p.model, xmi ? "xmi" : "json", { cacheDir: config.sysmlCacheDir });

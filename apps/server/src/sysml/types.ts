@@ -24,3 +24,5 @@ export interface SysmlService {
 }
 
 export class SysmlUnavailableError extends Error {}
+/** 解析がタイムアウトした(モデルの誤りではなく、大きさや負荷の問題)。 */
+export class SysmlTimeoutError extends Error {}

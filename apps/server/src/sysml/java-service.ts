@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { resolve } from "node:path";
 import { REPO_ROOT } from "../config.js";
-import { SysmlUnavailableError, type SysmlResult, type SysmlService } from "./types.js";
+import { SysmlTimeoutError, SysmlUnavailableError, type SysmlResult, type SysmlService } from "./types.js";
 
 interface Pending {
   id: number;
@@ -73,6 +73,12 @@ export class JavaSysmlService implements SysmlService {
         this.failPending(new Error(`SysML サービスが終了しました(終了コード ${code})`));
         this.reset();
       });
+      // 停止済みの子プロセスへの書き込み(EPIPE)で、サーバー全体が落ちないようにする
+      proc.stdin.on("error", (e) => {
+        this.opts.log(`SysML サービスの標準入力でエラー: ${e.message}`);
+        this.failPending(new SysmlUnavailableError(`SysML サービスとの通信に失敗しました: ${e.message}`));
+      });
+      proc.stdout.on("error", () => undefined);
       const rl = createInterface({ input: proc.stdout, crlfDelay: Infinity });
       rl.on("line", (line) => {
         let msg: { ready?: boolean; id?: number } & Partial<SysmlResult>;
@@ -108,6 +114,8 @@ export class JavaSysmlService implements SysmlService {
 
   private kill() {
     this.proc?.kill("SIGKILL");
+    // 終了イベントを待たずに捨てる(次のリクエストが、死にかけのプロセスへ書き込まないように)
+    this.reset();
   }
   private reset() {
     this.proc = undefined;
@@ -132,7 +140,7 @@ export class JavaSysmlService implements SysmlService {
       return new Promise<SysmlResult>((resolveReq, rejectReq) => {
         const timer = setTimeout(() => {
           this.pending = undefined;
-          rejectReq(new Error("SysML の解析がタイムアウトしました"));
+          rejectReq(new SysmlTimeoutError("SysML の解析がタイムアウトしました。モデルが大きすぎる可能性があります"));
           this.kill(); // 状態が不明なので捨てる。次のリクエストで再起動
         }, this.opts.requestTimeoutMs);
         this.pending = { id, resolve: resolveReq, reject: rejectReq, timer };

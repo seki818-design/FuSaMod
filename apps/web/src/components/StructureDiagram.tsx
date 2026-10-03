@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { select, useStore } from "../store.js";
 import { fit } from "../ui.js";
 import { layoutNested } from "../lib/layout.js";
@@ -8,8 +8,21 @@ import { structureTree } from "../lib/structure.js";
 export function StructureDiagram() {
   const a = useStore((s) => s.analysis);
   const sel = useStore((s) => s.selectedElementId);
-  const [zoom, setZoom] = useState(1);
+  const [manual, setManual] = useState<number | undefined>(undefined); // undefined = 幅に合わせる
+  const [width, setWidth] = useState(0);
+  const box = useRef<HTMLDivElement>(null);
   const layout = useMemo(() => (a ? layoutNested(structureTree(a)) : undefined), [a]);
+  const ready = layout !== undefined;
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    setWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [ready]);
+  const fitZoom = layout && width > 0 ? Math.max(0.45, Math.min(1, (width - 12) / layout.width)) : 1;
+  const zoom = manual ?? fitZoom;
   if (!a || !layout) return <div className="empty">図を表示できません(モデルにエラーがあるか、プロジェクトが選ばれていません)</div>;
   const worst = (id: string) => {
     const ix = a.issues.filter((i) => i.elementId === id);
@@ -18,14 +31,15 @@ export function StructureDiagram() {
   return (
     <div className="stack" style={{ minHeight: 0, flex: 1 }}>
       <div className="row">
-        <button className="btn small" onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))} aria-label="縮小">－</button>
+        <button className="btn small" onClick={() => setManual(Math.max(0.4, zoom - 0.1))} aria-label="縮小">－</button>
         <span aria-live="polite">{Math.round(zoom * 100)}%</span>
-        <button className="btn small" onClick={() => setZoom((z) => Math.min(2, z + 0.1))} aria-label="拡大">＋</button>
+        <button className="btn small" onClick={() => setManual(undefined)} aria-pressed={manual === undefined} title="図の幅をパネルに合わせます">幅に合わせる</button>
+        <button className="btn small" onClick={() => setManual(Math.min(2, zoom + 0.1))} aria-label="拡大">＋</button>
         <div className="legend" aria-label="凡例">
           <span>枠: 灰=指摘なし</span><span style={{ color: "var(--warn)" }}>橙=警告あり</span><span style={{ color: "var(--err)" }}>赤=エラーあり</span><span>ƒ=担当する機能</span>
         </div>
       </div>
-      <div className="diagram" role="region" tabIndex={0} aria-label="構造図(入れ子の箱)">
+      <div className="diagram" ref={box} role="region" tabIndex={0} aria-label="構造図(入れ子の箱)">
         <svg width={layout.width * zoom} height={layout.height * zoom} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label="構造図">
           {[...layout.boxes].sort((p, q) => p.depth - q.depth).map((b) => (
             <g key={b.id} role="button" tabIndex={0} aria-label={`${b.label}${worst(b.id) === "err" ? "、エラーあり" : worst(b.id) === "warn" ? "、警告あり" : ""}`} aria-pressed={sel === b.id}

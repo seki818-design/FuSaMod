@@ -28,14 +28,13 @@ export function AnalysisTabs() {
   return (
     <section className="panel" aria-label="分析">
       <div className="tabs">
-        <div role="tablist" aria-label="分析の種類" style={{ display: "flex", gap: 2 }}>
+        <div role="tablist" aria-label="分析の種類" style={{ display: "flex", flexWrap: "wrap", gap: 0, flex: "1 1 auto", minWidth: 0 }}>
         {TABS.map((t, i) => (
           <button key={t.key} role="tab" id={`tab-${t.key}`} aria-selected={tab === t.key} aria-controls="analysis-body" tabIndex={tab === t.key ? 0 : -1} className="tab" onClick={() => openTab(t.key)} onKeyDown={(e) => onKey(e, i)}>
             {t.label}{t.key === "issues" && issues > 0 ? ` (${issues})` : ""}{t.key === "issues" && errors > 0 ? " ✕" : ""}
           </button>
         ))}
         </div>
-        <span style={{ flex: 1 }} />
         <button className="tab" onClick={toggleAnalysisMax} aria-pressed={max} aria-label={max ? "分析パネルを元の大きさに戻す" : "分析パネルを最大化"} title={max ? "元の大きさに戻す" : "最大化"}>{max ? "⤡" : "⤢"}</button>
       </div>
       <div className="body" id="analysis-body" role="tabpanel" aria-labelledby={`tab-${tab}`} style={{ display: "flex", flexDirection: "column" }}>{body}</div>

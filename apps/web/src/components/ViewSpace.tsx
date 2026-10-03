@@ -15,7 +15,7 @@ function SelectedPanel() {
   const w = a.scdl.elements.find((x) => x.id === a.scdlElementIds[id])?.weight;
   const issues = a.issues.filter((i) => i.elementId === id);
   return (
-    <aside aria-label="選択要素" className="stack" style={{ padding: 8, minWidth: 220, maxWidth: 260, borderLeft: "1px solid var(--border)", overflow: "auto" }}>
+    <aside aria-label="選択要素" className="stack" style={{ padding: 8, minWidth: 170, maxWidth: 190, fontSize: 12.5, borderLeft: "1px solid var(--border)", overflow: "auto" }}>
       <div>
         <strong>{e.name}</strong>
         <div className="row"><span className="badge undet">{levelLabel(a.levelOf[id] ?? "system")}</span>{w && <AsilBadge asil={w} />}</div>

@@ -1,5 +1,5 @@
 {
-  "name": "@fusamod/scdl",
+  "name": "@fusamod/sysml-graph",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,12 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fusamod/safety-core": "workspace:*",
-    "@fusamod/sysml-graph": "workspace:*"
+    "@fusamod/safety-core": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.6.0",
-    "vitest": "^2.1.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^2.1.0"
   }
 }

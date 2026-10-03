@@ -1129,5 +1129,6 @@
       "requirement": "RedundantArchitecture::Constraints::'NFSR-3'",
       "by": "RedundantArchitecture::Architecture::ITEM::'E-3'"
     }
-  ]
+  ],
+  "performs": []
 }

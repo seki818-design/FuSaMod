@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { scdlFromGraph, validateScdl, type ElementGraph } from "../src/index.js";
+import type { ElementGraph } from "@fusamod/sysml-graph";
+import { scdlFromGraph, validateScdl } from "../src/index.js";
 import { allStereotypes, redundantArchitecture } from "./fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));

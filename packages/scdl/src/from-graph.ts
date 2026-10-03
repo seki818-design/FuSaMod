@@ -1,4 +1,5 @@
 import type { Issue } from "@fusamod/safety-core";
+import type { ElementGraph, GraphMetadata } from "@fusamod/sysml-graph";
 import { ScdlSysmlError } from "./sysml-export.js";
 import type { ImportResult } from "./sysml-import.js";
 import type {
@@ -11,34 +12,6 @@ import type {
   ScdlModel,
 } from "./types.js";
 import { emptyModel } from "./types.js";
-
-/**
- * SysML v2 の公式パイロット実装(tools/sysml-check/SysmlExtract.java)が出力する、
- * SCDL に依存しない汎用の要素グラフ。名前は完全修飾名で解決済みなので、参照の曖昧さが無い。
- */
-export interface GraphElement {
-  kind: string;
-  qualifiedName: string;
-  name?: string | null;
-  owner?: string | null;
-}
-export interface GraphDependency extends GraphElement {
-  client: string[];
-  supplier: string[];
-}
-export interface GraphMetadata extends GraphElement {
-  /** メタデータ定義名(ステレオタイプ名) */
-  type: string | null;
-  /** 注釈の対象(完全修飾名) */
-  annotated: string[];
-  attributes: Record<string, string | boolean>;
-}
-export interface ElementGraph {
-  elements: GraphElement[];
-  dependencies: GraphDependency[];
-  metadata: GraphMetadata[];
-  satisfies: { requirement: string | null; by: string | null }[];
-}
 
 type Kind =
   | "element" | "requirement" | "constraint" | "group" | "interaction"

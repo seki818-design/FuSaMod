@@ -2,9 +2,9 @@ name: SysML validate
 # SysML v2 ライブラリ・例を公式パイロット実装で検証し、要素グラフのスナップショットが最新であることを確かめる。
 on:
   push:
-    paths: ["libs/sysml/**", "examples/sysml/**", "tools/sysml-check/**", "packages/scdl/**"]
+    paths: ["libs/sysml/**", "examples/sysml/**", "tools/sysml-check/**", "packages/scdl/**", "packages/sysml-graph/**"]
   pull_request:
-    paths: ["libs/sysml/**", "examples/sysml/**", "tools/sysml-check/**", "packages/scdl/**"]
+    paths: ["libs/sysml/**", "examples/sysml/**", "tools/sysml-check/**", "packages/scdl/**", "packages/sysml-graph/**"]
 jobs:
   validate:
     runs-on: ubuntu-latest

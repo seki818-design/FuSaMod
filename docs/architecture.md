@@ -37,4 +37,5 @@
 | パッケージ | 責務 |
 |---|---|
 | `@fusamod/safety-core` | 構造/機能/エラーネット、FMEA ビュー、ASIL 分解、意図機能と安全機構のペア |
+| `@fusamod/sysml-graph` | 公式 SysML 実装が出力する要素グラフの型と、安全分析ネットの導出(`deriveNet`、ADR-0008)(`safety-core` に依存) |
 | `@fusamod/scdl` | ASAM SCDL v1.6.0 のメタモデル、検証、SysML v2 ステレオタイプとの相互変換(`safety-core` に依存)。描画は P6 |

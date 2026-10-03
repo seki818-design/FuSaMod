@@ -7,6 +7,7 @@ SysML v2 に準拠したシステムモデリングと、ISO 26262 / AIAG-VDA �
 | パス | 内容 |
 |---|---|
 | `packages/safety-core` | 構造/機能/エラーネット、FMEA ビュー導出、整合性チェック、ASIL デコンポジション、意図機能と安全機構のペア(UI 非依存の純粋ロジック) |
+| `packages/sysml-graph` | SysML 要素グラフの型と、構造ネット・機能ネットの導出(ADR-0008) |
 | `packages/scdl` | ASAM SCDL v1.6.0 のメタモデル、検証、SysML v2 テキストとの相互変換(描画は後続) |
 | `libs/sysml/scdl` | SCDL ステレオタイプ・ライブラリ(SysML v2 の `metadata def`) |
 | `examples/sysml` | ライブラリを使った SysML v2 の例(`@fusamod/scdl` が生成) |

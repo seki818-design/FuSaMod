@@ -1,0 +1,133 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "'EV Powertrain'",
+      "name": "EV Powertrain"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle",
+      "name": "vehicle",
+      "owner": "'EV Powertrain'",
+      "doc": "車両(最上位のシステム)"
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle::'drive vehicle'",
+      "name": "drive vehicle",
+      "owner": "'EV Powertrain'::vehicle",
+      "doc": "運転者の要求に従って車両を駆動する",
+      "parameters": [
+        {
+          "name": "accelerator request",
+          "direction": "in",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'",
+      "name": "output drive torque",
+      "owner": "'EV Powertrain'::vehicle::'drive vehicle'",
+      "doc": "要求に応じた駆動トルクを出力する",
+      "parameters": [
+        {
+          "name": "drive torque",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'::'convert power'",
+      "name": "convert power",
+      "owner": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'",
+      "doc": "直流電力を三相交流に変換する",
+      "parameters": [
+        {
+          "name": "phase current",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'::'generate torque'",
+      "name": "generate torque",
+      "owner": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'",
+      "doc": "三相交流からトルクを発生する",
+      "parameters": [
+        {
+          "name": "motor torque",
+          "direction": "out",
+          "type": "Real"
+        }
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle::powertrain",
+      "name": "powertrain",
+      "owner": "'EV Powertrain'::vehicle",
+      "doc": "パワートレイン"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle::powertrain::inverter",
+      "name": "inverter",
+      "owner": "'EV Powertrain'::vehicle::powertrain",
+      "doc": "インバータ"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "'EV Powertrain'::vehicle::powertrain::motor",
+      "name": "motor",
+      "owner": "'EV Powertrain'::vehicle::powertrain",
+      "doc": "駆動モータ"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "'EV Powertrain'::'REQ-001'",
+      "name": "REQ-001",
+      "owner": "'EV Powertrain'",
+      "doc": "加速要求に対して、意図しない過大トルクを出力しないこと"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "'EV Powertrain'::'REQ-002'",
+      "name": "REQ-002",
+      "owner": "'EV Powertrain'",
+      "doc": "モータは要求トルクに従ってトルクを発生すること"
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [
+    {
+      "requirement": "'EV Powertrain'::'REQ-001'",
+      "by": "'EV Powertrain'::vehicle::powertrain"
+    },
+    {
+      "requirement": "'EV Powertrain'::'REQ-002'",
+      "by": "'EV Powertrain'::vehicle::powertrain::motor"
+    }
+  ],
+  "performs": [
+    {
+      "performer": "'EV Powertrain'::vehicle::powertrain",
+      "performed": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'"
+    },
+    {
+      "performer": "'EV Powertrain'::vehicle::powertrain::inverter",
+      "performed": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'::'convert power'"
+    },
+    {
+      "performer": "'EV Powertrain'::vehicle::powertrain::motor",
+      "performed": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'::'generate torque'"
+    }
+  ]
+}

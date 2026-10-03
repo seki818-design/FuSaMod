@@ -22,6 +22,8 @@ export interface FailureModeCandidate {
   functionId: string;
   guidewordId: string;
   description: string;
+  /** 出力パラメータ単位の候補のとき、そのパラメータ名 */
+  parameter?: string;
 }
 
 /** 故障モードの候補を提案する(確定は人が行う。AI 提案の入力にも使う)。 */
@@ -30,5 +32,18 @@ export function failureModeCandidates(fn: FunctionNode): FailureModeCandidate[] 
     functionId: fn.id,
     guidewordId: g.id,
     description: `${fn.name}: ${g.ja}`,
+  }));
+}
+
+/** 出力として意味を持つガイドワード(出力が出ない/小さい/大きい/断続/遅い/固着/逆)。「意図しない動作」は機能単位で扱う。 */
+const OUTPUT_GUIDEWORDS = new Set(["loss", "degraded", "excess", "intermittent", "delayed", "stuck", "reversed"]);
+
+/** 機能の出力パラメータごとの故障モード候補(例: 「トルクが出ない」「トルクが過大」)。 */
+export function outputFailureModeCandidates(fn: FunctionNode, parameter: string): FailureModeCandidate[] {
+  return GUIDEWORDS.filter((g) => OUTPUT_GUIDEWORDS.has(g.id)).map((g) => ({
+    functionId: fn.id,
+    guidewordId: g.id,
+    parameter,
+    description: `${fn.name}: 出力「${parameter}」${g.ja}`,
   }));
 }

@@ -39,6 +39,10 @@ public class SysmlExtract {
         m.put("qualifiedName", q(e));
         m.put("name", e.getDeclaredName());
         m.put("owner", q(e.getOwningNamespace()));
+        StringBuilder doc = new StringBuilder();
+        for (Documentation d : e.getDocumentation())
+            if (d.getBody() != null) doc.append(doc.length() > 0 ? "\n" : "").append(d.getBody().strip());
+        if (doc.length() > 0) m.put("doc", doc.toString());
         return m;
     }
 
@@ -47,6 +51,7 @@ public class SysmlExtract {
         List<Object> dependencies = new ArrayList<>();
         List<Object> metadata = new ArrayList<>();
         List<Object> satisfies = new ArrayList<>();
+        List<Object> performs = new ArrayList<>();
         Map<String, Integer> anon = new HashMap<>();
         TreeIterator<EObject> it = root.eAllContents();
         while (it.hasNext()) {
@@ -80,6 +85,25 @@ public class SysmlExtract {
                 Feature by = s.getSatisfyingFeature();
                 n.put("by", by == null ? null : q(by.getFeatureTarget() == null ? by : by.getFeatureTarget()));
                 satisfies.add(n);
+            } else if (o instanceof PerformActionUsage p) {
+                Map<String, Object> n = new LinkedHashMap<>();
+                n.put("performer", q(p.getOwningNamespace()));
+                n.put("performed", q(p.getPerformedAction()));
+                performs.add(n);
+            } else if (o instanceof ActionUsage au && "ActionUsage".equals(au.eClass().getName())) {
+                Map<String, Object> n = node(au, "ActionUsage");
+                List<Object> params = new ArrayList<>();
+                for (Feature f : au.getOwnedFeature()) {
+                    FeatureDirectionKind dir = f.getDirection();
+                    if (dir == null) continue;
+                    Map<String, Object> pm = new LinkedHashMap<>();
+                    pm.put("name", nameOf(f));
+                    pm.put("direction", dir.getName());
+                    pm.put("type", f.getType().isEmpty() ? null : f.getType().get(0).getName());
+                    params.add(pm);
+                }
+                n.put("parameters", params);
+                elements.add(n);
             } else if (o instanceof Dependency d) {
                 Map<String, Object> n = node(d, "Dependency");
                 List<String> c = new ArrayList<>(), s = new ArrayList<>();
@@ -97,6 +121,7 @@ public class SysmlExtract {
         out.put("dependencies", dependencies);
         out.put("metadata", metadata);
         out.put("satisfies", satisfies);
+        out.put("performs", performs);
         return out;
     }
 

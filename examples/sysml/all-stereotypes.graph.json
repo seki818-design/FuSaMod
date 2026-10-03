@@ -595,5 +595,6 @@
       "requirement": "AllStereotypes::Constraints::'NF-3'",
       "by": "AllStereotypes::Architecture::SYS"
     }
-  ]
+  ],
+  "performs": []
 }

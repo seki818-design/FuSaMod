@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fastify/static": "^8.0.0",
+    "@fastify/static": "^10.1.5",
     "@fusamod/ai": "workspace:*",
     "@fusamod/analysis": "workspace:*",
     "@fusamod/safety-core": "workspace:*",

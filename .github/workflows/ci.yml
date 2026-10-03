@@ -14,4 +14,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
+      - run: pnpm coverage
+      - run: pnpm bench
+      - run: pnpm audit --prod
+      - run: pnpm build
+      - name: E2E (Chromium)
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium && pnpm e2e

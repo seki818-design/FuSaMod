@@ -14,16 +14,28 @@ SysML v2 に準拠したシステムモデリングと、ISO 26262 / AIAG-VDA �
 | `tools/sysml-check` | 公式 SysML v2 パイロット実装での検証(`run.sh`)と要素グラフの抽出(`extract.sh`)。初回に約 120MB を取得 |
 | `docs/` | 設計方針・開発計画・レビューゲート・ADR |
 
+## クイックスタート
+
+```sh
+pnpm install && pnpm build && pnpm start   # http://127.0.0.1:8787
+```
+
+初期データ: `projects/ev-powertrain`(EV パワートレインの例)。設定は [`.env.example`](.env.example)。
+
 ## 開発
 
 ```sh
 pnpm install
 pnpm test        # 全パッケージのテスト
-pnpm typecheck
+pnpm typecheck && pnpm lint
+pnpm e2e         # Playwright(Chromium)+ axe アクセシビリティ
+pnpm quality     # 型・lint・テスト・カバレッジ・性能
 ```
 
 ## ドキュメント
 
+- [利用ガイド](docs/user-guide.md) / [運用ガイド](docs/operations.md) / [安全規格上の位置づけ・制限](docs/safety-notes.md)
+- 品質評価: [ルーブリック](docs/quality/rubric.md)、[証跡](docs/quality/evidence/)
 - [アーキテクチャ](docs/architecture.md)
 - [開発体制・計画](docs/plan.md)
 - [レビューゲート](docs/review-gates.md)

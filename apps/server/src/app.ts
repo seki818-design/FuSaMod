@@ -133,6 +133,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     modelOk: out.modelOk,
     ...(out.sysmlError ? { sysmlError: out.sysmlError } : {}),
     analysis: out.analysis ?? null,
+    /** 解析済みの要素グラフ(画面側で、編集中の安全データを即時に解析するために使う) */
+    graph: out.graph ?? null,
   });
 
   // --- 基本 ---
@@ -187,6 +189,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const out = await analysis.analyze(p.model, data, p.graph);
     return view(id, { ...p, safety: data, revision: meta.revision }, out);
   });
+
+  // --- 参照資料(RAG の対象。名前と本文) ---
+  app.get("/api/projects/:id/refs", async (req) => ({ refs: await store.refs(idParam.parse(req.params).id) }));
 
   // --- 履歴(バージョン管理) ---
   app.get("/api/projects/:id/history", async (req) => ({ history: await store.history(idParam.parse(req.params).id) }));

@@ -174,6 +174,11 @@ describe("エクスポート", () => {
     expect(validateScdl(model).filter((i) => i.severity === "error")).toEqual([]);
     expect(model.groupPairings).toHaveLength(1);
   });
+  it("参照資料の一覧", async () => {
+    h = await harness();
+    const refs = json(await h.app.inject("/api/projects/ev-powertrain/refs")).refs;
+    expect(refs.map((r: { name: string }) => r.name).sort()).toEqual(["システム設計方針.md", "機能安全コンセプト.md"]);
+  });
   it("モデルのソース、解析結果の JSON、不明な出力", async () => {
     h = await harness();
     expect((await h.app.inject("/api/projects/ev-powertrain/export/model.sysml")).body).toContain("package EvPowertrainDemo");

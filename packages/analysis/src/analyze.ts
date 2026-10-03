@@ -74,6 +74,36 @@ export interface ProjectAnalysis {
 const newCell = (): PuzzleCell => ({ count: 0, errors: 0, warnings: 0, status: "none" });
 
 /**
+ * パズルビューを、指摘の一部を除いて再計算する(例: 階層をまたいだ整合性チェック "consistency" をオフにする)。
+ * 件数(count)は変えず、指摘の件数と状態だけを求め直す。入力は変更しない。
+ */
+export function recomputePuzzle(a: ProjectAnalysis, opts: { excludeSources?: string[] } = {}): Puzzle {
+  const exclude = new Set(opts.excludeSources ?? []);
+  const rootEl = a.net.elements.find((e) => e.parentId === undefined)?.id;
+  const cells = Object.fromEntries(
+    LEVELS.map((l) => [
+      l.key,
+      Object.fromEntries(VIEWPOINTS.map((v) => [v.key, { ...a.puzzle.cells[l.key][v.key], errors: 0, warnings: 0 }])),
+    ]),
+  ) as Record<LevelKey, Record<Viewpoint, PuzzleCell>>;
+  for (const i of a.issues) {
+    if (exclude.has(i.source)) continue;
+    const lvl = i.elementId !== undefined && a.levelOf[i.elementId] ? a.levelOf[i.elementId]! : rootEl !== undefined ? a.levelOf[rootEl] ?? "system" : "system";
+    const c = cells[lvl][i.viewpoint];
+    if (i.severity === "error") c.errors++;
+    else c.warnings++;
+  }
+  for (const l of a.puzzle.levels) {
+    const exists = l.elementIds.length > 0;
+    for (const v of VIEWPOINTS) {
+      const c = cells[l.key][v.key];
+      c.status = !exists ? "none" : c.errors > 0 ? "inconsistent" : c.warnings > 0 ? "review" : c.count === 0 ? "undetermined" : "consistent";
+    }
+  }
+  return { levels: a.puzzle.levels, cells };
+}
+
+/**
  * モデル(SysML の要素グラフ)と安全分析データを突き合わせ、ネット・FMEA・整合性・パズルビュー・トレース・SCDL を一括で解析する。
  * 純粋関数。入力は変更しない。
  */

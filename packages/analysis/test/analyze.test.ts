@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeProject, parseSafetyData } from "../src/index.js";
+import { analyzeProject, parseSafetyData, recomputePuzzle } from "../src/index.js";
 import { demoGraph, demoSafety, GD, INV, MOT, PT, SM, VCU, VEH } from "./helpers.js";
 
 describe("デモプロジェクトの解析", () => {
@@ -156,5 +156,27 @@ describe("入力の検証(parseSafetyData)", () => {
     const s = JSON.parse(JSON.stringify(demoSafety()));
     s.failures[0].description = "x".repeat(6000);
     expect(parseSafetyData(s).ok).toBe(false);
+  });
+});
+
+describe("パズルビューの再計算(レイヤー整合性のオン/オフ)", () => {
+  it("階層をまたいだ整合性チェックを除くと、その警告だけが消える", () => {
+    // 機能を持たない構造要素を足す → consistency の警告(ELEMENT_NO_FUNCTION)が出る
+    const g = demoGraph();
+    g.elements.push({ kind: "PartUsage", qualifiedName: `${PT}::spare`, name: "spare", owner: PT });
+    const a = analyzeProject(g, demoSafety());
+    expect(a.issues.some((i) => i.source === "consistency" && i.code === "ELEMENT_NO_FUNCTION")).toBe(true);
+    expect(recomputePuzzle(a).cells).toEqual(a.puzzle.cells); // 除外なしなら元と同じ
+    const without = recomputePuzzle(a, { excludeSources: ["consistency"] });
+    const total = (p: typeof without) => Object.values(p.cells).flatMap((r) => Object.values(r)).reduce((n, c) => n + c.warnings, 0);
+    expect(total(without)).toBe(total(a.puzzle) - 1);
+    expect(without.cells.component.behavior.count).toBe(a.puzzle.cells.component.behavior.count); // 件数は変わらない
+  });
+  it("エラーのある階層は、除外しない限り不整合のまま", () => {
+    const s = demoSafety();
+    s.hara.goals[0]!.asil = "C";
+    const a = analyzeProject(demoGraph(), s);
+    expect(recomputePuzzle(a, { excludeSources: ["consistency"] }).cells.system.safety.status).toBe("inconsistent");
+    expect(recomputePuzzle(a, { excludeSources: ["hara"] }).cells.system.safety.status).not.toBe("inconsistent");
   });
 });

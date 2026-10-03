@@ -1,7 +1,18 @@
 import { createHash } from "node:crypto";
 
 interface Rec {
-  payload?: { elementId?: string; owner?: { "@id"?: string }; name?: string; declaredName?: string; "@type"?: string };
+  payload?: {
+    elementId?: string;
+    owner?: { "@id"?: string };
+    // 関係要素(Membership・FeatureTyping など)の JSON には owner が無く、これらがある
+    owningRelatedElement?: { "@id"?: string };
+    owningNamespace?: { "@id"?: string };
+    ownedRelatedElement?: { "@id"?: string }[];
+    target?: { "@id"?: string }[];
+    name?: string;
+    declaredName?: string;
+    "@type"?: string;
+  };
   identity?: { "@id"?: string };
 }
 
@@ -48,6 +59,15 @@ export function stabilizeJsonIds(json: string): string {
   const sig = new Map<Rec, string>();
   for (const r of list) sig.set(r, hash.get(r.payload?.elementId ?? "") ?? "");
   list = [...list].sort((p, q) => (sig.get(p)! < sig.get(q)! ? -1 : sig.get(p)! > sig.get(q)! ? 1 : 0));
+  // 名前の無い要素(関係要素)は、中身(所有する要素・参照先)の名前で区別する。要素が増減しても、他の関係の ID がずれないように
+  const nameOf = (id: string | undefined) => (id ? (byId.get(id)?.payload?.declaredName ?? byId.get(id)?.payload?.name ?? "") : "");
+  const labelOf = (p: NonNullable<Rec["payload"]>): string => {
+    const own = p.declaredName ?? p.name;
+    if (own) return own;
+    const child = p.ownedRelatedElement?.[0]?.["@id"];
+    const via = nameOf(child) || nameOf(p.target?.[0]?.["@id"]) || (child ? (byId.get(child)?.payload?.["@type"] ?? "") : "");
+    return via;
+  };
   const keyOf = new Map<string, string>();
   const ordinal = new Map<string, number>();
   const compute = (id: string, depth = 0): string => {
@@ -56,8 +76,9 @@ export function stabilizeJsonIds(json: string): string {
     const r = byId.get(id);
     if (!r?.payload || depth > 200) return `ext:${id}`;
     const p = r.payload;
-    const ownerKey = p.owner?.["@id"] && byId.has(p.owner["@id"]) ? compute(p.owner["@id"], depth + 1) : "";
-    const base = `${ownerKey}/${p["@type"] ?? ""}:${p.declaredName ?? p.name ?? ""}`;
+    const ownerId = p.owner?.["@id"] ?? p.owningRelatedElement?.["@id"] ?? p.owningNamespace?.["@id"];
+    const ownerKey = ownerId && byId.has(ownerId) ? compute(ownerId, depth + 1) : "";
+    const base = `${ownerKey}/${p["@type"] ?? ""}:${labelOf(p)}`;
     const n = ordinal.get(base) ?? 0;
     ordinal.set(base, n + 1);
     const key = `${base}#${n}`;

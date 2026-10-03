@@ -282,9 +282,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   // --- エクスポート ---
+  /** 解析できなかった理由で、応答を分ける: タイムアウト 504 / サービス停止 503 / モデルの誤り 409 */
+  const analysisUnavailable = (out: Awaited<ReturnType<AnalysisService["analyze"]>>, what: string): HttpError => {
+    if (out.sysmlFailure === "timeout") return new HttpError(504, `SysML の解析がタイムアウトしました: ${out.sysmlError ?? ""}`.trim());
+    if (out.sysmlFailure) return new HttpError(503, `SysML の解析に失敗しました: ${out.sysmlError ?? ""}`.trim());
+    return new HttpError(409, `モデルにエラーがあるため、${what}。モデルのエラーを直してください`);
+  };
   const needAnalysis = async (id: string): Promise<ProjectAnalysis> => {
     const { out } = await requireAnalysis(id);
-    if (!out.analysis) throw new HttpError(409, "モデルにエラーがあるため、出力できません。モデルのエラーを直してください");
+    if (!out.analysis) throw analysisUnavailable(out, "出力できません");
     return out.analysis;
   };
   app.get("/api/projects/:id/export/:name", async (req, reply) => {
@@ -321,8 +327,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         // 誤りのあるモデルは、部分的な出力を返さず 409(他の書き出しと同じ)
         const check = await analysis.analyze(p.model, p.safety, p.graph);
         // 解析自体が失敗した(タイムアウト・Java の停止など)ときは、モデルの誤りではないので 503
-        if (!check.modelOk && check.diagnostics.length === 0 && check.sysmlError) throw new HttpError(503, `SysML の解析に失敗しました: ${check.sysmlError}`);
-        if (!check.modelOk) throw new HttpError(409, "モデルにエラーがあるため、標準形式に書き出せません。先にモデルのエラーを直してください");
+        if (!check.modelOk) throw analysisUnavailable(check, "標準形式に書き出せません");
         const xmi = name === "model.xmi";
         const out = await convertModel(p.model, xmi ? "xmi" : "json", { cacheDir: config.sysmlCacheDir });
         return attachment(reply, `${id}-model.${xmi ? "sysmlx" : "json"}`, xmi ? "application/xml" : "application/json", out);
@@ -339,7 +344,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const actor = actorOf(req);
     if (!aiLimiter.allow(actor)) throw new HttpError(429, "AI へのリクエストが多すぎます。しばらくしてから再試行してください");
     const { p, out } = await requireAnalysis(id);
-    if (!out.analysis) throw new HttpError(409, "モデルにエラーがあるため、AI 支援を使えません。先にモデルのエラーを直してください");
+    if (!out.analysis) throw analysisUnavailable(out, "AI 支援を使えません");
     const refs = new RefIndex(await store.refs(id));
     const result = await ai.propose({ message: body.message, projectName: id, analysis: out.analysis, safety: p.safety, refs });
     const now = new Date().toISOString();

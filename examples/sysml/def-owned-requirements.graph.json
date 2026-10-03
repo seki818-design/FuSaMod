@@ -1,0 +1,102 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "DefOwnedReq",
+      "name": "DefOwnedReq"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "DefOwnedReq::Axle",
+      "name": "Axle",
+      "owner": "DefOwnedReq"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefOwnedReq::Axle::brake",
+      "name": "brake",
+      "owner": "DefOwnedReq::Axle"
+    },
+    {
+      "kind": "PartDefinition",
+      "qualifiedName": "DefOwnedReq::Car",
+      "name": "Car",
+      "owner": "DefOwnedReq"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefOwnedReq::Car::front",
+      "name": "front",
+      "owner": "DefOwnedReq::Car",
+      "types": [
+        "DefOwnedReq::Axle"
+      ]
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "DefOwnedReq::Car::inCar",
+      "name": "inCar",
+      "owner": "DefOwnedReq::Car"
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "DefOwnedReq::Car::inCar2",
+      "name": "inCar2",
+      "owner": "DefOwnedReq::Car"
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefOwnedReq::c1",
+      "name": "c1",
+      "owner": "DefOwnedReq",
+      "types": [
+        "DefOwnedReq::Car"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefOwnedReq::c2",
+      "name": "c2",
+      "owner": "DefOwnedReq",
+      "types": [
+        "DefOwnedReq::Car"
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "DefOwnedReq::c3",
+      "name": "c3",
+      "owner": "DefOwnedReq",
+      "types": [
+        "DefOwnedReq::Car"
+      ]
+    },
+    {
+      "kind": "RequirementUsage",
+      "qualifiedName": "DefOwnedReq::c3::extra",
+      "name": "extra",
+      "owner": "DefOwnedReq::c3"
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [
+    {
+      "requirement": "DefOwnedReq::Car::inCar",
+      "by": "DefOwnedReq::Car"
+    },
+    {
+      "requirement": "DefOwnedReq::Car::inCar2",
+      "by": "DefOwnedReq::Car::front"
+    },
+    {
+      "requirement": "DefOwnedReq::c3::extra",
+      "by": "DefOwnedReq::Axle::brake",
+      "byChain": [
+        "DefOwnedReq::Car::front",
+        "DefOwnedReq::Axle::brake"
+      ]
+    }
+  ],
+  "performs": []
+}

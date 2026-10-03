@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { REPO_ROOT } from "../config.js";
@@ -14,6 +14,11 @@ export class ConvertError extends Error {}
 export class ConvertBusyError extends Error {}
 
 const PREFIX = "fusamod-convert-";
+/** 変換専用の一時ディレクトリ(利用者ごと、自分だけが読める)。共有の /tmp にある他人の作業を、起動時の掃除で消さないため */
+function defaultRoot(): string {
+  const uid = typeof process.getuid === "function" ? String(process.getuid()) : "u";
+  return join(tmpdir(), `fusamod-${uid}`, "convert");
+}
 const MAX_RUNNING = 2;
 const MAX_WAITING = 4;
 let running = 0;
@@ -34,7 +39,7 @@ function release() {
 }
 
 /** 前回の異常終了で残った一時ディレクトリを掃除する(起動時と、変換の前に呼ぶ)。 */
-export async function sweepConvertTemp(maxAgeMs = 10 * 60_000, root: string = tmpdir()): Promise<void> {
+export async function sweepConvertTemp(maxAgeMs = 10 * 60_000, root: string = defaultRoot()): Promise<void> {
   try {
     for (const n of await readdir(root)) {
       if (!n.startsWith(PREFIX)) continue;
@@ -85,7 +90,8 @@ function run(script: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: 
  */
 export async function convertModel(text: string, format: ConvertFormat, opts: { cacheDir?: string; timeoutMs?: number; script?: string; tempRoot?: string } = {}): Promise<string> {
   await acquire();
-  const root = opts.tempRoot ?? tmpdir();
+  const root = opts.tempRoot ?? defaultRoot();
+  await mkdir(root, { recursive: true, mode: 0o700 });
   const dir = await mkdtemp(join(root, PREFIX));
   try {
     void sweepConvertTemp(10 * 60_000, root);
@@ -99,7 +105,8 @@ export async function convertModel(text: string, format: ConvertFormat, opts: { 
     // 変換器は、モデルに誤りがあっても部分的な出力や空の出力を返すことがある。成功の条件は「終了コード 0 かつ中身がある」
     if (code !== 0 || !out || out.trim().length < 3 || out.trim() === "[]")
       throw new ConvertError(`このモデルは公式の変換器で ${format === "json" ? "JSON" : "XMI"} に変換できませんでした(モデルの誤り、または変換器が対応していない記述(単位式など)の可能性があります)`);
-    return format === "json" ? stabilizeJsonIds(out) : out;
+    // XMI のライブラリ参照は、作業用の相対パス(lib/…)を含むので、ファイル名だけにする
+    return format === "json" ? stabilizeJsonIds(out) : out.replace(/href="lib\//g, 'href="');
   } finally {
     await rm(dir, { recursive: true, force: true });
     release();

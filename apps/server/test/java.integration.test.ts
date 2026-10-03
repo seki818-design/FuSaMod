@@ -56,13 +56,17 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準形式への変換(公式実�
     expect(xmi.startsWith("<?xml")).toBe(true);
     expect(xmi).toContain("PartUsage");
   }, 300_000);
-  it("変換器が対応しない記述(単位式を含む all-stereotypes.sysml の JSON)は ConvertError(一時パスを含まない)。同じモデルの XMI は成功する", async () => {
-    const { ConvertError } = await import("../src/sysml/convert.js");
+  it("単位式・SCDL ステレオタイプを含むモデル(all-stereotypes.sysml)も、標準ライブラリを渡して JSON/XMI に変換できる", async () => {
     const units = readFileSync(resolve(DEMO, "../../examples/sysml/all-stereotypes.sysml"), "utf8");
-    const err = await convertModel(units, "json").catch((e) => e);
-    expect(err).toBeInstanceOf(ConvertError);
-    expect(String(err.message)).not.toContain("fusamod-convert-");
+    const json = JSON.parse(await convertModel(units, "json")) as { payload: { "@type": string } }[];
+    expect(json.length).toBeGreaterThan(100);
     expect((await convertModel(units, "xmi")).startsWith("<?xml")).toBe(true);
+  }, 300_000);
+  it("XMI の標準ライブラリ参照は、ファイル名 + 安定な ID(作業用のパスを含まない)", async () => {
+    const xmi = await convertModel(model, "xmi");
+    expect(xmi).toMatch(/href="ScalarValues\.kermlx#[0-9a-f-]{36}"/);
+    expect(xmi).not.toContain("lib/");
+    expect(xmi).not.toContain("fusamod-");
   }, 300_000);
   it("同時実行の上限: 多数を同時に投げても、待ちを超えたものは ConvertBusyError で断られ、一時ディレクトリは残らない", async () => {
     const { ConvertBusyError } = await import("../src/sysml/convert.js");
@@ -85,5 +89,18 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準 JSON の elementId の安定
     const [a, b] = [await ids(), await ids()];
     expect(a.length).toBeGreaterThan(100);
     expect(a).toEqual(b);
+  }, 600_000);
+  it("同じモデルを 2 回変換すると、出力がバイト単位で一致する", async () => {
+    const model = readFileSync(resolve(DEMO, "model.sysml"), "utf8");
+    expect(await convertModel(model, "json")).toBe(await convertModel(model, "json"));
+  }, 600_000);
+  it("モデルを小さく編集しても、既存の要素(関係要素を含む)の ID の大半は変わらない", async () => {
+    const model = readFileSync(resolve(DEMO, "model.sysml"), "utf8");
+    const ids = async (m: string) => new Set((JSON.parse(await convertModel(m, "json")) as { payload: { elementId: string } }[]).map((r) => r.payload.elementId));
+    const before = await ids(model);
+    const edited = model.replace(/package\s+(\w+)\s*\{/, (x) => `${x}\n  part def Zzz0 { }\n`);
+    const after = await ids(edited);
+    const kept = [...before].filter((i) => after.has(i)).length;
+    expect(kept / before.size).toBeGreaterThan(0.95);
   }, 600_000);
 });

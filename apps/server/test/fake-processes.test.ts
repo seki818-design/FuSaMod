@@ -97,6 +97,16 @@ describe("JavaSysmlService(代役のサーバーで、プロトコルと回復�
     const s = make("hang", { requestTimeoutMs: 200 });
     await expect(s.analyze("x")).rejects.toBeInstanceOf(SysmlTimeoutError);
   });
+  it("タイムアウトで捨てたプロセスの終了イベントが、新しいプロセスを巻き込まない(孤児 JVM を作らない)", async () => {
+    const pids: number[] = [];
+    svc = new JavaSysmlService({ command: process.execPath, args: [server], env: { FAKE_MODE: "hang-on-HANG" }, requestTimeoutMs: 400, log: (m) => { const x = /^PID (\d+)/.exec(m); if (x) pids.push(Number(x[1])); } });
+    await expect(svc.analyze("HANG")).rejects.toThrow(/タイムアウト/);
+    for (let i = 0; i < 4; i++) expect((await svc.analyze(`package P${i} {}`)).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 300));
+    const alive = pids.filter((p) => { try { process.kill(p, 0); return true; } catch { return false; } });
+    expect(pids.length).toBe(2); // 最初の 1 つ(捨てた)+ 再起動した 1 つだけ
+    expect(alive).toHaveLength(1);
+  });
   it("不正な出力の行は無視して続ける", async () => {
     const s = make("bad-line");
     expect((await s.analyze("package P {}")).ok).toBe(true);

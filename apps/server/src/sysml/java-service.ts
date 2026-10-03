@@ -62,25 +62,31 @@ export class JavaSysmlService implements SysmlService {
         this.kill();
       }, this.opts.startTimeoutMs);
       proc.stderr.on("data", (d: Buffer) => this.opts.log(d.toString("utf8").trimEnd()));
+      // 捨てた(kill 済みの)プロセスのイベントは、新しいプロセスの状態に触れさせない
+      const stale = () => this.proc !== proc;
       proc.on("error", (e) => {
         clearTimeout(startTimer);
+        if (stale()) return;
         rejectReady(new SysmlUnavailableError(`SysML サービスを起動できません: ${e.message}`));
         this.reset();
       });
       proc.on("exit", (code) => {
         clearTimeout(startTimer);
+        if (stale()) return;
         if (!isReady) rejectReady(new SysmlUnavailableError(`SysML サービスが起動前に終了しました(終了コード ${code})`));
         this.failPending(new Error(`SysML サービスが終了しました(終了コード ${code})`));
         this.reset();
       });
       // 停止済みの子プロセスへの書き込み(EPIPE)で、サーバー全体が落ちないようにする
       proc.stdin.on("error", (e) => {
+        if (stale()) return;
         this.opts.log(`SysML サービスの標準入力でエラー: ${e.message}`);
         this.failPending(new SysmlUnavailableError(`SysML サービスとの通信に失敗しました: ${e.message}`));
       });
       proc.stdout.on("error", () => undefined);
       const rl = createInterface({ input: proc.stdout, crlfDelay: Infinity });
       rl.on("line", (line) => {
+        if (stale()) return;
         let msg: { ready?: boolean; id?: number } & Partial<SysmlResult>;
         try {
           msg = JSON.parse(line);
@@ -113,7 +119,9 @@ export class JavaSysmlService implements SysmlService {
   }
 
   private kill() {
-    this.proc?.kill("SIGKILL");
+    const p = this.proc;
+    this.proc = undefined; // 先に切り離してから殺す(exit イベントが新しい状態を消さないように)
+    p?.kill("SIGKILL");
     // 終了イベントを待たずに捨てる(次のリクエストが、死にかけのプロセスへ書き込まないように)
     this.reset();
   }

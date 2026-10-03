@@ -254,11 +254,19 @@ class Expander {
     return out;
   }
 
-  /** satisfy の連鎖(`car.front.rotor`)を、複製されたインスタンスの ID にたどる。たどれなければ undefined。 */
-  private resolveChain(chain: string[], ids: Set<string>): string | undefined {
+  /**
+   * satisfy の連鎖(`car.front.rotor`)を、複製されたインスタンスの ID にたどる。たどれなければ undefined。
+   * 先頭が定義の中の要素(`front.brake` のように、型の中身を相対で指す)のときは、基点のインスタンス(ctx)の下にある複製から始める。
+   */
+  private resolveChain(chain: string[], ids: Set<string>, ctx?: string): string | undefined {
     const first = this.byQn.get(chain[0]!);
-    if (!first || this.insideDefinition(first)) return undefined;
+    if (!first) return undefined;
     let cur = chain[0]!;
+    if (this.insideDefinition(first)) {
+      const here = ctx ? (this.copiesOf.get(cur) ?? []).filter((c) => c.startsWith(`${ctx}::`)) : [];
+      if (here.length !== 1) return undefined;
+      cur = here[0]!;
+    }
     for (const next of chain.slice(1)) {
       const el = this.byQn.get(next);
       const cand = el ? `${cur}::${lastName(el)}` : undefined;
@@ -268,39 +276,80 @@ class Expander {
     return cur;
   }
 
+  /** 定義の中の要素 qn の複製のうち、基点のインスタンス ctx の下にあるもの(ctx から外側へ順にたどる)。 */
+  private copiesWithin(qn: string, ctx: string): string[] {
+    const all = this.copiesOf.get(qn) ?? [];
+    for (let base: string | undefined = ctx; base; base = this.out.find((e) => e.qualifiedName === base)?.owner ?? undefined) {
+      const hit = all.filter((c) => c.startsWith(`${base}::`));
+      if (hit.length > 0) return hit;
+    }
+    return [];
+  }
+
   private remapSatisfies(): GraphSatisfy[] {
     const out: GraphSatisfy[] = [];
     const ids = new Set(this.out.map((e) => e.qualifiedName));
+    const outBy = new Map(this.out.map((e) => [e.qualifiedName, e]));
+    const label = (chain: string[]) => chain.map((c) => c.split("::").pop()).join(".");
     for (const s of this.g.satisfies) {
-      const by = s.by ? this.byQn.get(s.by) : undefined;
-      // 満たされる要求の側が経路(r1.subB.deep)なら、その要求インスタンス 1 つに付け替える
-      let requirement = s.requirement;
-      if (s.requirementChain && s.requirementChain.length > 1) {
-        const rid = this.resolveChain(s.requirementChain, ids);
-        if (rid) requirement = rid;
-        else {
-          this.warn("SATISFY_UNRESOLVED", `satisfy の要求(${s.requirementChain.map((c) => c.split("::").pop()).join(".")})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
-          continue;
+      const reqEl = s.requirement ? this.byQn.get(s.requirement) : undefined;
+      // 満たされる側の要求: 定義が所有する要求は、使用ごとの複製それぞれが満たされる(基点 = その複製を持つインスタンス)
+      const variants: { requirement: string | null; ctx: string | undefined }[] =
+        reqEl && this.insideDefinition(reqEl) && !DEFINITIONS.has(reqEl.kind)
+          ? (this.copiesOf.get(reqEl.qualifiedName) ?? []).map((c) => ({ requirement: c, ctx: outBy.get(c)?.owner ?? undefined }))
+          : [{ requirement: s.requirement, ctx: reqEl?.owner ?? undefined }];
+      if (variants.length === 0) {
+        this.warn("SATISFY_NO_INSTANCE", "定義の中の要求を満たす satisfy ですが、その定義を使う part がありません(紐づけません)", s.requirement ?? undefined);
+        continue;
+      }
+      for (const v of variants) {
+        let requirement = v.requirement;
+        // 満たされる要求の側が経路(r1.subB.deep)なら、その要求インスタンス 1 つに付け替える
+        if (s.requirementChain && s.requirementChain.length > 1) {
+          const rid = this.resolveChain(s.requirementChain, ids, v.ctx);
+          if (!rid) {
+            this.warn("SATISFY_UNRESOLVED", `satisfy の要求(${label(s.requirementChain)})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
+            continue;
+          }
+          requirement = rid;
         }
+        this.remapOne(out, s, requirement, v.ctx, ids, label);
       }
-      if (s.byChain && s.byChain.length > 1) {
-        // インスタンスの経路が分かっている: その 1 つだけに紐づける
-        const target = this.resolveChain(s.byChain, ids);
-        if (target) out.push({ requirement, by: target });
-        else this.warn("SATISFY_UNRESOLVED", `satisfy の対象(${s.byChain.map((c) => c.split("::").pop()).join(".")})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
-        continue;
-      }
-      if (!s.by || !by || !this.insideDefinition(by)) {
-        out.push(s.byChain || requirement !== s.requirement ? { requirement, by: s.by } : s);
-        continue;
-      }
-      // 定義側の特徴を直接指している: 定義のすべてのインスタンスが満たすことになる
-      const copies = this.copiesOf.get(s.by) ?? [];
-      if (copies.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、使われていない定義の中の要素です", s.requirement ?? undefined);
-      if (copies.length > 1) this.warn("SATISFY_AMBIGUOUS", `satisfy が定義側の要素を直接指しているため、${copies.length} 個のインスタンスすべてに紐づけました(特定するには car.front のような経路で書いてください)`, s.requirement ?? undefined);
-      for (const c of copies) out.push({ requirement, by: c });
     }
     return out;
+  }
+
+  private remapOne(out: GraphSatisfy[], s: GraphSatisfy, requirement: string | null, ctx: string | undefined, ids: Set<string>, label: (c: string[]) => string) {
+    const by = s.by ? this.byQn.get(s.by) : undefined;
+    if (s.byChain && s.byChain.length > 1) {
+      // インスタンスの経路が分かっている: その 1 つだけに紐づける
+      const target = this.resolveChain(s.byChain, ids, ctx);
+      if (target) out.push({ requirement, by: target });
+      else this.warn("SATISFY_UNRESOLVED", `satisfy の対象(${label(s.byChain)})のインスタンスを特定できませんでした(紐づけません)`, s.requirement ?? undefined);
+      return;
+    }
+    if (s.by && by && DEFINITIONS.has(by.kind)) {
+      // 定義そのものが満たす側(暗黙の subject など): 要求と同じインスタンスならそれ、なければ定義を使うすべてのインスタンス
+      const own = ctx !== undefined && this.typeChain.get(ctx)?.has(by.qualifiedName) ? [ctx] : this.performerInstances(by.qualifiedName);
+      if (own.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、どの part からも使われていない定義です(紐づけません)", s.requirement ?? undefined);
+      for (const c of own) out.push({ requirement, by: c });
+      return;
+    }
+    if (!s.by || !by || !this.insideDefinition(by)) {
+      out.push(s.byChain || requirement !== s.requirement ? { requirement, by: s.by } : s);
+      return;
+    }
+    // 定義側の特徴を直接指している。要求が同じインスタンスの中にあれば、そのインスタンスの複製(1 つ)に紐づける
+    const within = ctx && this.insideDefinition(this.byQn.get(s.requirement ?? "") ?? by) ? this.copiesWithin(s.by, ctx) : [];
+    if (within.length > 0) {
+      for (const c of within) out.push({ requirement, by: c });
+      return;
+    }
+    // そうでなければ、定義のすべてのインスタンスが満たすことになる
+    const copies = this.copiesOf.get(s.by) ?? [];
+    if (copies.length === 0) this.warn("SATISFY_NO_INSTANCE", "satisfy の対象が、どの part からも使われていない定義の中の要素です(紐づけません)", s.requirement ?? undefined);
+    if (copies.length > 1) this.warn("SATISFY_AMBIGUOUS", `satisfy が定義側の要素を直接指しているため、${copies.length} 個のインスタンスすべてに紐づけました(特定するには car.front のような経路で書いてください)`, s.requirement ?? undefined);
+    for (const c of copies) out.push({ requirement, by: c });
   }
 }
 

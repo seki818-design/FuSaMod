@@ -3,6 +3,7 @@ import {
   buildIndex,
   compileApTable,
   validateAsilInheritance,
+  validateElementAsil,
   validateDecompositions,
   validateFaultTree,
   validateHara,
@@ -374,6 +375,7 @@ export function analyzeProject(graph: ElementGraph, s: SafetyData): ProjectAnaly
   push("decomposition", [
     ...validateDecompositions(s.safetyRequirements, s.decompositions),
     ...validateAsilInheritance(s.safetyRequirements, s.decompositions, s.hara.goals),
+    ...validateElementAsil(s.intendedFunctions, s.mechanisms, s.safetyRequirements),
     ...decompositionAllocationIssues(net, s),
   ]);
   push("fta", faultTreeIssues(net, s));

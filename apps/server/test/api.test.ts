@@ -484,3 +484,52 @@ describe("全ルート × 匿名 / viewer / editor(厳密な表)", () => {
     expect(g).toContain("auth.fail");
   });
 });
+
+describe("AI の適用: リスクを下げる編集・来歴の追記のみ(ラウンド 4)", () => {
+  const propose = async (headers: Record<string, string>, operations: unknown[]) => {
+    // ルールベースの提案を使わず、承認待ちの提案を直接作る
+    const { randomUUID } = await import("node:crypto");
+    const pid = `P-${randomUUID().slice(0, 8)}`;
+    await h.store.updateProposals<Proposal, void>("ev-powertrain", (list) => ({
+      list: [...list, { id: pid, title: "手作りの提案", rationale: "r", operations, status: "pending", createdAt: new Date().toISOString(), provider: { name: "test" }, requestedBy: "alice" } as unknown as Proposal],
+      result: undefined,
+    }));
+    return pid;
+  };
+  const apply = (pid: string, headers: Record<string, string>, body?: unknown) =>
+    h.app.inject({ method: "POST", url: `/api/projects/ev-powertrain/ai/proposals/${pid}/apply`, headers, ...(body ? { payload: body as object } : {}) });
+
+  it("重大度を下げる提案は 409(確認が必要)。確認すれば適用され、来歴に差分と確認が残る", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "alice:t1-0123456789abcdef,bob:t2-0123456789abcdef" } });
+    const B = { authorization: "Bearer t2-0123456789abcdef" };
+    const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: B }));
+    const top = p.safety.failures.find((f: { severity?: number }) => f.severity !== undefined);
+    const pid = await propose(B, [{ op: "setSeverity", failureId: top.id, severity: 1 }]);
+    const r1 = await apply(pid, B);
+    expect(r1.statusCode).toBe(409);
+    expect(json(r1).details.join()).toContain(`${top.id}.severity`);
+    const r2 = await apply(pid, B, { confirmRiskLowering: true });
+    expect(r2.statusCode).toBe(200);
+    const s = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: B })).safety;
+    expect(s.aiChanges.at(-1)).toMatchObject({ approvedBy: "bob", confirmedRiskLowering: true });
+    expect(s.aiChanges.at(-1).changes[0]).toMatchObject({ id: top.id, field: "severity", to: 1, lowersRisk: true });
+  });
+  it("QM(D) の意図機能を足す提案は、適用で新しいエラーになるので 422", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "bob:t2-0123456789abcdef" } });
+    const B = { authorization: "Bearer t2-0123456789abcdef" };
+    const pid = await propose(B, [{ op: "addIntendedFunction", intendedFunction: { id: "IF-X", name: "偽装", elementId: "EvPowertrainDemo::vehicle::powertrain::vcu", asil: "QM", originAsil: "D" } }]);
+    const r = await apply(pid, B, { confirmRiskLowering: true });
+    expect(r.statusCode).toBe(422);
+  });
+  it("aiChanges は追記のみ: PUT で削除・書き換えはできない", async () => {
+    h = await harness({ env: { FUSAMOD_TOKENS: "bob:t2-0123456789abcdef" } });
+    const B = { authorization: "Bearer t2-0123456789abcdef" };
+    const p = json(await h.app.inject({ url: "/api/projects/ev-powertrain", headers: B }));
+    const withLog = { ...p.safety, aiChanges: [{ proposalId: "P-1", title: "t", provider: "x", requestedBy: "a", approvedBy: "b", at: "2026-01-01T00:00:00Z", operations: 1 }] };
+    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: withLog } })).statusCode).toBe(200);
+    const cleared = { ...withLog, aiChanges: [] };
+    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: cleared } })).statusCode).toBe(422);
+    const edited = { ...withLog, aiChanges: [{ ...withLog.aiChanges[0], approvedBy: "mallory" }] };
+    expect((await h.app.inject({ method: "PUT", url: "/api/projects/ev-powertrain/safety", headers: B, payload: { data: edited } })).statusCode).toBe(422);
+  });
+});

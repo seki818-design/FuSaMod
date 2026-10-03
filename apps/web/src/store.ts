@@ -350,7 +350,15 @@ export async function applyProposal(pid: string) {
     return;
   }
   try {
-    const r = await api.apply(id, pid);
+    let r;
+    try {
+      r = await api.apply(id, pid);
+    } catch (e) {
+      // リスクを下げる変更を含む提案は、承認者が内容を確認したうえで適用する
+      if (!(e instanceof ApiError) || e.status !== 409 || !e.message.startsWith("リスクを下げる")) throw e;
+      if (!window.confirm(`${e.message}\n\n${(e.details ?? []).join("\n")}\n\nこの変更を適用しますか?`)) return;
+      r = await api.apply(id, pid, true);
+    }
     applyView(r, false);
     set((s) => ({ proposals: s.proposals.map((p) => (p.id === pid ? r.proposal : p)) }));
     await loadHistory();

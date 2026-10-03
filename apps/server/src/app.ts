@@ -14,6 +14,7 @@ import {
   AiProviderError,
   RefIndex,
   applyOperations,
+  riskChanges,
   type AiProvider,
   type Proposal,
 } from "@fusamod/ai";
@@ -81,6 +82,14 @@ class RateLimiter {
     this.hits.set(key, list);
     return true;
   }
+}
+
+/** AI の適用履歴(aiChanges)は追記のみ。既存の記録の削除・書き換えを拒否する(来歴の改ざん防止)。 */
+function assertAiChangesAppendOnly(current: unknown[] | undefined, incoming: unknown[] | undefined) {
+  const cur = current ?? [];
+  const inc = incoming ?? [];
+  const ok = inc.length >= cur.length && cur.every((c, i) => JSON.stringify(c) === JSON.stringify(inc[i]));
+  if (!ok) throw new HttpError(422, "AI の適用履歴(aiChanges)は追記のみで、削除・書き換えはできません");
 }
 
 const idParam = z.object({ id: z.string() });
@@ -232,6 +241,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const body = z.object({ data: z.unknown(), baseRevision: z.number().int().optional(), message: z.string().max(200).optional() }).strict().parse(req.body);
     const data = requireSafety(body.data);
     const p = await store.read(id);
+    assertAiChangesAppendOnly(p.safety.aiChanges, data.aiChanges);
     const meta = await store.saveSafety(id, data, actorOf(req), body.message ?? "安全分析データを更新", body.baseRevision);
     const out = await analysis.analyze(p.model, data, p.graph);
     return view(id, { ...p, safety: data, revision: meta.revision }, out);
@@ -325,6 +335,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   app.post("/api/projects/:id/ai/proposals/:pid/apply", async (req) => {
     const { id, pid } = z.object({ id: z.string(), pid: z.string() }).parse(req.params);
+    const body = z.object({ confirmRiskLowering: z.boolean().optional() }).strict().parse(req.body ?? {});
     const actor = actorOf(req);
     const proposal = (await store.readProposals<Proposal>(id)).find((x) => x.id === pid);
     if (!proposal) throw new HttpError(404, `提案が見つかりません: ${pid}`);
@@ -341,8 +352,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const existing = new Set((before.analysis?.issues ?? []).filter((i) => i.severity === "error").map(key));
     const added = (after.analysis?.issues ?? []).filter((i) => i.severity === "error" && !existing.has(key(i)));
     if (added.length > 0) throw new HttpError(422, "この提案を適用すると、新しいエラーが発生するため適用しません", added.map((i) => `${i.code}: ${i.message}`));
-    // 来歴を safety.json に残す(提案者・承認者・時刻)。履歴にも残る
-    const change = { proposalId: pid, title: proposal.title.slice(0, 5000), provider: `${proposal.provider.name}${proposal.provider.model ? `/${proposal.provider.model}` : ""}`, requestedBy: proposal.requestedBy ?? "不明", approvedBy: actor, at: new Date().toISOString(), operations: proposal.operations.length };
+    // リスクを下げる変更(重大度・発生度・検出度の低下、QM の追加)は、承認者の明示的な確認を求める
+    const diff = riskChanges(p.safety, applied.data);
+    const lowering = diff.filter((c) => c.lowersRisk);
+    if (lowering.length > 0 && !body.confirmRiskLowering)
+      throw new HttpError(409, "リスクを下げる変更を含みます。内容を確認したうえで、確認して適用してください", lowering.map((c) => `${c.id}.${c.field}: ${c.from ?? "未設定"} → ${c.to ?? "未設定"}`));
+    // 来歴を safety.json に残す(提案者・承認者・時刻・差分)。履歴にも残る
+    const change = { proposalId: pid, title: proposal.title.slice(0, 5000), provider: `${proposal.provider.name}${proposal.provider.model ? `/${proposal.provider.model}` : ""}`, requestedBy: proposal.requestedBy ?? "不明", approvedBy: actor, at: new Date().toISOString(), operations: proposal.operations.length, changes: diff.slice(0, 50).map((c) => ({ id: c.id, field: c.field, ...(c.from !== undefined ? { from: c.from } : {}), ...(c.to !== undefined ? { to: c.to } : {}), lowersRisk: c.lowersRisk })), ...(lowering.length > 0 ? { confirmedRiskLowering: true } : {}) };
     const withProvenance = { ...applied.data, aiChanges: [...(applied.data.aiChanges ?? []), change].slice(-500) };
     await store.saveSafety(id, withProvenance, actor, `AI 提案を適用: ${proposal.title}`, p.revision);
     const done = await decide(id, pid, "applied", actor);

@@ -142,6 +142,10 @@ const aiChange = z
     approvedBy: z.string().max(200),
     at: z.string().max(40),
     operations: z.number().int().min(0),
+    /** 変更前後の差分(評価値の変更など。最大 50 件) */
+    changes: arr(z.object({ id, field: z.string().max(100), from: z.union([z.string().max(200), z.number()]).optional(), to: z.union([z.string().max(200), z.number()]).optional(), lowersRisk: z.boolean() }).strict()).max(50).optional(),
+    /** リスクを下げる変更を含むことを承認者が確認した */
+    confirmedRiskLowering: z.boolean().optional(),
   })
   .strict();
 

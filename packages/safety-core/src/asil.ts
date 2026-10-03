@@ -110,10 +110,15 @@ export function validateDecompositions(
 const EVIDENCE_MIN = 8;
 /**
  * 形だけの根拠を除く簡易な検査(内容の妥当性は人が判断する)。
- * 8 文字以上、6 種類以上の文字、数字だけでない、同じ語の繰り返しでない(「abcdabcd」「TODO TODO」「12345678」を除く)。
+ * 8 文字以上、6 種類以上の文字、数字だけでない、同じ語の繰り返しでない、プレースホルダ(TODO/TBD/XXX/ダミー/仮など)を含まない、数字か区切りを含む(「abcdabcd」「TODO TODO」「12345678」「asdfghjk」「DFA-XXX-000」「DFA TBD 1234」を除く)。
  */
 const isSubstantial = (t: string) =>
-  t.length >= EVIDENCE_MIN && new Set(t).size >= 6 && !/^\d+$/.test(t) && !/^(.{2,}?)\s*\1+$/.test(t) && !/^(todo|tbd|n\/a|未定|あとで)/i.test(t);
+  t.length >= EVIDENCE_MIN &&
+  new Set(t).size >= 6 &&
+  !/^\d+$/.test(t) &&
+  !/^(.{2,}?)\s*\1+$/.test(t) &&
+  !/(todo|tbd|n\/a|xxx|dummy|sample|未定|あとで|ダミー|仮)/i.test(t) &&
+  /[\d\-_/:()（）\s]/.test(t); // 文書番号・区切りなど、参照らしい形(連打した文字列を除く)
 
 /** 分解の自己参照と循環(A → B + QM、B → A + … など)。 */
 function checkDecompositionCycles(decomps: Decomposition[], issues: Issue[]) {
@@ -313,5 +318,34 @@ export function validatePairing(
     if (m.ftti === undefined)
       issues.push({ code: "MISSING_FTTI", severity: "warning", message: "FTTI が未設定です", ref: m.id });
   }
+  return issues;
+}
+
+/**
+ * 意図機能・安全機構の ASIL の検査(安全要求と同じ抜け道を、別の成果物で作らせない)。
+ * - 紐づく要求(requirementIds。意図機能は自身の ID の要求も)の ASIL より低くしない。
+ * - 元 ASIL の表記(originAsil)は、同じ元 ASIL を持つ要求に紐づくときだけ使える。
+ * - ASIL 付きの安全目標があるのに、紐づく要求の無い QM の意図機能は、確認を促す。
+ */
+export function validateElementAsil(
+  functions: IntendedFunction[],
+  mechanisms: SafetyMechanism[],
+  reqs: SafetyRequirement[],
+): Issue[] {
+  const issues: Issue[] = [];
+  const byId = new Map(reqs.map((r) => [r.id, r]));
+  const check = (kind: string, x: { id: string; asil?: Asil | undefined; originAsil?: Asil | undefined; requirementIds?: string[] | undefined }) => {
+    const linked = [x.id, ...(x.requirementIds ?? [])].map((i) => byId.get(i)).filter((r): r is SafetyRequirement => r !== undefined);
+    const own = x.asil ?? "QM";
+    for (const r of linked)
+      if (asilRank(own) < asilRank(r.asil))
+        issues.push({ code: "ELEMENT_ASIL_BELOW_REQ", severity: "error", message: `${kind} ${x.id} の ASIL(${own})が、紐づく要求 ${r.id}(ASIL ${r.asil})より低くなっています`, ref: x.id });
+    if (x.originAsil !== undefined && !linked.some((r) => (r.originAsil ?? r.asil) === x.originAsil && r.originAsil !== undefined))
+      issues.push({ code: "DECOMP_ORPHAN", severity: "error", message: `${kind} ${x.id} は元 ASIL(${x.originAsil})の表記を持ちますが、同じ元 ASIL を持つ要求(分解先)に紐づいていません`, ref: x.id });
+    if (own === "QM" && linked.length === 0 && x.originAsil === undefined)
+      issues.push({ code: "ELEMENT_QM_UNLINKED", severity: "warning", message: `${kind} ${x.id} は QM で、紐づく要求もありません。ASIL の付いた安全目標・要求との関係を確認してください`, ref: x.id });
+  };
+  for (const f of functions) check("意図機能", f);
+  for (const m of mechanisms) check("安全機構", m);
   return issues;
 }

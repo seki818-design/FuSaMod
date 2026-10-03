@@ -125,7 +125,7 @@ export const api = {
   refs: (id: string) => req<{ refs: { name: string; text: string }[] }>("GET", `${P(id)}/refs`),
   chat: (id: string, message: string) => req<ChatResult>("POST", `${P(id)}/ai/chat`, { message }),
   proposals: (id: string) => req<{ proposals: Proposal[] }>("GET", `${P(id)}/ai/proposals`),
-  apply: (id: string, pid: string) => req<ProjectView & { proposal: Proposal }>("POST", `${P(id)}/ai/proposals/${encodeURIComponent(pid)}/apply`),
+  apply: (id: string, pid: string, confirmRiskLowering = false) => req<ProjectView & { proposal: Proposal }>("POST", `${P(id)}/ai/proposals/${encodeURIComponent(pid)}/apply`, confirmRiskLowering ? { confirmRiskLowering: true } : undefined),
   reject: (id: string, pid: string) => req<{ proposal: Proposal }>("POST", `${P(id)}/ai/proposals/${encodeURIComponent(pid)}/reject`),
   audit: (id: string) => req<{ events: { ts: string; actor: string; action: string }[]; chain: { ok: boolean; lines: number; brokenAtLine?: number } }>("GET", `${P(id)}/audit`),
 };

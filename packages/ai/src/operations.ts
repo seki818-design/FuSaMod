@@ -88,3 +88,36 @@ export function applyOperations(input: SafetyData, ops: Operation[]): ApplyResul
   if (!parsed.ok) return { ok: false, data: input, errors: parsed.errors.map((e) => `適用後のデータが不正: ${e}`) };
   return { ok: true, data: parsed.data, errors: [] };
 }
+
+export interface DataChange {
+  id: string;
+  field: string;
+  from: string | number | undefined;
+  to: string | number | undefined;
+  /** リスクを下げうる変更(重大度・発生度・検出度の低下、QM の意図機能/安全機構の追加) */
+  lowersRisk: boolean;
+}
+
+/** 適用の前後の差分(評価値の変更と、追加された要素のうち ASIL に関わるもの)。承認者に見せ、来歴に残す。 */
+export function riskChanges(before: SafetyData, after: SafetyData): DataChange[] {
+  const out: DataChange[] = [];
+  const num = (id: string, field: string, from: number | undefined, to: number | undefined, lowers: (a: number, b: number) => boolean) => {
+    if (from !== to) out.push({ id, field, from, to, lowersRisk: from !== undefined && to !== undefined && lowers(from, to) });
+  };
+  const oldF = new Map(before.failures.map((f) => [f.id, f]));
+  for (const f of after.failures) {
+    const o = oldF.get(f.id);
+    if (o) num(f.id, "severity", o.severity, f.severity, (a, b) => b < a);
+  }
+  const oldL = new Map(before.links.map((l) => [l.id, l]));
+  for (const l of after.links) {
+    const o = oldL.get(l.id);
+    if (!o) continue;
+    num(l.id, "occurrence", o.occurrence, l.occurrence, (a, b) => b < a);
+    num(l.id, "detection", o.detection, l.detection, (a, b) => b < a);
+  }
+  const known = new Set([...before.intendedFunctions.map((f) => f.id), ...before.mechanisms.map((m) => m.id)]);
+  for (const x of [...after.intendedFunctions, ...after.mechanisms])
+    if (!known.has(x.id)) out.push({ id: x.id, field: "asil(追加)", from: undefined, to: x.asil ?? "QM", lowersRisk: (x.asil ?? "QM") === "QM" });
+  return out;
+}

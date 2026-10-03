@@ -4,6 +4,7 @@ import {
   minimalCutSets,
   singlePointFaults,
   topProbabilityUpperBound,
+  validateElementAsil,
   validateAsilInheritance,
   validateDecompositions,
   validateHara,
@@ -243,4 +244,32 @@ describe("形だけの独立性の根拠 / 確率の上限(ラウンド 3)", () 
     t.nodes[2] = { id: "b", label: "b", kind: "basic", probability: 2 };
     expect(topProbabilityUpperBound(t)).toBeUndefined();
   });
+});
+
+describe("意図機能・安全機構の ASIL(ラウンド 4 の指摘)", () => {
+  const reqs = [req("F1", "D", { safetyGoalId: "SG-1" }), req("F1a", "B", { originAsil: "D", parentId: "F1" })];
+  const fn = (o: Partial<import("../src/index.js").IntendedFunction> = {}) => ({ id: "IF-1", name: "f", elementId: "E", asil: "B" as Asil, originAsil: "D" as Asil, requirementIds: ["F1a"], ...o });
+  it("正当な B(D) の意図機能は指摘なし", () => {
+    expect(validateElementAsil([fn()], [], reqs)).toEqual([]);
+  });
+  it("紐づく要求より低い ASIL(QM)にするとエラー", () => {
+    expect(codes(validateElementAsil([fn({ asil: "QM" })], [], reqs))).toContain("ELEMENT_ASIL_BELOW_REQ");
+    expect(codes(validateElementAsil([], [{ id: "SM-1", name: "m", elementId: "E", asil: "A", originAsil: "D", requirementIds: ["F1a"] }], reqs))).toContain("ELEMENT_ASIL_BELOW_REQ");
+  });
+  it("要求に紐づかない元 ASIL の表記(偽装)はエラー", () => {
+    expect(codes(validateElementAsil([fn({ requirementIds: [], id: "IF-9" })], [], reqs))).toContain("DECOMP_ORPHAN");
+    expect(codes(validateElementAsil([fn({ originAsil: "C" })], [], reqs))).toContain("DECOMP_ORPHAN");
+  });
+  it("要求に紐づかない QM の意図機能は確認を促す(警告)", () => {
+    const i = validateElementAsil([{ id: "IF-2", name: "f", elementId: "E", asil: "QM" }], [], reqs);
+    expect(i.map((x) => [x.code, x.severity])).toEqual([["ELEMENT_QM_UNLINKED", "warning"]]);
+  });
+});
+
+describe("形だけの根拠の追加例", () => {
+  const e = (t: string) => validateDecompositions(
+    [req("P", "D"), req("A", "B", { originAsil: "D", parentId: "P" }), req("B", "B", { originAsil: "D", parentId: "P" })],
+    [{ id: "d", parentRequirementId: "P", childRequirementIds: ["A", "B"], independenceEvidence: t }],
+  ).map((i) => i.code);
+  it.each(["asdfghjk", "DFA-XXX-000", "DFA TBD 1234", "ダミーの根拠 001"])("『%s』は警告", (t) => expect(e(t)).toContain("DECOMP_EVIDENCE_WEAK"));
 });

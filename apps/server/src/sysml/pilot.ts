@@ -186,7 +186,7 @@ export function ensurePilot(opts: { cacheDir: string; root: string; log?: (m: st
 async function setup(cache: string, root: string, log: (m: string) => void): Promise<Pilot> {
   const pilot = pilotPaths(cache, root);
   await mkdir(cache, { recursive: true });
-  const lock = `${cache}.lock`;
+  const lock = `${cache}.setup-lock`; // lib.sh の flock 用ファイル（.lock）とは別の名前にする
   await acquire(lock);
   try {
     if (!existsSync(pilot.jar)) await install(pilot, log);

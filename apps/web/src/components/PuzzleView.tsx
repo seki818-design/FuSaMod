@@ -1,5 +1,5 @@
 import { VIEWPOINTS } from "@fusamod/analysis";
-import { focusIssues, puzzleOf, setLayerConsistency, setPuzzleOnlyProblems, useStore } from "../store.js";
+import { focusIssues, highlightElements, puzzleOf, setLayerConsistency, setPuzzleOnlyProblems, useStore } from "../store.js";
 import { STATUS } from "../ui.js";
 
 /** パズルビュー: 要求・構造・振る舞い・安全の 4 視点 × システム階層の整合。色だけでなく、記号と文字でも状態を示す。 */
@@ -30,7 +30,12 @@ export function PuzzleView() {
                       const dim = only && c.status !== "inconsistent" && c.status !== "review";
                       return (
                         <td key={v.key}>
-                          <button className={`pz ${st.cls} ${dim ? "dim" : ""}`} disabled={c.status === "none"} onClick={() => focusIssues(l.key, v.key)}
+                          <button className={`pz ${st.cls} ${dim ? "dim" : ""}`} disabled={c.status === "none"} onClick={() => {
+                              // 該当の要素を、ビュースペースの図でハイライトする(その視点で指摘のある要素は強調)。問題一覧も絞り込む
+                              const withIssue = new Set((s.analysis?.issues ?? []).filter((i) => i.viewpoint === v.key && i.elementId && l.elementIds.includes(i.elementId)).map((i) => i.elementId!));
+                              highlightElements(l.elementIds, [...withIssue], `${l.label}・${v.label}`);
+                              focusIssues(l.key, v.key);
+                            }}
                             aria-label={`${l.label}・${v.label}: ${st.label}、件数 ${c.count}、エラー ${c.errors}、警告 ${c.warnings}`}>
                             <b>{c.status === "none" ? "—" : c.count}</b>
                             <small>{st.icon} {st.label}{c.errors + c.warnings > 0 ? `(${c.errors + c.warnings})` : ""}</small>

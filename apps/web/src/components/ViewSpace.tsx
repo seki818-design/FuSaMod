@@ -1,5 +1,5 @@
 import { levelLabel } from "@fusamod/analysis";
-import { openTab, sendChat, setMainView, useStore } from "../store.js";
+import { openTab, sendChat, setMainView, toggleViewMax, useStore } from "../store.js";
 import { StructureDiagram } from "./StructureDiagram.js";
 import { TextEditor } from "./TextEditor.js";
 import { AsilBadge } from "../ui.js";
@@ -38,14 +38,17 @@ function SelectedPanel() {
 
 export function ViewSpace() {
   const view = useStore((s) => s.mainView);
+  const max = useStore((s) => s.viewMax);
   return (
     <section className="panel" aria-label="ビュースペース">
       <header>
         <h2>ビュースペース</h2>
+        <div className="grow" />
         <div role="tablist" aria-label="表示の切り替え" className="row">
           <button role="tab" className="btn small" aria-selected={view === "diagram"} onClick={() => setMainView("diagram")} style={view === "diagram" ? { borderColor: "var(--accent)" } : {}}>図</button>
           <button role="tab" className="btn small" aria-selected={view === "text"} onClick={() => setMainView("text")} style={view === "text" ? { borderColor: "var(--accent)" } : {}}>テキスト</button>
         </div>
+        <button className="btn small" onClick={toggleViewMax} aria-pressed={max} aria-label={max ? "ビュースペースを元の大きさに戻す" : "ビュースペースを全画面にする"} title={max ? "元に戻す(Esc)" : "全画面"}>{max ? "⤡ 元に戻す" : "⤢ 全画面"}</button>
       </header>
       <div className="body" style={{ display: "flex", gap: 8, padding: 8 }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>{view === "diagram" ? <StructureDiagram /> : <TextEditor />}</div>

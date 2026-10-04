@@ -54,6 +54,16 @@ export interface State {
   puzzleOnlyProblems: boolean;
   layerConsistency: boolean;
   analysisMax: boolean;
+  /** ビュースペースを全画面にする(エクスプローラ・分析・AI・パズルビューを隠す) */
+  viewMax: boolean;
+  /** パズルビューのセルから指定された、図でハイライトする要素 */
+  highlight?: { ids: string[]; emphasis: string[]; label: string };
+  /** 図の階層指定: all=入れ子の全体、それ以外=その階層の要素だけを並べて表示 */
+  diagramLevel: "all" | "system" | "subsystem" | "component" | "detail";
+  /** true なら、選択中の要素を根として、その内部だけを表示する */
+  diagramFocus: boolean;
+  /** 図の配置の手動調整(要素 ID → 自動配置からのずれ) */
+  layoutOffsets: Record<string, { dx: number; dy: number }>;
   theme: "dark" | "light";
 }
 
@@ -78,6 +88,10 @@ const initial: State = {
   puzzleOnlyProblems: false,
   layerConsistency: true,
   analysisMax: false,
+  viewMax: false,
+  diagramLevel: "all",
+  diagramFocus: false,
+  layoutOffsets: {},
   theme: "dark",
 };
 
@@ -185,7 +199,7 @@ export async function selectProject(id: string) {
   set((s) => ({ busy: { ...s.busy, loading: true }, projectId: id }));
   try {
     const v = await api.get(id);
-    set({ chat: [], proposals: [], history: [], selectedElementId: undefined });
+    set({ chat: [], proposals: [], history: [], selectedElementId: undefined, highlight: undefined, layoutOffsets: loadOffsets(id) });
     applyView(v);
     const first = v.analysis ? Object.keys(v.analysis.fmea)[0] : undefined;
     set({ selectedElementId: first });
@@ -401,7 +415,53 @@ export const select = (elementId: string | undefined) => set({ selectedElementId
 export const openTab = (tab: TabKey) => set({ tab });
 export const setMainView = (mainView: MainView) => set({ mainView });
 export const setPuzzleOnlyProblems = (v: boolean) => set({ puzzleOnlyProblems: v });
-export const toggleAnalysisMax = () => set((s) => ({ analysisMax: !s.analysisMax }));
+export const toggleAnalysisMax = () => set((s) => ({ analysisMax: !s.analysisMax, viewMax: false }));
+export const toggleViewMax = () => set((s) => ({ viewMax: !s.viewMax, analysisMax: false }));
+export const exitViewMax = () => set({ viewMax: false });
+export const setDiagramLevel = (diagramLevel: State["diagramLevel"]) => set({ diagramLevel });
+export const setDiagramFocus = (diagramFocus: boolean) => set({ diagramFocus });
+
+/** パズルビューのセルから、図に該当の要素をハイライトする(図に切り替え、階層指定・フォーカスは解除する)。 */
+export function highlightElements(ids: string[], emphasis: string[], label: string) {
+  set({ highlight: { ids, emphasis, label }, mainView: "diagram", diagramLevel: "all", diagramFocus: false });
+}
+export const clearHighlight = () => set({ highlight: undefined });
+
+// ----- 図の配置(手動調整)。プロジェクトごとに、このブラウザに保存する(モデルには入れない) -----
+const layoutKey = (id: string) => `fusamod.layout.${id}`;
+function loadOffsets(id: string): State["layoutOffsets"] {
+  try {
+    const raw = localStorage.getItem(layoutKey(id));
+    const v = raw ? (JSON.parse(raw) as unknown) : {};
+    return v && typeof v === "object" ? (v as State["layoutOffsets"]) : {};
+  } catch {
+    return {};
+  }
+}
+function saveOffsets(id: string | undefined, o: State["layoutOffsets"]) {
+  if (!id) return;
+  try {
+    if (Object.keys(o).length === 0) localStorage.removeItem(layoutKey(id));
+    else localStorage.setItem(layoutKey(id), JSON.stringify(o));
+  } catch {
+    /* 保存できない環境では、このセッションのみ */
+  }
+}
+export function moveBoxes(changes: Record<string, { dx: number; dy: number }>) {
+  const next = { ...state.layoutOffsets };
+  for (const [id, d] of Object.entries(changes)) {
+    const cur = next[id] ?? { dx: 0, dy: 0 };
+    const v = { dx: Math.round(cur.dx + d.dx), dy: Math.round(cur.dy + d.dy) };
+    if (v.dx === 0 && v.dy === 0) delete next[id];
+    else next[id] = v;
+  }
+  set({ layoutOffsets: next });
+  saveOffsets(state.projectId, next);
+}
+export function resetLayout() {
+  set({ layoutOffsets: {} });
+  saveOffsets(state.projectId, {});
+}
 export const setLayerConsistency = (v: boolean) => set({ layerConsistency: v });
 export const focusIssues = (level?: string, viewpoint?: string) => set({ tab: "issues", focusIssue: { ...(level ? { level } : {}), ...(viewpoint ? { viewpoint } : {}) } });
 export const clearIssueFocus = () => set({ focusIssue: undefined });

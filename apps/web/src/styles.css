@@ -95,6 +95,9 @@ table.grid input[type=text] { width: 100%; min-width: 64px; min-height: 26px; pa
 .svg-muted { fill: var(--muted) !important; }
 .box-el { fill: var(--panel); stroke: var(--border); stroke-width: 1.5; }
 .box-el.sel { stroke: var(--accent); stroke-width: 3; }
+.box-el.group { stroke-dasharray: 6 4; fill: transparent; }
+.box-el.hl { stroke: var(--accent); stroke-width: 3; fill: var(--accent-bg); }
+.box-el.hl-strong { stroke-width: 4; filter: drop-shadow(0 0 6px var(--accent)); }
 .box-el.err { stroke: var(--err); } .box-el.warn { stroke: var(--warn); }
 g[role=button] { cursor: pointer; }
 g[role=button]:focus-visible .box-el { stroke: var(--accent); stroke-width: 3; }
@@ -181,3 +184,7 @@ table.grid input[type=text] { min-width: 52px; }
 /* 縦に長い表を並べる画面: 各ブロックを縮めず、画面全体をスクロールさせる(表が潰れて読めなくなるのを防ぐ) */
 .scroll-stack { overflow: auto; }
 .scroll-stack > * { flex: 0 0 auto; }
+
+/* ビュースペースの全画面 */
+.main.viewmax { grid-template-columns: minmax(0, 1fr); }
+.center.viewmax { grid-template-rows: minmax(0, 1fr); }

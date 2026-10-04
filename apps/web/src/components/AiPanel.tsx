@@ -45,6 +45,9 @@ export function AiPanel() {
   const ready = useStore((s) => s.analysis !== null);
   const sel = useStore((s) => s.selectedElementId);
   const selName = useStore((s) => s.analysis?.net.elements.find((e) => e.id === s.selectedElementId)?.name);
+  const aiMode = useStore((s) => s.health?.ai);
+  const modelOk = useStore((s) => s.modelOk);
+  const sysmlError = useStore((s) => s.sysmlError);
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => end.current?.scrollIntoView?.({ block: "end" }), [chat.length, busy]);
@@ -52,6 +55,22 @@ export function AiPanel() {
   return (
     <section className="panel" aria-label="AI との対話スペース">
       <header><h2>AI との対話スペース</h2><div className="grow" /><span className="badge undet" title="AI の提案は、承認するまでデータに反映されません">承認制</span></header>
+      {!ready && (
+        <div className="banner" role="note">
+          AI を使うには、モデルを解析できている必要があります。{sysmlError ? `(${sysmlError})` : modelOk ? "" : "モデルにエラーがあります。テキストで修正してください。"}
+        </div>
+      )}
+      {ready && aiMode === "rule-based" && (
+        <details className="banner" role="note">
+          <summary>いまの AI は簡易版(ルール)です — 自由な質問・文章生成には Claude への接続が必要です</summary>
+          <p style={{ margin: "6px 0 0" }}>
+            できること: 参照資料の検索(出典つき)、「FMEA を実施して」「ASIL D の分解を教えて」「変更の影響分析」などの決まった依頼。<br />
+            自由な依頼を使うには、サーバーの起動前に環境変数を設定します(PowerShell の例):<br />
+            <code>$env:FUSAMOD_AI_PROVIDER="claude"; $env:ANTHROPIC_API_KEY="取得したキー"</code><br />
+            この設定にすると、モデルと参照資料の抜粋が外部の API に送信されます。
+          </p>
+        </details>
+      )}
       <div className="chat" role="log" aria-live="polite" aria-label="対話の履歴">
         {chat.length === 0 && <div className="muted">質問や依頼を入力してください。例: 「{selName ?? "motor"} の FMEA を実施して」「安全状態は何ですか」(参照資料に根拠がある場合は、出典つきで答えます)</div>}
         {chat.map((m) => (

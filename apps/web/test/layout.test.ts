@@ -3,6 +3,7 @@ import { faultTreeFromNet } from "@fusamod/safety-core";
 import { buildFmeaView } from "@fusamod/safety-core";
 import { contains, layoutNested, overlaps, type NestedNode } from "../src/lib/layout.js";
 import { structureTree } from "../src/lib/structure.js";
+import { applyOffsets } from "../src/components/StructureDiagram.js";
 import { clipToBox, layoutScdl } from "../src/lib/scdl-layout.js";
 import { layoutFaultTree } from "../src/lib/fta-layout.js";
 import { layoutNet } from "../src/lib/net-layout.js";
@@ -126,5 +127,53 @@ describe("ネットビュー", () => {
     expect(Math.max(...col("cause").map((n) => n.x))).toBeLessThan(Math.min(...col("mode").map((n) => n.x)));
     expect(d.edges).toContainEqual({ from: "FM-VCU-1", to: "FM-PT-1" });
     expect(d.edges).toContainEqual({ from: "FM-PT-1", to: "FE-1" });
+  });
+});
+
+describe("手動配置(ずれの適用)", () => {
+  const boxes = [
+    { id: "p", label: "p", lines: [], x: 10, y: 10, w: 200, h: 100, depth: 0, leaf: false },
+    { id: "c", parentId: "p", label: "c", lines: [], x: 20, y: 40, w: 80, h: 40, depth: 1, leaf: true },
+    { id: "q", label: "q", lines: [], x: 300, y: 10, w: 80, h: 40, depth: 0, leaf: true },
+  ];
+  it("親を動かすと子も一緒に動き、無関係な箱は動かない", () => {
+    const r = applyOffsets(boxes, { p: { dx: 30, dy: 5 } });
+    expect(r.find((b) => b.id === "p")).toMatchObject({ x: 40, y: 15 });
+    expect(r.find((b) => b.id === "c")).toMatchObject({ x: 50, y: 45 });
+    expect(r.find((b) => b.id === "q")).toMatchObject({ x: 300, y: 10 });
+  });
+  it("子だけを動かせて、親は動かない。ずれが無ければ自動配置のまま", () => {
+    const r = applyOffsets(boxes, { c: { dx: -5, dy: 0 } });
+    expect(r.find((b) => b.id === "c")?.x).toBe(15);
+    expect(r.find((b) => b.id === "p")?.x).toBe(10);
+    expect(applyOffsets(boxes, {})).toEqual(boxes);
+  });
+});
+
+describe("図の階層指定とフォーカス", () => {
+  const a = analysis();
+  const ids = (nodes: NestedNode[]): string[] => nodes.flatMap((n) => [n.id, ...ids(n.children)]);
+  it("階層を指定すると、その階層の要素だけが並び、親ごとの文脈枠で囲まれる", () => {
+    const tree = structureTree(a, { level: "component" });
+    const all = ids(tree);
+    const elems = all.filter((i) => !i.startsWith("group:"));
+    expect(elems.length).toBeGreaterThan(0);
+    for (const id of elems) expect(a.levelOf[id]).toBe("component");
+    expect(all.some((i) => i.startsWith("group:"))).toBe(true);
+  });
+  it("システム階層は文脈枠なしで、内部の要素数が示される", () => {
+    const tree = structureTree(a, { level: "system" });
+    expect(tree.every((n) => !n.id.startsWith("group:"))).toBe(true);
+    expect(tree[0]!.lines?.some((l) => l.startsWith("内部 "))).toBe(true);
+  });
+  it("フォーカスすると、その要素を根として内部だけが描かれる", () => {
+    const focus = a.net.elements.find((e) => a.levelOf[e.id] === "subsystem")!;
+    const tree = structureTree(a, { focusId: focus.id });
+    expect(tree).toHaveLength(1);
+    expect(tree[0]!.id).toBe(focus.id);
+    expect(ids(tree).length).toBeLessThan(ids(structureTree(a)).length);
+  });
+  it("存在しない要素へのフォーカスは無視される(全体を返す)", () => {
+    expect(ids(structureTree(a, { focusId: "nope" }))).toEqual(ids(structureTree(a)));
   });
 });

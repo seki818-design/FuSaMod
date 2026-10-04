@@ -279,3 +279,62 @@ test("非公式の AP 表は、FMEA 画面で非公式と明示される", async
   await open(page);
   await expect(page.getByText(/AP は 非公式のサンプル表 による値です/)).toBeVisible();
 });
+
+test("ビュースペースを全画面にでき、Esc または「元に戻す」で戻れる", async ({ page }) => {
+  await open(page);
+  await expect(page.getByRole("navigation", { name: "エクスプローラ" })).toBeVisible();
+  await page.getByRole("button", { name: "ビュースペースを全画面にする" }).click();
+  await expect(page.getByRole("navigation", { name: "エクスプローラ" })).toBeHidden();
+  await expect(page.getByRole("region", { name: "分析" })).toBeHidden();
+  await expect(page.getByRole("region", { name: "ビュースペース" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("navigation", { name: "エクスプローラ" })).toBeVisible();
+  await page.getByRole("button", { name: "ビュースペースを全画面にする" }).click();
+  await page.getByRole("button", { name: "ビュースペースを元の大きさに戻す" }).click();
+  await expect(page.getByRole("region", { name: "分析" })).toBeVisible();
+});
+
+test("パズルビューのセルをクリックすると、図の該当要素がハイライトされる。解除できる", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: /^コンポーネント・安全:/ }).click();
+  const banner = page.getByRole("status").filter({ hasText: "ハイライト: コンポーネント・安全" });
+  await expect(banner).toBeVisible();
+  await expect(page.locator("rect.box-el.hl").first()).toBeVisible();
+  await banner.getByRole("button", { name: "解除" }).click();
+  await expect(page.locator("rect.box-el.hl")).toHaveCount(0);
+});
+
+test("図の階層を指定すると、その階層の要素だけが並ぶ。「選択要素の内部のみ」で内部だけを見られる", async ({ page }) => {
+  await open(page);
+  const boxes = page.locator("g[data-box]");
+  const all = await boxes.count();
+  await page.getByLabel("図の階層").selectOption("component");
+  const comp = await boxes.count();
+  expect(comp).toBeGreaterThan(0);
+  expect(comp).toBeLessThan(all + 5);
+  await expect(page.locator("g[data-box]", { hasText: "コンポーネント" }).first()).toBeVisible();
+  await page.getByLabel("図の階層").selectOption("all");
+  await page.getByRole("button", { name: /^powertrain 〔/ }).click({ position: { x: 6, y: 6 } });
+  await page.getByLabel("選択要素の内部のみ").check();
+  expect(await boxes.count()).toBeLessThan(all);
+});
+
+test("箱をドラッグして動かせ、「配置を戻す」で元に戻る。リロード後も保たれる", async ({ page }) => {
+  await open(page);
+  const g = page.locator("g[data-box]").filter({ hasText: "safetyMonitor" }).first();
+  const rect = g.locator("rect").first();
+  const before = await rect.boundingBox();
+  await g.hover();
+  await page.mouse.down();
+  await page.mouse.move(before!.x + 60, before!.y + 60, { steps: 6 });
+  await page.mouse.up();
+  const after = await g.locator("rect").first().boundingBox();
+  expect(Math.abs(after!.x - before!.x) + Math.abs(after!.y - before!.y)).toBeGreaterThan(20);
+  await page.reload();
+  await page.waitForSelector("svg[aria-label='構造図']");
+  const kept = await page.locator("g[data-box]").filter({ hasText: "safetyMonitor" }).first().locator("rect").first().boundingBox();
+  expect(Math.abs(kept!.x - before!.x) + Math.abs(kept!.y - before!.y)).toBeGreaterThan(20);
+  await page.getByRole("button", { name: "配置を戻す" }).click();
+  const reset = await page.locator("g[data-box]").filter({ hasText: "safetyMonitor" }).first().locator("rect").first().boundingBox();
+  expect(Math.abs(reset!.x - before!.x)).toBeLessThan(3);
+});

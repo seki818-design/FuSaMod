@@ -1,0 +1,6 @@
+# 改行コードを LF にそろえる（Windows の CRLF のままだと、解析時の文字位置が画面のテキストとずれ、図からの編集ができなくなる）
+*.sysml text eol=lf
+*.kerml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.sh text eol=lf

@@ -1,6 +1,6 @@
 // E2E 用: デモプロジェクトを一時ディレクトリにコピーして、サーバーを起動する(Java 無しでも動くスナップショット方式)。
 import { spawn } from "node:child_process";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
 const dir = mkdtempSync(join(tmpdir(), "fusamod-e2e-"));
 cpSync(join(repo, "projects/ev-powertrain"), join(dir, "ev-powertrain"), { recursive: true });
+// Windows の git checkout（改行が CRLF）を模す: 保存済みのグラフ（LF の文字位置）と、テキストの改行が違っていても、図からの編集ができること
+if (process.env.E2E_CRLF) {
+  const f = join(dir, "ev-powertrain/model.sysml");
+  writeFileSync(f, readFileSync(f, "utf8").replace(/\r?\n/g, "\r\n"));
+}
 const child = spawn("pnpm", ["--filter", "@fusamod/server", "exec", "tsx", "src/main.ts"], {
   cwd: repo,
   stdio: "inherit",

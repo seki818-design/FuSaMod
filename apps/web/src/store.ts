@@ -40,6 +40,8 @@ export interface State {
   diagnostics: Diagnostic[];
   modelOk: boolean;
   sysmlError?: string;
+  /** 実際に使われている SysML の解析方式（Java が途中で使えなくなると、snapshot に切り替わる） */
+  sysmlMode?: "java" | "snapshot";
   analysis: ProjectAnalysis | null;
   selectedElementId?: string;
   mainView: MainView;
@@ -173,6 +175,7 @@ function applyView(v: ProjectView, keepDrafts = false) {
       graphModel: v.graph ? draftModel : keepDrafts ? s.graphModel : null,
       diagnostics: v.diagnostics,
       modelOk: v.modelOk,
+      sysmlMode: v.sysmlMode,
       ...(v.sysmlError ? { sysmlError: v.sysmlError } : { sysmlError: undefined as unknown as string }),
       ...recompute(graph, draftSafety),
     };
@@ -279,6 +282,7 @@ export async function analyzeModelNow() {
     set((s) => ({
       diagnostics: v.diagnostics,
       modelOk: v.modelOk,
+      sysmlMode: v.sysmlMode,
       sysmlError: v.sysmlError as string,
       graph: v.graph ?? (v.modelOk ? s.graph : null),
       graphModel: v.graph ? sent : v.modelOk ? s.graphModel : null,
@@ -311,7 +315,7 @@ export function replaceSafety(next: SafetyData) {
 /** 図から編集できない理由（編集できるなら undefined）。 */
 export function editBlockReason(s: State, id: string | undefined): string | undefined {
   if (s.me?.role === "viewer") return "読み取り専用の利用者は編集できません";
-  if (s.health && s.health.sysml !== "java") return "Java(公式実装)が使えないため、モデルを編集できません";
+  if ((s.sysmlMode ?? s.health?.sysml) !== "java") return "Java(公式実装)が使えていないため、モデルを編集できません（Java 21 を入れて、サーバーを起動し直してください）";
   if (!s.graph || s.graphModel === null) return "モデルを解析できていないため、図から編集できません。テキストで修正してください";
   if (s.draftModel !== s.graphModel || s.busy.analyzing) return "解析中です。終わってからもう一度操作してください";
   if (id === undefined) return undefined;
@@ -322,6 +326,8 @@ export function editBlockReason(s: State, id: string | undefined): string | unde
 function commitEdit(r: EditResult, after?: { select?: string }) {
   if (!r.ok) {
     toast("error", r.reason);
+    // 画面のテキストと解析結果の文字位置が合わないときは、解析をやり直す（次の操作から使える）
+    if (r.reason.includes("変更されています")) void analyzeModelNow();
     return false;
   }
   clearTimeout(analyzeTimer);

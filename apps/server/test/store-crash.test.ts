@@ -145,3 +145,23 @@ describe("回復の通知と壊れた提案ファイル", () => {
     expect((await s.readAudit("p1", 50)).some((e) => e.action === "proposals.corrupt")).toBe(true);
   });
 });
+
+describe("改行コード（Windows の CRLF）", () => {
+  it("CRLF のモデルは LF にそろえて読み込まれ、保存済みのグラフ（LF の文字位置）と食い違わない", async () => {
+    const root = mkdtempSync(join(tmpdir(), "fusamod-crlf-"));
+    try {
+      const store = new ProjectStore(root);
+      await store.create("crlf", "package P {\n    part a;\n}\n", "tester");
+      const file = join(root, "crlf", "model.sysml");
+      writeFileSync(file, "package P {\r\n    part a;\r\n}\r\n"); // Windows の git checkout を模す
+      const p = await store.read("crlf");
+      expect(p.model).toBe("package P {\n    part a;\n}\n");
+      expect(p.notice).toBeUndefined(); // 改行コードの違いだけでは「履歴と一致しない」警告を出さない
+      const saved = await store.saveModel("crlf", "package P {\r\n    part b;\r\n}\r\n", "tester", "保存", p.revision);
+      expect(saved.revision).toBeGreaterThan(p.revision);
+      expect((await store.read("crlf")).model).toBe("package P {\n    part b;\n}\n");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

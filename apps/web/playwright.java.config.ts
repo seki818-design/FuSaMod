@@ -24,6 +24,6 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 60_000,
-    env: { E2E_PORT: String(PORT), E2E_SYSML: "java" },
+    env: { E2E_PORT: String(PORT), E2E_SYSML: "java", E2E_CRLF: "1" },
   },
 });

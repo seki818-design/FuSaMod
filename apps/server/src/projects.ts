@@ -8,6 +8,9 @@ export const PROJECT_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 /** Windows の予約名(ディレクトリ名にすると問題を起こす)と、本ツールが内部で使う名前 */
 const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/;
 
+/** 改行は LF にそろえる（Windows の CRLF のままだと、解析時の文字位置が画面のテキストとずれ、図からの編集ができなくなる） */
+const lf = (t: string) => t.replace(/\r\n?/g, "\n");
+
 export class HttpError extends Error {
   constructor(readonly status: number, message: string, readonly details?: unknown) {
     super(message);
@@ -158,12 +161,15 @@ export class ProjectStore {
     let notice: string | undefined;
     let model = await readFile(join(d, "model.sysml"), "utf8");
     let safetyText = (await this.exists(join(d, "safety.json"))) ? await readFile(join(d, "safety.json"), "utf8") : undefined;
-    if (meta && (meta.modelSha256 !== sha(model) || (meta.safetySha256 !== undefined && safetyText !== undefined && meta.safetySha256 !== sha(safetyText)))) {
+    // 改行コードの違い（Windows の CRLF）だけなら、書き換えとは見なさない
+    const same = (stored: string | undefined, text: string) => stored === sha(text) || stored === sha(lf(text));
+    if (meta && (!same(meta.modelSha256, model) || (meta.safetySha256 !== undefined && safetyText !== undefined && !same(meta.safetySha256, safetyText)))) {
       src = join(d, ".history", String(meta.revision).padStart(6, "0"));
       notice = `現在のファイルが、確定済みの履歴(リビジョン ${meta.revision})と一致しないため、履歴の内容を読み込みました。ファイルを直接書き換えた場合、その変更は反映されません`;
       model = await readFile(join(src, "model.sysml"), "utf8");
       safetyText = await readFile(join(src, "safety.json"), "utf8");
     }
+    model = lf(model);
     let safety = emptySafetyData();
     if (safetyText !== undefined) {
       let raw: unknown;
@@ -190,7 +196,8 @@ export class ProjectStore {
     return { model, safety, revision: meta?.revision ?? 0, ...(graph ? { graph } : {}), ...(notice ? { notice } : {}) };
   }
 
-  async create(id: string, model: string, actor: string): Promise<void> {
+  async create(id: string, rawModel: string, actor: string): Promise<void> {
+    const model = lf(rawModel);
     const d = this.dir(id);
     if (await this.exists(d)) throw new HttpError(409, `プロジェクトは既に存在します: ${id}`);
     if (Buffer.byteLength(model) > MAX_MODEL_BYTES) throw new HttpError(413, "モデルが大きすぎます");
@@ -272,7 +279,8 @@ export class ProjectStore {
       throw new HttpError(409, `他の更新と競合しました(現在のリビジョン ${current}、指定 ${base})。再読み込みしてください`, { currentRevision: current });
   }
 
-  async saveModel(id: string, text: string, actor: string, message: string, baseRevision: number | undefined, graph?: ElementGraph): Promise<RevisionMeta> {
+  async saveModel(id: string, rawText: string, actor: string, message: string, baseRevision: number | undefined, graph?: ElementGraph): Promise<RevisionMeta> {
+    const text = lf(rawText);
     if (Buffer.byteLength(text) > MAX_MODEL_BYTES) throw new HttpError(413, "モデルが大きすぎます");
     return this.withLock(id, async () => {
       const cur = await this.read(id); // 存在確認と、確定済みの内容の取得
@@ -452,7 +460,7 @@ export class ProjectStore {
     for (const p of await this.list()) {
       try {
         const d = this.dir(p.id);
-        const model = await readFile(join(d, "model.sysml"), "utf8");
+        const model = lf(await readFile(join(d, "model.sysml"), "utf8"));
         if (sha(model) !== hash) continue;
         const g = JSON.parse(await readFile(join(d, "model.graph.json"), "utf8")) as ElementGraph & { _modelSha256?: string };
         if (g._modelSha256 === undefined || g._modelSha256 === hash) return g;

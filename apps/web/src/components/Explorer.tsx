@@ -14,7 +14,10 @@ export function Explorer() {
     return (
       <nav className="panel" aria-label="エクスプローラ">
         <header><h2>エクスプローラ</h2></header>
-        <div className="empty">{server ? "モデルにエラーがあります。テキストで修正してください。" : "プロジェクトを選んでください"}</div>
+        <div className="body">
+          <ElementActions compact />
+          <div className="empty">{server ? "モデルを解析できていません。理由は「ビュースペース」の「テキスト」で確認できます。" : "プロジェクトを選んでください"}</div>
+        </div>
       </nav>
     );
 

@@ -64,7 +64,7 @@ export function StructureDiagram() {
     const o = drag && drag.moved ? { ...offsets, [drag.id]: { dx: (offsets[drag.id]?.dx ?? 0) + drag.dx, dy: (offsets[drag.id]?.dy ?? 0) + drag.dy } } : offsets;
     return applyOffsets(base.boxes, o);
   }, [base, offsets, drag]);
-  if (!a || !base || !live) return <div className="empty">図を表示できません(モデルにエラーがあるか、プロジェクトが選ばれていません)</div>;
+  if (!a || !base || !live) return <EmptyDiagram />;
 
   const minX = Math.min(0, ...live.map((b) => b.x));
   const minY = Math.min(0, ...live.map((b) => b.y));
@@ -196,6 +196,21 @@ export function StructureDiagram() {
             </foreignObject>
           )}
         </svg>
+      </div>
+    </div>
+  );
+}
+
+/** 解析できていないときの表示: 原因と、編集ボタン（押せない理由つき）。 */
+function EmptyDiagram() {
+  const err = useStore((s) => s.sysmlError);
+  const diag = useStore((s) => s.diagnostics.find((d) => d.severity === "error")?.message);
+  return (
+    <div className="stack">
+      <ElementActions />
+      <div className="empty" role="status">
+        図を表示できません。{err ? `原因: ${err}` : diag ? `モデルのエラー: ${diag}` : "モデルにエラーがあるか、解析できていません。"}
+        <br />「テキスト」で内容を確認してください。Java 21 が無い環境では、同梱のデモ以外の新しいモデルは解析できません。
       </div>
     </div>
   );

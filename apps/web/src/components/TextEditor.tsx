@@ -8,7 +8,7 @@ export function TextEditor() {
   const ok = useStore((s) => s.modelOk);
   const sysmlError = useStore((s) => s.sysmlError);
   const analyzing = useStore((s) => s.busy.analyzing);
-  const mode = useStore((s) => s.health?.sysml);
+  const mode = useStore((s) => s.sysmlMode ?? s.health?.sysml);
   const ta = useRef<HTMLTextAreaElement>(null);
   const gutter = useRef<HTMLDivElement>(null);
   const lines = text.split("\n").length;

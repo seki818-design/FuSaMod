@@ -39,6 +39,16 @@ test("図から部品を追加し、名前を直接書き換え、削除でき�
   await expect(page.getByRole("button", { name: /^winding 〔/ })).toHaveCount(0, { timeout: 60_000 });
 });
 
+test("何も選ばずに「＋ 部品」で最上位に追加できる（CRLF のモデルでも、保存済みのグラフと位置が合う）", async ({ page }) => {
+  await open(page);
+  await page.getByRole("button", { name: "＋ 部品" }).first().click();
+  await page.getByLabel("最上位に追加する部品の名前").fill("eps");
+  await page.getByRole("button", { name: "追加", exact: true }).click();
+  await analyzed(page);
+  await expect(page.getByRole("button", { name: /^eps 〔/ })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText("モデルのテキストが変更されています")).toHaveCount(0);
+});
+
 test("型から展開された要素は図から編集できず、理由が出る", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: /^vehicle 〔/ }).click({ position: { x: 6, y: 6 } });

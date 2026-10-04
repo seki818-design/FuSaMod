@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function open(page: Page) {
-  await page.goto("/");
+  await page.goto("/?project=ev-powertrain");
   await page.waitForSelector("svg[aria-label='構造図']");
   // 公式実装（Java）で解析できていること（初回は起動に時間がかかる）
   await expect(page.getByText("SysML: 公式実装")).toBeVisible({ timeout: 60_000 }).catch(() => undefined);

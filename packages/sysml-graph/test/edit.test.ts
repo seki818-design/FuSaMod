@@ -103,3 +103,79 @@ describe("名前変更に伴う ID の付け替え", () => {
     expect(r).toEqual({ a: "X::Engine", b: ["X::Engine::rotor", "X::MotorBike"], levelOverrides: { "X::Engine": "detail" }, aiChanges: [{ id: "X::Motor" }] });
   });
 });
+
+import { addMessage, addSuccession, moveMessage, removeMessage, removeSuccession, renameMessage } from "../src/index.js";
+
+describe("アクティビティ図・シーケンス図の編集(公式実装が出力した位置で確認)", () => {
+  const { text, graph } = load("behavior-diagrams");
+  const B = "BehaviorDiagrams";
+  it("公式実装が、後続関係（開始・終了を含む）とメッセージ（送り手・受け手・型）を出力している", () => {
+    expect(graph.successions!.map((s) => `${s.source.split("::").pop()}>${s.target.split("::").pop()}`)).toEqual(["start>readPedal", "readPedal>computeTorque", "computeTorque>outputTorque", "outputTorque>done"]);
+    expect(graph.messages!.map((m) => `${m.name}:${m.from.split("::").pop()}>${m.to.split("::").pop()}:${m.payload ?? ""}`)).toEqual(["pedalPos:driver>vcu:Real", "torqueCmd:vcu>inverter:Real", "ack:inverter>vcu:"]);
+  });
+  it("アクションを追加し、後続関係をつなぐ（first … then …）。重複・自己ループ・不正な向きは拒否", () => {
+    const r1 = addChild(text, graph, `${B}::Accelerate`, "action", "limitTorque");
+    expect(r1.ok && r1.text).toContain("action limitTorque;");
+    const r2 = addSuccession(text, graph, `${B}::Accelerate`, `${B}::Accelerate::readPedal`, `${B}::Accelerate::outputTorque`);
+    expect(r2.ok && r2.text).toContain("first readPedal then outputTorque;");
+    expect(addSuccession(text, graph, `${B}::Accelerate`, `${B}::Accelerate::readPedal`, `${B}::Accelerate::computeTorque`)).toMatchObject({ ok: false }); // 既にある
+    expect(addSuccession(text, graph, `${B}::Accelerate`, `${B}::Accelerate::readPedal`, `${B}::Accelerate::readPedal`)).toMatchObject({ ok: false });
+    expect(addSuccession(text, graph, `${B}::Accelerate`, "done", `${B}::Accelerate::readPedal`)).toMatchObject({ ok: false });
+    expect(addSuccession(text, graph, `${B}::Accelerate`, `${B}::Accelerate::readPedal`, "start")).toMatchObject({ ok: false });
+    const r3 = addSuccession(text, graph, `${B}::Accelerate`, "start", `${B}::Accelerate::outputTorque`);
+    expect(r3.ok && r3.text).toContain("first start then outputTorque;");
+  });
+  it("後続関係を削除すると、その行だけが消える", () => {
+    const r = removeSuccession(text, graph, `${B}::Accelerate`, `${B}::Accelerate::readPedal`, `${B}::Accelerate::computeTorque`);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.text).not.toContain("first readPedal then computeTorque");
+      expect(r.text).toContain("first start then readPedal");
+      expect(r.text.split("\n").length).toBe(text.split("\n").length - 1);
+    }
+  });
+  it("メッセージを末尾に、または指定したメッセージの直後に追加する（時間順）", () => {
+    const end = addMessage(text, graph, `${B}::system`, "reset", `${B}::system::vcu`, `${B}::system::driver`);
+    expect(end.ok && end.text).toMatch(/message ack from inverter to vcu;\n\s+message reset from vcu to driver;/);
+    const mid = addMessage(text, graph, `${B}::system`, "check", `${B}::system::vcu`, `${B}::system::inverter`, `${B}::system::pedalPos`);
+    expect(mid.ok && mid.text).toMatch(/message pedalPos of Real from driver to vcu;\n\s+message check from vcu to inverter;\n\s+message torqueCmd/);
+    expect(addMessage(text, graph, `${B}::system`, "ack", `${B}::system::vcu`, `${B}::system::driver`)).toMatchObject({ ok: false }); // 同名
+    expect(addMessage(text, graph, `${B}::system`, "x", `${B}::system::nope`, `${B}::system::vcu`)).toMatchObject({ ok: false });
+  });
+  it("メッセージの名前変更・削除・順序の入れ替え", () => {
+    const ren = renameMessage(text, graph, `${B}::system::ack`, "ackBack");
+    expect(ren.ok && ren.text).toContain("message ackBack from inverter to vcu;");
+    const del = removeMessage(text, graph, `${B}::system::torqueCmd`);
+    expect(del.ok && del.text).not.toContain("torqueCmd");
+    const up = moveMessage(text, graph, `${B}::system::torqueCmd`, -1);
+    expect(up.ok).toBe(true);
+    if (up.ok) expect(up.text.indexOf("message torqueCmd")).toBeLessThan(up.text.indexOf("message pedalPos"));
+    expect(moveMessage(text, graph, `${B}::system::pedalPos`, -1)).toMatchObject({ ok: false });
+    expect(moveMessage(text, graph, `${B}::system::ack`, 1)).toMatchObject({ ok: false });
+  });
+  it("古い位置（テキストが変わった後）では、書き換えない", () => {
+    expect(removeMessage(`// x\n${text}`, graph, `${B}::system::ack`)).toMatchObject({ ok: false });
+    expect(renameMessage(`// x\n${text}`, graph, `${B}::system::ack`, "y")).toMatchObject({ ok: false });
+  });
+});
+
+describe("削除に伴う、メッセージ・後続関係の整理", () => {
+  const { text, graph } = load("behavior-diagrams");
+  const B = "BehaviorDiagrams";
+  it("部品を削除すると、その部品を送り手・受け手とするメッセージも消える（参照エラーを残さない）", () => {
+    const r = removeElement(text, graph, `${B}::system::inverter`);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.text).not.toContain("inverter");
+      expect(r.text).toContain("message pedalPos");
+    }
+  });
+  it("アクションを削除すると、それにつながる矢印も消える", () => {
+    const r = removeElement(text, graph, `${B}::Accelerate::computeTorque`);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.text).not.toContain("computeTorque");
+      expect(r.text).toContain("first start then readPedal");
+    }
+  });
+});

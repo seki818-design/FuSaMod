@@ -68,10 +68,29 @@ export interface GraphPerform {
   performed: string | null;
 }
 
+/** `first a then b;` — アクティビティ図の矢印。source / target は完全修飾名、開始・終了は "start" / "done"。 */
+export interface GraphSuccession {
+  source: string;
+  target: string;
+  /** 所有者（action def や part）の完全修飾名 */
+  owner: string | null;
+  range?: [number, number];
+}
+
+/** `message name from a to b;` — シーケンス図のメッセージ。from / to は送り手・受け手（特徴）の完全修飾名。宣言順が時間順。 */
+export interface GraphMessage extends GraphElement {
+  from: string;
+  to: string;
+  /** 運ぶ内容の型名（`of Real`） */
+  payload?: string;
+}
+
 export interface ElementGraph {
   elements: GraphElement[];
   dependencies: GraphDependency[];
   metadata: GraphMetadata[];
   satisfies: GraphSatisfy[];
   performs?: GraphPerform[];
+  successions?: GraphSuccession[];
+  messages?: GraphMessage[];
 }

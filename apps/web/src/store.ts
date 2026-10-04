@@ -4,7 +4,7 @@ import { addChild, editability, removeElement, renameElement, remapIds, type Edi
 import { api, ApiError, download, setToken, type ChatResult, type Citation, type Diagnostic, type Proposal, type ProjectView, type RevisionMeta } from "./api.js";
 
 export type TabKey = "fmea" | "net" | "fta" | "hara" | "concept" | "scdl" | "trace" | "issues" | "history" | "data";
-export type MainView = "diagram" | "text";
+export type MainView = "diagram" | "activity" | "sequence" | "text";
 
 export interface Toast {
   id: number;
@@ -348,6 +348,17 @@ export function addElement(parentId: string | undefined, kind: NewKind, name: st
   }
   const r = addChild(state.draftModel, state.graph!, parentId, kind, name);
   return commitEdit(r, r.ok && r.createdQn && kind === "part" ? { select: r.createdQn } : undefined);
+}
+
+/** 図からの編集の共通入口: containerQn が編集できることを確かめて、関数でテキストを書き換える。 */
+export function editModelWith(containerQn: string | undefined, fn: (text: string, graph: ElementGraph) => EditResult): boolean {
+  if (denyReadOnly()) return false;
+  const why = editBlockReason(state, containerQn);
+  if (why) {
+    toast("error", why);
+    return false;
+  }
+  return commitEdit(fn(state.draftModel, state.graph!));
 }
 
 export function renameElementTo(id: string, name: string, updateReferences = true): boolean {

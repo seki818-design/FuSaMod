@@ -177,3 +177,57 @@ describe("図の階層指定とフォーカス", () => {
     expect(ids(structureTree(a, { focusId: "nope" }))).toEqual(ids(structureTree(a)));
   });
 });
+
+import { layoutActivity } from "../src/lib/activity-layout.js";
+import { layoutSequence } from "../src/lib/sequence-layout.js";
+
+describe("アクティビティ図のレイアウト", () => {
+  const nodes = [
+    { id: "start", label: "開始", kind: "start" as const },
+    { id: "a", label: "a", kind: "action" as const },
+    { id: "b", label: "b", kind: "action" as const },
+    { id: "c", label: "c", kind: "action" as const },
+    { id: "done", label: "終了", kind: "done" as const },
+  ];
+  it("開始 → a → b → 終了 が左から右へ並び、分岐は同じ段の別の行になる", () => {
+    const r = layoutActivity(nodes, [{ from: "start", to: "a" }, { from: "a", to: "b" }, { from: "a", to: "c" }, { from: "b", to: "done" }, { from: "c", to: "done" }]);
+    const x = (id: string) => r.boxes.find((b) => b.id === id)!.x;
+    expect(x("start")).toBeLessThan(x("a"));
+    expect(x("a")).toBeLessThan(x("b"));
+    expect(x("b")).toBeLessThan(x("done"));
+    expect(r.boxes.find((b) => b.id === "b")!.rank).toBe(r.boxes.find((b) => b.id === "c")!.rank);
+    expect(r.boxes.find((b) => b.id === "b")!.y).not.toBe(r.boxes.find((b) => b.id === "c")!.y);
+    expect(r.lines).toHaveLength(5);
+    expect(r.lines.every((l) => !l.back)).toBe(true);
+  });
+  it("ループ（c → a）は戻る矢印として下を回し、配置は崩れない", () => {
+    const r = layoutActivity(nodes, [{ from: "start", to: "a" }, { from: "a", to: "b" }, { from: "b", to: "c" }, { from: "c", to: "a" }, { from: "c", to: "done" }]);
+    expect(r.lines.find((l) => l.from === "c" && l.to === "a")!.back).toBe(true);
+    const x = (id: string) => r.boxes.find((b) => b.id === id)!.x;
+    expect(x("a")).toBeLessThan(x("b"));
+    expect(x("b")).toBeLessThan(x("c"));
+    expect(Number.isFinite(r.width) && Number.isFinite(r.height)).toBe(true);
+  });
+  it("矢印の無い孤立したアクションも描き、存在しない端を指す矢印は捨てる", () => {
+    const r = layoutActivity(nodes, [{ from: "a", to: "zzz" }]);
+    expect(r.boxes).toHaveLength(5);
+    expect(r.lines).toHaveLength(0);
+  });
+});
+
+describe("シーケンス図のレイアウト", () => {
+  const ll = [{ id: "d", label: "driver" }, { id: "v", label: "vcu" }, { id: "i", label: "inverter" }];
+  it("メッセージは時間順に上から下へ並び、矢印は送り手から受け手へ向かう", () => {
+    const r = layoutSequence(ll, [{ id: "m1", label: "pedal", from: "d", to: "v" }, { id: "m2", label: "cmd", from: "v", to: "i" }, { id: "m3", label: "ack", from: "i", to: "v" }]);
+    expect(r.arrows.map((a) => a.no)).toEqual([1, 2, 3]);
+    expect(r.arrows[0]!.y).toBeLessThan(r.arrows[1]!.y);
+    expect(r.arrows[0]!.x1).toBeLessThan(r.arrows[0]!.x2);
+    expect(r.arrows[2]!.x1).toBeGreaterThan(r.arrows[2]!.x2);
+  });
+  it("自分宛てのメッセージは self になる。未知のライフラインを指すメッセージは描かない。メッセージが無くても高さがある", () => {
+    const r = layoutSequence(ll, [{ id: "m", label: "self", from: "v", to: "v" }, { id: "x", label: "bad", from: "v", to: "nope" }]);
+    expect(r.arrows).toHaveLength(1);
+    expect(r.arrows[0]!.self).toBe(true);
+    expect(layoutSequence(ll, []).height).toBeGreaterThan(100);
+  });
+});

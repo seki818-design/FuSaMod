@@ -20,7 +20,7 @@ test("図から部品を追加し、名前を直接書き換え、削除でき�
   // テキストにも反映されている
   await page.getByRole("tab", { name: "テキスト" }).click();
   await expect(page.getByLabel("SysML v2 のモデル(テキスト)")).toHaveValue(/part coil;/);
-  await page.getByRole("tab", { name: "図" }).click();
+  await page.getByRole("tab", { name: "構造図" }).click();
 
   // 2) 図の中で名前をダブルクリックして書き換える（参照も追従する）
   await page.getByRole("button", { name: /^coil 〔/ }).dblclick({ position: { x: 20, y: 10 } });

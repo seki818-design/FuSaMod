@@ -217,5 +217,7 @@
       "performer": "TypedDefinitions::Car",
       "performed": "TypedDefinitions::Car::go"
     }
-  ]
+  ],
+  "successions": [],
+  "messages": []
 }

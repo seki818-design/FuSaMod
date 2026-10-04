@@ -433,5 +433,7 @@
       "performer": "EvPowertrainDemo::vehicle::powertrain::safetyMonitor",
       "performed": "EvPowertrainDemo::vehicle::'drive vehicle'::'output drive torque'::'monitor torque'"
     }
-  ]
+  ],
+  "successions": [],
+  "messages": []
 }

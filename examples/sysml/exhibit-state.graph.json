@@ -80,5 +80,7 @@
   "dependencies": [],
   "metadata": [],
   "satisfies": [],
-  "performs": []
+  "performs": [],
+  "successions": [],
+  "messages": []
 }

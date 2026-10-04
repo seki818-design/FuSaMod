@@ -988,5 +988,7 @@
       "by": "AllStereotypes::Architecture::SYS"
     }
   ],
-  "performs": []
+  "performs": [],
+  "successions": [],
+  "messages": []
 }

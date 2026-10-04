@@ -11,7 +11,7 @@ export type EditResult =
   | { ok: true; text: string; /** 変更の説明（画面に出す） */ summary: string; /** 追加した要素の ID（完全修飾名） */ createdQn?: string; /** 名前変更で ID（完全修飾名）が変わるときの、(旧 → 新) の接頭辞 */ idChange?: { from: string; to: string } }
   | { ok: false; reason: string };
 
-export type NewKind = "part" | "function";
+export type NewKind = "part" | "function" | "action";
 
 const fail = (reason: string): EditResult => ({ ok: false, reason });
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -146,9 +146,17 @@ export function addChild(text: string, graph: ElementGraph, parentQn: string | u
     parent = chk.el;
   }
   if (childrenOf(graph, parent.qualifiedName).some((e) => e.name === name)) return fail(`同じ名前の要素が既にあります: ${name}`);
-  if (!parent.range) return fail("追加先の位置が分かりません");
+  const stmt = kind === "part" ? `part ${enc};` : kind === "action" ? `action ${enc};` : `perform action ${enc};`;
+  const out = insertStatement(text, parent, stmt);
+  if (out === undefined) return fail("追加先の宣言の形が想定と異なるため、図から追加できません（テキストで編集してください）");
+  const what = kind === "part" ? "部品" : kind === "action" ? "アクション" : "機能";
+  return { ok: true, text: out, createdQn: `${parent.qualifiedName}::${name}`, summary: `${parent.name ?? "最上位"} に${what}「${name}」を追加しました` };
+}
+
+/** parent の本体の末尾に、文を 1 つ追加する。本体が無ければ、; を本体に置き換える。形が想定外なら undefined。 */
+function insertStatement(text: string, parent: GraphElement, stmt: string): string | undefined {
+  if (!parent.range) return undefined;
   const [rs, re] = parent.range;
-  const stmt = kind === "part" ? `part ${enc};` : `perform action ${enc};`;
   const body = bodyOf(text, rs, re);
   const parentIndent = indentAt(text, rs);
   if (body) {
@@ -157,17 +165,13 @@ export function addChild(text: string, graph: ElementGraph, parentQn: string | u
     const indent = sample ? sample[1]! : `${parentIndent}    `;
     const ls = lineStart(text, body.close);
     const closeOnOwnLine = text.slice(ls, body.close).trim() === "";
-    const out = closeOnOwnLine
+    return closeOnOwnLine
       ? `${text.slice(0, ls)}${indent}${stmt}\n${text.slice(ls)}`
       : `${text.slice(0, body.close)}\n${indent}${stmt}\n${parentIndent}${text.slice(body.close)}`;
-    return { ok: true, text: out, createdQn: `${parent.qualifiedName}::${name}`, summary: `${parent.name ?? "最上位"} に ${kind === "part" ? "部品" : "機能"}「${name}」を追加しました` };
   }
-  // 本体が無い（`part x;`）: `;` を本体に置き換える
-  const semi = re - 1;
-  if (text[semi] !== ";") return fail("追加先の宣言の形が想定と異なるため、図から追加できません（テキストで編集してください）");
-  const indent = `${parentIndent}    `;
-  const out = `${text.slice(0, semi)} {\n${indent}${stmt}\n${parentIndent}}${text.slice(re)}`;
-  return { ok: true, text: out, createdQn: `${parent.qualifiedName}::${name}`, summary: `${parent.name ?? "最上位"} に ${kind === "part" ? "部品" : "機能"}「${name}」を追加しました` };
+  const semi = re - 1; // 本体が無い（`part x;`）: `;` を本体に置き換える
+  if (text[semi] !== ";") return undefined;
+  return `${text.slice(0, semi)} {\n${parentIndent}    ${stmt}\n${parentIndent}}${text.slice(re)}`;
 }
 
 // ----- 名前変更 -----
@@ -229,23 +233,21 @@ const lastSegment = (qn: string) => qn.slice(qn.lastIndexOf("::") + 2);
 
 // ----- 削除 -----
 
-/** 要素（とその中身）を削除する。 */
+/** 要素（とその中身）を削除する。その要素を指すメッセージ・後続関係（要素の外にあるもの）も一緒に消す（残すと参照エラーになるため）。 */
 export function removeElement(text: string, graph: ElementGraph, qn: string): EditResult {
   const chk = editability(text, graph, qn);
   if (!chk.ok) return fail(chk.reason);
   if (chk.el.kind === "Package") return fail("パッケージは図から削除できません（テキストで編集してください）");
   const [rs, re] = chk.el.range!;
-  let a = rs;
-  let b = re;
-  // 行を丸ごと使っている宣言は、前の空白と後ろの改行も一緒に消す
-  const ls = lineStart(text, rs);
-  const after = /^[ \t]*\r?\n?/.exec(text.slice(re))![0];
-  if (text.slice(ls, rs).trim() === "" && (after.includes("\n") || re + after.length >= text.length)) {
-    a = ls;
-    b = re + after.length;
-  }
+  const inside = (id: string | null | undefined) => !!id && (id === qn || id.startsWith(`${qn}::`));
+  const dependents: [number, number][] = [
+    ...(graph.messages ?? []).filter((m) => (inside(m.from) || inside(m.to)) && !inside(m.owner) && m.range).map((m) => m.range!),
+    ...(graph.successions ?? []).filter((x) => (inside(x.source) || inside(x.target)) && !inside(x.owner) && x.range).map((x) => x.range!),
+  ].filter(([s0, e0]) => e0 <= text.length && !(s0 >= rs && e0 <= re));
+  let out = text;
+  for (const r of [[rs, re] as [number, number], ...dependents].sort((x, y) => y[0] - x[0])) out = removeRange(out, r);
   const n = graph.elements.filter((e) => e.qualifiedName.startsWith(`${qn}::`)).length;
-  return { ok: true, text: text.slice(0, a) + text.slice(b), summary: `「${chk.el.name ?? qn}」${n > 0 ? `と内部の ${n} 要素` : ""}を削除しました` };
+  return { ok: true, text: out, summary: `「${chk.el.name ?? qn}」${n > 0 ? `と内部の ${n} 要素` : ""}${dependents.length > 0 ? `、関連するメッセージ・矢印 ${dependents.length} 件` : ""}を削除しました` };
 }
 
 // ----- 安全分析データの ID の付け替え -----
@@ -261,4 +263,103 @@ export function remapIds<T>(data: T, from: string, to: string): T {
     return v;
   };
   return walk(data) as T;
+}
+
+// ----- アクティビティ図・シーケンス図の編集 -----
+
+const START = "start";
+const DONE = "done";
+
+/** 範囲 [start, end) の文を削除する（行を丸ごと使っていれば、行ごと）。 */
+function removeRange(text: string, range: [number, number]): string {
+  const [rs, re] = range;
+  const ls = lineStart(text, rs);
+  const after = /^[ \t]*\r?\n?/.exec(text.slice(re))![0];
+  if (text.slice(ls, rs).trim() === "" && (after.includes("\n") || re + after.length >= text.length)) return text.slice(0, ls) + text.slice(re + after.length);
+  return text.slice(0, rs) + text.slice(re);
+}
+
+const localName = (graph: ElementGraph, qn: string) => find(graph, qn)?.name ?? lastSegment(qn);
+const pointName = (graph: ElementGraph, p: string) => (p === START || p === DONE ? p : encodeName(localName(graph, p)) ?? p);
+
+/** アクション間の後続関係（`first a then b;`）を追加する。from は "start" かアクション、to は "done" かアクション（いずれも container の直下）。 */
+export function addSuccession(text: string, graph: ElementGraph, containerQn: string, from: string, to: string): EditResult {
+  const chk = editability(text, graph, containerQn);
+  if (!chk.ok) return fail(chk.reason);
+  const isAction = (qn: string) => graph.elements.some((e) => e.qualifiedName === qn && e.owner === containerQn && e.kind === "ActionUsage");
+  if (from === DONE || to === START) return fail("終了から出る矢印、開始に入る矢印は作れません");
+  if (from !== START && !isAction(from)) return fail("つなぐ元のアクションが見つかりません");
+  if (to !== DONE && !isAction(to)) return fail("つなぐ先のアクションが見つかりません");
+  if (from === to) return fail("同じアクションどうしはつなげません");
+  if ((graph.successions ?? []).some((s) => s.owner === containerQn && s.source === from && s.target === to)) return fail("その矢印は既にあります");
+  const out = insertStatement(text, chk.el, `first ${pointName(graph, from)} then ${pointName(graph, to)};`);
+  if (out === undefined) return fail("追加先の宣言の形が想定と異なるため、図から追加できません（テキストで編集してください）");
+  return { ok: true, text: out, summary: `${from === START ? "開始" : localName(graph, from)} → ${to === DONE ? "終了" : localName(graph, to)} をつなぎました` };
+}
+
+/** 後続関係を削除する。 */
+export function removeSuccession(text: string, graph: ElementGraph, containerQn: string, from: string, to: string): EditResult {
+  const s = (graph.successions ?? []).find((x) => x.owner === containerQn && x.source === from && x.target === to);
+  if (!s?.range) return fail("その矢印の位置が分かりません（テキストで編集してください）");
+  if (s.range[1] > text.length || !text.slice(s.range[0], s.range[1]).startsWith("first")) return fail("モデルのテキストが変更されています。解析が終わってから、もう一度操作してください");
+  return { ok: true, text: removeRange(text, s.range), summary: "矢印を削除しました" };
+}
+
+/** メッセージ（`message name from a to b;`）を追加する。from / to は container の直下の部品。afterQn を指定すると、そのメッセージの直後に入る（時間順）。 */
+export function addMessage(text: string, graph: ElementGraph, containerQn: string, rawName: string, from: string, to: string, afterQn?: string): EditResult {
+  const chk = editability(text, graph, containerQn);
+  if (!chk.ok) return fail(chk.reason);
+  const isPart = (qn: string) => graph.elements.some((e) => e.qualifiedName === qn && e.owner === containerQn && e.kind === "PartUsage");
+  if (!isPart(from) || !isPart(to)) return fail("送り手と受け手は、この要素の直下の部品から選んでください");
+  let enc = "";
+  if (rawName.trim() !== "") {
+    const e = encodeName(rawName);
+    if (!e) return fail("名前が不正です（100 文字まで、改行は使えません）");
+    if ((graph.messages ?? []).some((m) => m.owner === containerQn && m.name === decodeName(e))) return fail(`同じ名前のメッセージが既にあります: ${decodeName(e)}`);
+    enc = `${e} `;
+  }
+  const stmt = `message ${enc}from ${pointName(graph, from)} to ${pointName(graph, to)};`;
+  const after = afterQn ? (graph.messages ?? []).find((m) => m.qualifiedName === afterQn && m.owner === containerQn) : undefined;
+  let out: string | undefined;
+  if (after?.range && after.range[1] <= text.length) {
+    const indent = indentAt(text, after.range[0]);
+    const eol = text.indexOf("\n", after.range[1]);
+    const at = eol < 0 ? text.length : eol;
+    out = `${text.slice(0, at)}\n${indent}${stmt}${text.slice(at)}`;
+  } else out = insertStatement(text, chk.el, stmt);
+  if (out === undefined) return fail("追加先の宣言の形が想定と異なるため、図から追加できません（テキストで編集してください）");
+  return { ok: true, text: out, summary: `メッセージ ${localName(graph, from)} → ${localName(graph, to)} を追加しました` };
+}
+
+/** メッセージを削除する。 */
+export function removeMessage(text: string, graph: ElementGraph, qn: string): EditResult {
+  const m = (graph.messages ?? []).find((x) => x.qualifiedName === qn);
+  if (!m?.range || m.range[1] > text.length || !text.slice(m.range[0], m.range[1]).startsWith("message")) return fail("モデルのテキストが変更されています。解析が終わってから、もう一度操作してください");
+  return { ok: true, text: removeRange(text, m.range), summary: `メッセージ「${m.name ?? ""}」を削除しました` };
+}
+
+/** メッセージの名前を変更する。 */
+export function renameMessage(text: string, graph: ElementGraph, qn: string, rawNew: string): EditResult {
+  const m = (graph.messages ?? []).find((x) => x.qualifiedName === qn);
+  if (!m?.nameRange || m.nameRange[1] > text.length || decodeName(text.slice(m.nameRange[0], m.nameRange[1])) !== (m.name ?? "")) return fail("モデルのテキストが変更されています。解析が終わってから、もう一度操作してください");
+  const enc = encodeName(rawNew);
+  if (!enc) return fail("名前を入力してください（100 文字まで、改行は使えません）");
+  if ((graph.messages ?? []).some((x) => x.owner === m.owner && x.name === decodeName(enc) && x.qualifiedName !== qn)) return fail(`同じ名前のメッセージが既にあります: ${decodeName(enc)}`);
+  return { ok: true, text: text.slice(0, m.nameRange[0]) + enc + text.slice(m.nameRange[1]), summary: `メッセージ名を「${decodeName(enc)}」に変更しました` };
+}
+
+/** メッセージの時間順（テキスト上の並び）を、1 つ前／後ろと入れ替える。 */
+export function moveMessage(text: string, graph: ElementGraph, qn: string, dir: -1 | 1): EditResult {
+  const all = (graph.messages ?? []).filter((m) => m.range);
+  const me = all.find((m) => m.qualifiedName === qn);
+  if (!me?.range) return fail("メッセージが見つかりません");
+  const sibs = all.filter((m) => m.owner === me.owner).sort((a, b) => a.range![0] - b.range![0]);
+  const i = sibs.findIndex((m) => m.qualifiedName === qn);
+  const other = sibs[i + dir];
+  if (!other?.range) return fail(dir < 0 ? "これが先頭です" : "これが末尾です");
+  const [a, b] = me.range[0] < other.range[0] ? [me, other] : [other, me];
+  const [ar, br] = [a.range!, b.range!];
+  if (br[1] > text.length) return fail("モデルのテキストが変更されています。解析が終わってから、もう一度操作してください");
+  const out = `${text.slice(0, ar[0])}${text.slice(br[0], br[1])}${text.slice(ar[1], br[0])}${text.slice(ar[0], ar[1])}${text.slice(br[1])}`;
+  return { ok: true, text: out, summary: "メッセージの順序を入れ替えました" };
 }

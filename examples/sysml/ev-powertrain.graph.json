@@ -226,5 +226,7 @@
       "performer": "'EV Powertrain'::vehicle::powertrain::motor",
       "performed": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'::'generate torque'"
     }
-  ]
+  ],
+  "successions": [],
+  "messages": []
 }

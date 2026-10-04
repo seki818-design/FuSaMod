@@ -1,0 +1,227 @@
+{
+  "elements": [
+    {
+      "kind": "Package",
+      "qualifiedName": "BehaviorDiagrams",
+      "name": "BehaviorDiagrams",
+      "range": [
+        64,
+        651
+      ],
+      "nameRange": [
+        72,
+        88
+      ]
+    },
+    {
+      "kind": "ActionDefinition",
+      "qualifiedName": "BehaviorDiagrams::Accelerate",
+      "name": "Accelerate",
+      "owner": "BehaviorDiagrams",
+      "range": [
+        132,
+        411
+      ],
+      "nameRange": [
+        143,
+        153
+      ],
+      "parameters": []
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "BehaviorDiagrams::Accelerate::readPedal",
+      "name": "readPedal",
+      "owner": "BehaviorDiagrams::Accelerate",
+      "range": [
+        164,
+        181
+      ],
+      "nameRange": [
+        171,
+        180
+      ],
+      "parameters": []
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "BehaviorDiagrams::Accelerate::computeTorque",
+      "name": "computeTorque",
+      "owner": "BehaviorDiagrams::Accelerate",
+      "range": [
+        190,
+        211
+      ],
+      "nameRange": [
+        197,
+        210
+      ],
+      "parameters": []
+    },
+    {
+      "kind": "ActionUsage",
+      "qualifiedName": "BehaviorDiagrams::Accelerate::outputTorque",
+      "name": "outputTorque",
+      "owner": "BehaviorDiagrams::Accelerate",
+      "range": [
+        220,
+        240
+      ],
+      "nameRange": [
+        227,
+        239
+      ],
+      "parameters": []
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "BehaviorDiagrams::system",
+      "name": "system",
+      "owner": "BehaviorDiagrams",
+      "range": [
+        417,
+        649
+      ],
+      "nameRange": [
+        422,
+        428
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "BehaviorDiagrams::system::driver",
+      "name": "driver",
+      "owner": "BehaviorDiagrams::system",
+      "range": [
+        439,
+        451
+      ],
+      "nameRange": [
+        444,
+        450
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "BehaviorDiagrams::system::vcu",
+      "name": "vcu",
+      "owner": "BehaviorDiagrams::system",
+      "range": [
+        460,
+        469
+      ],
+      "nameRange": [
+        465,
+        468
+      ]
+    },
+    {
+      "kind": "PartUsage",
+      "qualifiedName": "BehaviorDiagrams::system::inverter",
+      "name": "inverter",
+      "owner": "BehaviorDiagrams::system",
+      "range": [
+        478,
+        492
+      ],
+      "nameRange": [
+        483,
+        491
+      ]
+    }
+  ],
+  "dependencies": [],
+  "metadata": [],
+  "satisfies": [],
+  "performs": [],
+  "successions": [
+    {
+      "source": "start",
+      "target": "BehaviorDiagrams::Accelerate::readPedal",
+      "owner": "BehaviorDiagrams::Accelerate",
+      "range": [
+        249,
+        276
+      ]
+    },
+    {
+      "source": "BehaviorDiagrams::Accelerate::readPedal",
+      "target": "BehaviorDiagrams::Accelerate::computeTorque",
+      "owner": "BehaviorDiagrams::Accelerate",
+      "range": [
+        285,
+        320
+      ]
+    },
+    {
+      "source": "BehaviorDiagrams::Accelerate::computeTorque",
+      "target": "BehaviorDiagrams::Accelerate::outputTorque",
+      "owner": "BehaviorDiagrams::Accelerate",
+      "range": [
+        329,
+        367
+      ]
+    },
+    {
+      "source": "BehaviorDiagrams::Accelerate::outputTorque",
+      "target": "done",
+      "owner": "BehaviorDiagrams::Accelerate",
+      "range": [
+        376,
+        405
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "kind": "Message",
+      "qualifiedName": "BehaviorDiagrams::system::pedalPos",
+      "name": "pedalPos",
+      "owner": "BehaviorDiagrams::system",
+      "range": [
+        501,
+        545
+      ],
+      "nameRange": [
+        509,
+        517
+      ],
+      "from": "BehaviorDiagrams::system::driver",
+      "to": "BehaviorDiagrams::system::vcu",
+      "payload": "Real"
+    },
+    {
+      "kind": "Message",
+      "qualifiedName": "BehaviorDiagrams::system::torqueCmd",
+      "name": "torqueCmd",
+      "owner": "BehaviorDiagrams::system",
+      "range": [
+        554,
+        601
+      ],
+      "nameRange": [
+        562,
+        571
+      ],
+      "from": "BehaviorDiagrams::system::vcu",
+      "to": "BehaviorDiagrams::system::inverter",
+      "payload": "Real"
+    },
+    {
+      "kind": "Message",
+      "qualifiedName": "BehaviorDiagrams::system::ack",
+      "name": "ack",
+      "owner": "BehaviorDiagrams::system",
+      "range": [
+        610,
+        643
+      ],
+      "nameRange": [
+        618,
+        621
+      ],
+      "from": "BehaviorDiagrams::system::inverter",
+      "to": "BehaviorDiagrams::system::vcu"
+    }
+  ]
+}

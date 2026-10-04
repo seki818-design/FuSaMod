@@ -137,6 +137,14 @@ public class SysmlExtract {
         return params;
     }
 
+    /** 後続関係の端。標準ライブラリの開始・終了は "start" / "done"、それ以外は完全修飾名。 */
+    static String flowPoint(Feature f) {
+        String qn = q(f);
+        if ("Actions::Action::start".equals(qn)) return "start";
+        if ("Actions::Action::done".equals(qn)) return "done";
+        return qn;
+    }
+
     static Map<String, Object> usageNode(Feature f, String kind) {
         Map<String, Object> n = node(f, kind);
         List<String> types = typesOf(f);
@@ -170,10 +178,37 @@ public class SysmlExtract {
         List<Object> metadata = new ArrayList<>();
         List<Object> satisfies = new ArrayList<>();
         List<Object> performs = new ArrayList<>();
+        List<Object> successions = new ArrayList<>();
+        List<Object> messages = new ArrayList<>();
         Map<String, Integer> anon = new HashMap<>();
         TreeIterator<EObject> it = root.eAllContents();
         while (it.hasNext()) {
             EObject o = it.next();
+            if (o instanceof SuccessionAsUsage su) {
+                // アクティビティ図: `first a then b;`（start / done は標準ライブラリの開始・終了）
+                if (su.getSourceFeature() != null && !su.getTargetFeature().isEmpty()) {
+                    Map<String, Object> n = new LinkedHashMap<>();
+                    n.put("source", flowPoint(su.getSourceFeature()));
+                    n.put("target", flowPoint(su.getTargetFeature().get(0)));
+                    n.put("owner", q(su.getOwningNamespace()));
+                    putRange(n, su);
+                    successions.add(n);
+                }
+                continue;
+            }
+            if (o instanceof FlowUsage fu) {
+                // シーケンス図: `message name from a to b;`（送り手・受け手は、両端の事象が指す特徴）
+                List<Element> ends = new ArrayList<>();
+                for (Element ch : fu.getOwnedElement()) if (ch instanceof EventOccurrenceUsage eo && eo.getEventOccurrence() != null) ends.add(eo.getEventOccurrence());
+                if (ends.size() == 2) {
+                    Map<String, Object> n = node(fu, "Message");
+                    n.put("from", q(ends.get(0)));
+                    n.put("to", q(ends.get(1)));
+                    if (!fu.getPayloadType().isEmpty()) n.put("payload", fu.getPayloadType().get(0).getName());
+                    messages.add(n);
+                }
+                continue;
+            }
             if (o instanceof MetadataUsage mu) {
                 Map<String, Object> n = node(mu, "MetadataUsage");
                 // dependency の本体に書いた注釈は、所有者が名前空間ではなく関係(Dependency)になる
@@ -263,6 +298,8 @@ public class SysmlExtract {
         out.put("metadata", metadata);
         out.put("satisfies", satisfies);
         out.put("performs", performs);
+        out.put("successions", successions);
+        out.put("messages", messages);
         return out;
     }
 

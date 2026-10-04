@@ -164,7 +164,7 @@ export function ActivityView() {
             ))}
             {editing && (
               <foreignObject x={editing.x} y={editing.y} width={150} height={28}>
-                <input className="svg-input" ref={(el) => el?.focus()} aria-label="名前の変更（Enter で確定、Esc で取り消し）" value={editing.value} onChange={(e) => setEditing({ ...editing, value: e.target.value })} onFocus={(e) => e.currentTarget.select()}
+                <input className="svg-input" ref={(el) => { el?.focus(); }} aria-label="名前の変更（Enter で確定、Esc で取り消し）" value={editing.value} onChange={(e) => setEditing({ ...editing, value: e.target.value })} onFocus={(e) => e.currentTarget.select()}
                   onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") commitRename(); else if (e.key === "Escape") setEditing(undefined); }} onBlur={commitRename} />
               </foreignObject>
             )}

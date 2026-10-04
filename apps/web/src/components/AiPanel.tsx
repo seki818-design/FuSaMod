@@ -50,7 +50,10 @@ export function AiPanel() {
   const sysmlError = useStore((s) => s.sysmlError);
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => end.current?.scrollIntoView?.({ block: "end" }), [chat.length, busy]);
+  useEffect(() => {
+    // effect は何も返さない（ブラウザの拡張機能などが scrollIntoView の戻り値を変えても、クリーンアップとして呼ばれてエラーにならないように）
+    end.current?.scrollIntoView?.({ block: "end" });
+  }, [chat.length, busy]);
   const submit = () => { if (text.trim()) { void sendChat(text); setText(""); } };
   return (
     <section className="panel" aria-label="AI との対話スペース">

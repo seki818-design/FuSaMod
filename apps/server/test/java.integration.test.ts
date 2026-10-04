@@ -148,3 +148,23 @@ describe.skipIf(!process.env["FUSAMOD_IT"])("標準 JSON の elementId の安定
     expect(list.some((r) => r.payload["@type"] === "MetadataDefinition")).toBe(true); // SCDL の定義が入っている
   }, 600_000);
 });
+
+describe.skipIf(!process.env["FUSAMOD_IT"])("公式実装の用意（Node だけで、取得・展開・コンパイル）", () => {
+  it("空のキャッシュから用意でき、補助クラスと標準ライブラリが揃う（bash・unzip・zstd 不要）", async () => {
+    const { ensurePilot } = await import("../src/sysml/pilot.js");
+    const { existsSync, mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const cache = mkdtempSync(join(tmpdir(), "fusamod-it-pilot-"));
+    try {
+      const root = resolve(DEMO, "../..");
+      const [a, b] = await Promise.all([ensurePilot({ cacheDir: cache, root }), ensurePilot({ cacheDir: cache, root })]); // 同時に呼んでも、準備は 1 回
+      expect(a.jar).toBe(b.jar);
+      expect(existsSync(a.jar)).toBe(true);
+      expect(existsSync(join(a.library, "Kernel Libraries", "Kernel Data Type Library", "ScalarValues.kerml"))).toBe(true);
+      for (const c of ["PilotCheck", "SysmlExtract", "SysmlServer"]) expect(existsSync(join(a.cache, `${c}.class`))).toBe(true);
+    } finally {
+      rmSync(cache, { recursive: true, force: true });
+    }
+  }, 600_000);
+});

@@ -1,7 +1,9 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
-import { resolve } from "node:path";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { REPO_ROOT } from "../config.js";
+import { ensurePilot, JAVA_UTF8 } from "./pilot.js";
 import { SysmlBusyError, SysmlTimeoutError, SysmlUnavailableError, type SysmlResult, type SysmlService } from "./types.js";
 
 interface Pending {
@@ -12,7 +14,7 @@ interface Pending {
 }
 
 export interface JavaServiceOptions {
-  /** 起動コマンド(既定: tools/sysml-check/serve.sh) */
+  /** 起動コマンド（テスト用）。省略すると、公式実装を Node で用意して（取得・展開・コンパイル）、java で直接起動する */
   command?: string;
   args?: string[];
   /** 起動(取得・コンパイル・ライブラリ読み込み)の待ち時間 [ms] */
@@ -45,7 +47,7 @@ export class JavaSysmlService implements SysmlService {
 
   constructor(opts: JavaServiceOptions = {}) {
     this.opts = {
-      command: opts.command ?? resolve(REPO_ROOT, "tools/sysml-check/serve.sh"),
+      command: opts.command ?? "",
       args: opts.args ?? [],
       startTimeoutMs: opts.startTimeoutMs ?? 180_000,
       requestTimeoutMs: opts.requestTimeoutMs ?? 60_000,
@@ -55,10 +57,31 @@ export class JavaSysmlService implements SysmlService {
     };
   }
 
+  /** 起動するコマンド。既定は、公式実装を用意したうえでの java（シェルスクリプトを介さないので、Windows でも動く）。 */
+  private async launchSpec(): Promise<{ command: string; args: string[] }> {
+    if (this.opts.command) return { command: this.opts.command, args: this.opts.args };
+    const cacheDir = this.opts.env["SYSML_PILOT_CACHE"] ?? process.env["SYSML_PILOT_CACHE"] ?? join(homedir(), ".cache/fusamod/sysml-pilot-0.62.0");
+    const p = await ensurePilot({ cacheDir, root: REPO_ROOT, log: this.opts.log });
+    return { command: "java", args: [...JAVA_UTF8, "-Xss4m", "-cp", p.classpath, "SysmlServer", p.library, p.scdl] };
+  }
+
   private start(): Promise<void> {
     if (this.ready) return this.ready;
-    this.ready = new Promise<void>((resolveReady, rejectReady) => {
-      const proc = spawn(this.opts.command, this.opts.args, { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, ...this.opts.env } });
+    const ready = this.launchSpec().then(
+      (spec) => this.spawnServer(spec),
+      (e: unknown) => {
+        throw new SysmlUnavailableError(`SysML サービスを用意できません: ${e instanceof Error ? e.message : String(e)}`);
+      },
+    );
+    this.ready = ready;
+    // 起動失敗時は次のリクエストで再試行できるようにする
+    ready.catch(() => this.reset());
+    return ready;
+  }
+
+  private spawnServer(spec: { command: string; args: string[] }): Promise<void> {
+    return new Promise<void>((resolveReady, rejectReady) => {
+      const proc = spawn(spec.command, spec.args, { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, ...this.opts.env }, windowsHide: true });
       this.proc = proc;
       let isReady = false;
       const startTimer = setTimeout(() => {
@@ -117,9 +140,6 @@ export class JavaSysmlService implements SysmlService {
         }
       });
     });
-    // 起動失敗時は次のリクエストで再試行できるようにする
-    this.ready.catch(() => this.reset());
-    return this.ready;
   }
 
   private kill() {

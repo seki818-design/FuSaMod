@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { REPO_ROOT } from "../config.js";
+import { ensurePilot, JAVA_UTF8, prepareConvertInputs } from "./pilot.js";
 import { stabilizeJsonIds } from "./stable-ids.js";
 import { SysmlTimeoutError, SysmlUnavailableError } from "./types.js";
 
@@ -52,15 +53,18 @@ export async function sweepConvertTemp(maxAgeMs = 10 * 60_000, root: string = de
   }
 }
 
-function run(script: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: number): Promise<{ code: number | null; stderr: string }> {
+function run(command: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: number, cwd?: string): Promise<{ code: number | null; stderr: string }> {
   return new Promise((done, fail) => {
-    // プロセスグループごと止められるように、独立したグループで起動する
-    const proc = spawn(script, args, { stdio: ["ignore", "ignore", "pipe"], env, detached: true });
+    // 子プロセスごと止められるようにする（POSIX: 独立したプロセスグループ、Windows: taskkill /T）
+    const win = process.platform === "win32";
+    const proc = spawn(command, args, { stdio: ["ignore", "ignore", "pipe"], env, detached: !win, windowsHide: true, ...(cwd ? { cwd } : {}) });
     let stderr = "";
     proc.stderr.on("data", (d: Buffer) => (stderr = (stderr + d.toString("utf8")).slice(-2000)));
     const killGroup = () => {
       try {
-        if (proc.pid) process.kill(-proc.pid, "SIGKILL");
+        if (!proc.pid) return;
+        if (win) spawn("taskkill", ["/pid", String(proc.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+        else process.kill(-proc.pid, "SIGKILL");
       } catch {
         /* すでに終了 */
       }
@@ -97,9 +101,24 @@ export async function convertModel(text: string, format: ConvertFormat, opts: { 
     void sweepConvertTemp(10 * 60_000, root);
     const input = join(dir, "model.sysml");
     await writeFile(input, text, "utf8");
-    const script = opts.script ?? resolve(REPO_ROOT, "tools/sysml-check/convert.sh");
     const env = { ...process.env, ...(opts.cacheDir ? { SYSML_PILOT_CACHE: opts.cacheDir } : {}) };
-    const { code } = await run(script, [format, input], env, opts.timeoutMs ?? 180_000);
+    const timeoutMs = opts.timeoutMs ?? 180_000;
+    let code: number | null;
+    if (opts.script) {
+      ({ code } = await run(opts.script, [format, input], env, timeoutMs)); // テスト用の代役
+    } else {
+      // 公式実装を Node で用意し（初回のみ取得・展開）、java で直接変換する。bash などは使わない
+      const cacheDir = opts.cacheDir ?? process.env["SYSML_PILOT_CACHE"] ?? join(homedir(), ".cache/fusamod/sysml-pilot-0.62.0");
+      let pilot;
+      try {
+        pilot = await ensurePilot({ cacheDir, root: REPO_ROOT });
+      } catch (e) {
+        throw new SysmlUnavailableError(`変換の準備ができません: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      const extra = await prepareConvertInputs(pilot, input);
+      const main = `org.omg.sysml.xtext.util.${format === "json" ? "SysML2JSON" : "SysML2XMI"}`;
+      ({ code } = await run("java", [...JAVA_UTF8, "-cp", pilot.jar, main, input, ...extra], env, timeoutMs, dirname(input)));
+    }
     const outFile = join(dir, format === "json" ? "model.json" : "model.sysmlx");
     const out = await readFile(outFile, "utf8").catch(() => undefined);
     // 変換器は、モデルに誤りがあっても部分的な出力や空の出力を返すことがある。成功の条件は「終了コード 0 かつ中身がある」

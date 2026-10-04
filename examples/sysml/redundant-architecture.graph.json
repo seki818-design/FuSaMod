@@ -3,229 +3,533 @@
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture",
-      "name": "RedundantArchitecture"
+      "name": "RedundantArchitecture",
+      "range": [
+        0,
+        9264
+      ],
+      "nameRange": [
+        8,
+        29
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::Architecture",
       "name": "Architecture",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        65,
+        1170
+      ],
+      "nameRange": [
+        73,
+        85
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM",
       "name": "ITEM",
-      "owner": "RedundantArchitecture::Architecture"
+      "owner": "RedundantArchitecture::Architecture",
+      "range": [
+        96,
+        1164
+      ],
+      "nameRange": [
+        101,
+        107
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-1'",
       "name": "E-1",
-      "owner": "RedundantArchitecture::Architecture::ITEM"
+      "owner": "RedundantArchitecture::Architecture::ITEM",
+      "range": [
+        169,
+        480
+      ],
+      "nameRange": [
+        174,
+        179
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-1'",
       "name": "E-1-1",
-      "owner": "RedundantArchitecture::Architecture::ITEM::'E-1'"
+      "owner": "RedundantArchitecture::Architecture::ITEM::'E-1'",
+      "range": [
+        249,
+        362
+      ],
+      "nameRange": [
+        254,
+        261
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'",
       "name": "E-1-2",
-      "owner": "RedundantArchitecture::Architecture::ITEM::'E-1'"
+      "owner": "RedundantArchitecture::Architecture::ITEM::'E-1'",
+      "range": [
+        379,
+        466
+      ],
+      "nameRange": [
+        384,
+        391
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-2'",
       "name": "E-2",
-      "owner": "RedundantArchitecture::Architecture::ITEM"
+      "owner": "RedundantArchitecture::Architecture::ITEM",
+      "range": [
+        493,
+        804
+      ],
+      "nameRange": [
+        498,
+        503
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-1'",
       "name": "E-2-1",
-      "owner": "RedundantArchitecture::Architecture::ITEM::'E-2'"
+      "owner": "RedundantArchitecture::Architecture::ITEM::'E-2'",
+      "range": [
+        573,
+        686
+      ],
+      "nameRange": [
+        578,
+        585
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'",
       "name": "E-2-2",
-      "owner": "RedundantArchitecture::Architecture::ITEM::'E-2'"
+      "owner": "RedundantArchitecture::Architecture::ITEM::'E-2'",
+      "range": [
+        703,
+        790
+      ],
+      "nameRange": [
+        708,
+        715
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-3'",
       "name": "E-3",
-      "owner": "RedundantArchitecture::Architecture::ITEM"
+      "owner": "RedundantArchitecture::Architecture::ITEM",
+      "range": [
+        817,
+        1154
+      ],
+      "nameRange": [
+        822,
+        827
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'",
       "name": "E-3-1",
-      "owner": "RedundantArchitecture::Architecture::ITEM::'E-3'"
+      "owner": "RedundantArchitecture::Architecture::ITEM::'E-3'",
+      "range": [
+        897,
+        1010
+      ],
+      "nameRange": [
+        902,
+        909
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-2'",
       "name": "E-3-2",
-      "owner": "RedundantArchitecture::Architecture::ITEM::'E-3'"
+      "owner": "RedundantArchitecture::Architecture::ITEM::'E-3'",
+      "range": [
+        1027,
+        1140
+      ],
+      "nameRange": [
+        1032,
+        1039
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::Requirements",
       "name": "Requirements",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        1176,
+        2694
+      ],
+      "nameRange": [
+        1184,
+        1196
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'MFR-1'",
       "name": "MFR-1",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1207,
+        1315
+      ],
+      "nameRange": [
+        1219,
+        1226
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-11'",
       "name": "SR-11",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1324,
+        1432
+      ],
+      "nameRange": [
+        1336,
+        1343
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-12'",
       "name": "SR-12",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1441,
+        1523
+      ],
+      "nameRange": [
+        1453,
+        1460
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'MFR-2'",
       "name": "MFR-2",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1532,
+        1640
+      ],
+      "nameRange": [
+        1544,
+        1551
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-21'",
       "name": "SR-21",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1649,
+        1757
+      ],
+      "nameRange": [
+        1661,
+        1668
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-22'",
       "name": "SR-22",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1766,
+        1848
+      ],
+      "nameRange": [
+        1778,
+        1785
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'MFR-3'",
       "name": "MFR-3",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1857,
+        1965
+      ],
+      "nameRange": [
+        1869,
+        1876
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-31'",
       "name": "SR-31",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        1974,
+        2082
+      ],
+      "nameRange": [
+        1986,
+        1993
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-32'",
       "name": "SR-32",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        2091,
+        2199
+      ],
+      "nameRange": [
+        2103,
+        2110
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-33'",
       "name": "SR-33",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        2208,
+        2316
+      ],
+      "nameRange": [
+        2220,
+        2227
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-DRV1'",
       "name": "X-DRV1",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        2325,
+        2409
+      ],
+      "nameRange": [
+        2337,
+        2345
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-DRV2'",
       "name": "X-DRV2",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        2418,
+        2502
+      ],
+      "nameRange": [
+        2430,
+        2438
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-ANGLE'",
       "name": "X-ANGLE",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        2511,
+        2596
+      ],
+      "nameRange": [
+        2523,
+        2532
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-ACT'",
       "name": "X-ACT",
-      "owner": "RedundantArchitecture::Requirements"
+      "owner": "RedundantArchitecture::Requirements",
+      "range": [
+        2605,
+        2688
+      ],
+      "nameRange": [
+        2617,
+        2624
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::Constraints",
       "name": "Constraints",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        2700,
+        3000
+      ],
+      "nameRange": [
+        2708,
+        2719
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Constraints::'NFSR-1'",
       "name": "NFSR-1",
-      "owner": "RedundantArchitecture::Constraints"
+      "owner": "RedundantArchitecture::Constraints",
+      "range": [
+        2730,
+        2812
+      ],
+      "nameRange": [
+        2742,
+        2750
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Constraints::'NFSR-2'",
       "name": "NFSR-2",
-      "owner": "RedundantArchitecture::Constraints"
+      "owner": "RedundantArchitecture::Constraints",
+      "range": [
+        2821,
+        2903
+      ],
+      "nameRange": [
+        2833,
+        2841
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RedundantArchitecture::Constraints::'NFSR-3'",
       "name": "NFSR-3",
-      "owner": "RedundantArchitecture::Constraints"
+      "owner": "RedundantArchitecture::Constraints",
+      "range": [
+        2912,
+        2994
+      ],
+      "nameRange": [
+        2924,
+        2932
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::Groups",
       "name": "Groups",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        3006,
+        4223
+      ],
+      "nameRange": [
+        3014,
+        3020
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::Interactions",
       "name": "Interactions",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        4229,
+        6502
+      ],
+      "nameRange": [
+        4237,
+        4249
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::GroupPairings",
       "name": "GroupPairings",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        6508,
+        7029
+      ],
+      "nameRange": [
+        6516,
+        6529
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::RequirementPairings",
       "name": "RequirementPairings",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        7035,
+        7070
+      ],
+      "nameRange": [
+        7043,
+        7062
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::Coexistences",
       "name": "Coexistences",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        7076,
+        7104
+      ],
+      "nameRange": [
+        7084,
+        7096
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::ConstraintPairings",
       "name": "ConstraintPairings",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        7110,
+        7654
+      ],
+      "nameRange": [
+        7118,
+        7136
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "RedundantArchitecture::Allocations",
       "name": "Allocations",
-      "owner": "RedundantArchitecture"
+      "owner": "RedundantArchitecture",
+      "range": [
+        7660,
+        9262
+      ],
+      "nameRange": [
+        7668,
+        7679
+      ]
     }
   ],
   "dependencies": [
@@ -234,6 +538,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-1'",
       "name": "I-1",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        4260,
+        4417
+      ],
+      "nameRange": [
+        4271,
+        4276
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'X-DRV1'"
       ],
@@ -246,6 +558,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-2'",
       "name": "I-2",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        4426,
+        4583
+      ],
+      "nameRange": [
+        4437,
+        4442
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'X-DRV2'"
       ],
@@ -258,6 +578,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-3'",
       "name": "I-3",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        4592,
+        4748
+      ],
+      "nameRange": [
+        4603,
+        4608
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'MFR-1'"
       ],
@@ -270,6 +598,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-4'",
       "name": "I-4",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        4757,
+        4913
+      ],
+      "nameRange": [
+        4768,
+        4773
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'SR-11'"
       ],
@@ -282,6 +618,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-5'",
       "name": "I-5",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        4922,
+        5124
+      ],
+      "nameRange": [
+        4933,
+        4938
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'SR-12'"
       ],
@@ -295,6 +639,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-6'",
       "name": "I-6",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        5133,
+        5289
+      ],
+      "nameRange": [
+        5144,
+        5149
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'MFR-2'"
       ],
@@ -307,6 +659,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-7'",
       "name": "I-7",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        5298,
+        5454
+      ],
+      "nameRange": [
+        5309,
+        5314
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'SR-21'"
       ],
@@ -319,6 +679,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-8'",
       "name": "I-8",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        5463,
+        5665
+      ],
+      "nameRange": [
+        5474,
+        5479
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'SR-22'"
       ],
@@ -332,6 +700,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-9'",
       "name": "I-9",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        5674,
+        5830
+      ],
+      "nameRange": [
+        5685,
+        5690
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'MFR-3'"
       ],
@@ -344,6 +720,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-10'",
       "name": "I-10",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        5839,
+        5996
+      ],
+      "nameRange": [
+        5850,
+        5856
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'SR-32'"
       ],
@@ -356,6 +740,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-11'",
       "name": "I-11",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        6005,
+        6162
+      ],
+      "nameRange": [
+        6016,
+        6022
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'SR-31'"
       ],
@@ -368,6 +760,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-12'",
       "name": "I-12",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        6171,
+        6330
+      ],
+      "nameRange": [
+        6182,
+        6188
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'X-ANGLE'"
       ],
@@ -380,6 +780,14 @@
       "qualifiedName": "RedundantArchitecture::Interactions::'I-13'",
       "name": "I-13",
       "owner": "RedundantArchitecture::Interactions",
+      "range": [
+        6339,
+        6496
+      ],
+      "nameRange": [
+        6350,
+        6356
+      ],
       "client": [
         "RedundantArchitecture::Requirements::'SR-33'"
       ],
@@ -392,6 +800,14 @@
       "qualifiedName": "RedundantArchitecture::GroupPairings::'P-1'",
       "name": "P-1",
       "owner": "RedundantArchitecture::GroupPairings",
+      "range": [
+        6540,
+        6695
+      ],
+      "nameRange": [
+        6551,
+        6556
+      ],
       "client": [
         "RedundantArchitecture::Groups::'RG-1'"
       ],
@@ -404,6 +820,14 @@
       "qualifiedName": "RedundantArchitecture::GroupPairings::'P-2'",
       "name": "P-2",
       "owner": "RedundantArchitecture::GroupPairings",
+      "range": [
+        6704,
+        6859
+      ],
+      "nameRange": [
+        6715,
+        6720
+      ],
       "client": [
         "RedundantArchitecture::Groups::'RG-2'"
       ],
@@ -416,6 +840,14 @@
       "qualifiedName": "RedundantArchitecture::GroupPairings::'P-3'",
       "name": "P-3",
       "owner": "RedundantArchitecture::GroupPairings",
+      "range": [
+        6868,
+        7023
+      ],
+      "nameRange": [
+        6879,
+        6884
+      ],
       "client": [
         "RedundantArchitecture::Groups::'RG-3'"
       ],
@@ -428,6 +860,14 @@
       "qualifiedName": "RedundantArchitecture::ConstraintPairings::'C-1'",
       "name": "C-1",
       "owner": "RedundantArchitecture::ConstraintPairings",
+      "range": [
+        7147,
+        7308
+      ],
+      "nameRange": [
+        7158,
+        7163
+      ],
       "client": [
         "RedundantArchitecture::Constraints::'NFSR-1'"
       ],
@@ -440,6 +880,14 @@
       "qualifiedName": "RedundantArchitecture::ConstraintPairings::'C-2'",
       "name": "C-2",
       "owner": "RedundantArchitecture::ConstraintPairings",
+      "range": [
+        7317,
+        7478
+      ],
+      "nameRange": [
+        7328,
+        7333
+      ],
       "client": [
         "RedundantArchitecture::Constraints::'NFSR-2'"
       ],
@@ -452,6 +900,14 @@
       "qualifiedName": "RedundantArchitecture::ConstraintPairings::'C-3'",
       "name": "C-3",
       "owner": "RedundantArchitecture::ConstraintPairings",
+      "range": [
+        7487,
+        7648
+      ],
+      "nameRange": [
+        7498,
+        7503
+      ],
       "client": [
         "RedundantArchitecture::Constraints::'NFSR-3'"
       ],
@@ -465,6 +921,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM",
+      "range": [
+        122,
+        156
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM"
@@ -477,6 +937,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-1'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-1'",
+      "range": [
+        198,
+        232
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-1'"
@@ -489,6 +953,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-1'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-1'",
+      "range": [
+        284,
+        344
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-1'"
@@ -502,6 +970,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'",
+      "range": [
+        414,
+        448
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-1'::'E-1-2'"
@@ -514,6 +986,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-2'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-2'",
+      "range": [
+        522,
+        556
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-2'"
@@ -526,6 +1002,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-1'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-1'",
+      "range": [
+        608,
+        668
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-1'"
@@ -539,6 +1019,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'",
+      "range": [
+        738,
+        772
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-2'::'E-2-2'"
@@ -551,6 +1035,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-3'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-3'",
+      "range": [
+        846,
+        880
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-3'"
@@ -563,6 +1051,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'",
+      "range": [
+        932,
+        992
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-1'"
@@ -576,6 +1068,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-2'/@ScdlElement#1",
       "owner": "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-2'",
+      "range": [
+        1062,
+        1122
+      ],
       "type": "ScdlElement",
       "annotated": [
         "RedundantArchitecture::Architecture::ITEM::'E-3'::'E-3-2'"
@@ -589,6 +1085,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'MFR-1'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'MFR-1'",
+      "range": [
+        1241,
+        1305
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'MFR-1'"
@@ -602,6 +1102,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-11'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'SR-11'",
+      "range": [
+        1358,
+        1422
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-11'"
@@ -615,6 +1119,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-12'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'SR-12'",
+      "range": [
+        1475,
+        1513
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-12'"
@@ -627,6 +1135,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'MFR-2'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'MFR-2'",
+      "range": [
+        1566,
+        1630
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'MFR-2'"
@@ -640,6 +1152,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-21'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'SR-21'",
+      "range": [
+        1683,
+        1747
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-21'"
@@ -653,6 +1169,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-22'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'SR-22'",
+      "range": [
+        1800,
+        1838
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-22'"
@@ -665,6 +1185,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'MFR-3'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'MFR-3'",
+      "range": [
+        1891,
+        1955
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'MFR-3'"
@@ -678,6 +1202,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-31'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'SR-31'",
+      "range": [
+        2008,
+        2072
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-31'"
@@ -691,6 +1219,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-32'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'SR-32'",
+      "range": [
+        2125,
+        2189
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-32'"
@@ -704,6 +1236,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'SR-33'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'SR-33'",
+      "range": [
+        2242,
+        2306
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-33'"
@@ -717,6 +1253,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-DRV1'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'X-DRV1'",
+      "range": [
+        2360,
+        2399
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'X-DRV1'"
@@ -729,6 +1269,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-DRV2'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'X-DRV2'",
+      "range": [
+        2453,
+        2492
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'X-DRV2'"
@@ -741,6 +1285,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-ANGLE'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'X-ANGLE'",
+      "range": [
+        2547,
+        2586
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'X-ANGLE'"
@@ -753,6 +1301,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Requirements::'X-ACT'/@ScdlRequirement#1",
       "owner": "RedundantArchitecture::Requirements::'X-ACT'",
+      "range": [
+        2639,
+        2678
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "RedundantArchitecture::Requirements::'X-ACT'"
@@ -765,6 +1317,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Constraints::'NFSR-1'/@ScdlConstraint#1",
       "owner": "RedundantArchitecture::Constraints::'NFSR-1'",
+      "range": [
+        2765,
+        2802
+      ],
       "type": "ScdlConstraint",
       "annotated": [
         "RedundantArchitecture::Constraints::'NFSR-1'"
@@ -777,6 +1333,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Constraints::'NFSR-2'/@ScdlConstraint#1",
       "owner": "RedundantArchitecture::Constraints::'NFSR-2'",
+      "range": [
+        2856,
+        2893
+      ],
       "type": "ScdlConstraint",
       "annotated": [
         "RedundantArchitecture::Constraints::'NFSR-2'"
@@ -789,6 +1349,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Constraints::'NFSR-3'/@ScdlConstraint#1",
       "owner": "RedundantArchitecture::Constraints::'NFSR-3'",
+      "range": [
+        2947,
+        2984
+      ],
       "type": "ScdlConstraint",
       "annotated": [
         "RedundantArchitecture::Constraints::'NFSR-3'"
@@ -802,6 +1366,14 @@
       "qualifiedName": "RedundantArchitecture::Groups::'RG-1'",
       "name": "RG-1",
       "owner": "RedundantArchitecture::Groups",
+      "range": [
+        3031,
+        3189
+      ],
+      "nameRange": [
+        3040,
+        3046
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "RedundantArchitecture::Requirements::'MFR-1'"
@@ -816,6 +1388,14 @@
       "qualifiedName": "RedundantArchitecture::Groups::'SRG-1'",
       "name": "SRG-1",
       "owner": "RedundantArchitecture::Groups",
+      "range": [
+        3198,
+        3405
+      ],
+      "nameRange": [
+        3207,
+        3214
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-11'",
@@ -831,6 +1411,14 @@
       "qualifiedName": "RedundantArchitecture::Groups::'RG-2'",
       "name": "RG-2",
       "owner": "RedundantArchitecture::Groups",
+      "range": [
+        3414,
+        3572
+      ],
+      "nameRange": [
+        3423,
+        3429
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "RedundantArchitecture::Requirements::'MFR-2'"
@@ -845,6 +1433,14 @@
       "qualifiedName": "RedundantArchitecture::Groups::'SRG-2'",
       "name": "SRG-2",
       "owner": "RedundantArchitecture::Groups",
+      "range": [
+        3581,
+        3788
+      ],
+      "nameRange": [
+        3590,
+        3597
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-21'",
@@ -860,6 +1456,14 @@
       "qualifiedName": "RedundantArchitecture::Groups::'RG-3'",
       "name": "RG-3",
       "owner": "RedundantArchitecture::Groups",
+      "range": [
+        3797,
+        3955
+      ],
+      "nameRange": [
+        3806,
+        3812
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "RedundantArchitecture::Requirements::'MFR-3'"
@@ -874,6 +1478,14 @@
       "qualifiedName": "RedundantArchitecture::Groups::'SRG-3'",
       "name": "SRG-3",
       "owner": "RedundantArchitecture::Groups",
+      "range": [
+        3964,
+        4217
+      ],
+      "nameRange": [
+        3973,
+        3980
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "RedundantArchitecture::Requirements::'SR-31'",
@@ -889,6 +1501,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-1'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-1'",
+      "range": [
+        4390,
+        4407
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-1'"
@@ -899,6 +1515,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-2'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-2'",
+      "range": [
+        4556,
+        4573
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-2'"
@@ -909,6 +1529,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-3'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-3'",
+      "range": [
+        4721,
+        4738
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-3'"
@@ -919,6 +1543,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-4'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-4'",
+      "range": [
+        4886,
+        4903
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-4'"
@@ -929,6 +1557,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-5'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-5'",
+      "range": [
+        5097,
+        5114
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-5'"
@@ -939,6 +1571,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-6'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-6'",
+      "range": [
+        5262,
+        5279
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-6'"
@@ -949,6 +1585,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-7'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-7'",
+      "range": [
+        5427,
+        5444
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-7'"
@@ -959,6 +1599,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-8'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-8'",
+      "range": [
+        5638,
+        5655
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-8'"
@@ -969,6 +1613,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-9'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-9'",
+      "range": [
+        5803,
+        5820
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-9'"
@@ -979,6 +1627,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-10'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-10'",
+      "range": [
+        5969,
+        5986
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-10'"
@@ -989,6 +1641,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-11'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-11'",
+      "range": [
+        6135,
+        6152
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-11'"
@@ -999,6 +1655,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-12'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-12'",
+      "range": [
+        6303,
+        6320
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-12'"
@@ -1009,6 +1669,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::Interactions::'I-13'/@ScdlInteraction#1",
       "owner": "RedundantArchitecture::Interactions::'I-13'",
+      "range": [
+        6469,
+        6486
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "RedundantArchitecture::Interactions::'I-13'"
@@ -1019,6 +1683,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::GroupPairings::'P-1'/@ScdlRequirementGroupPairing#1",
       "owner": "RedundantArchitecture::GroupPairings::'P-1'",
+      "range": [
+        6656,
+        6685
+      ],
       "type": "ScdlRequirementGroupPairing",
       "annotated": [
         "RedundantArchitecture::GroupPairings::'P-1'"
@@ -1029,6 +1697,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::GroupPairings::'P-2'/@ScdlRequirementGroupPairing#1",
       "owner": "RedundantArchitecture::GroupPairings::'P-2'",
+      "range": [
+        6820,
+        6849
+      ],
       "type": "ScdlRequirementGroupPairing",
       "annotated": [
         "RedundantArchitecture::GroupPairings::'P-2'"
@@ -1039,6 +1711,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::GroupPairings::'P-3'/@ScdlRequirementGroupPairing#1",
       "owner": "RedundantArchitecture::GroupPairings::'P-3'",
+      "range": [
+        6984,
+        7013
+      ],
       "type": "ScdlRequirementGroupPairing",
       "annotated": [
         "RedundantArchitecture::GroupPairings::'P-3'"
@@ -1049,6 +1725,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::ConstraintPairings::'C-1'/@ScdlConstraintPairing#1",
       "owner": "RedundantArchitecture::ConstraintPairings::'C-1'",
+      "range": [
+        7275,
+        7298
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "RedundantArchitecture::ConstraintPairings::'C-1'"
@@ -1059,6 +1739,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::ConstraintPairings::'C-2'/@ScdlConstraintPairing#1",
       "owner": "RedundantArchitecture::ConstraintPairings::'C-2'",
+      "range": [
+        7445,
+        7468
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "RedundantArchitecture::ConstraintPairings::'C-2'"
@@ -1069,6 +1753,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "RedundantArchitecture::ConstraintPairings::'C-3'/@ScdlConstraintPairing#1",
       "owner": "RedundantArchitecture::ConstraintPairings::'C-3'",
+      "range": [
+        7615,
+        7638
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "RedundantArchitecture::ConstraintPairings::'C-3'"

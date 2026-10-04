@@ -3,31 +3,71 @@
     {
       "kind": "Package",
       "qualifiedName": "T3",
-      "name": "T3"
+      "name": "T3",
+      "range": [
+        62,
+        418
+      ],
+      "nameRange": [
+        70,
+        72
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "T3::Cell",
       "name": "Cell",
-      "owner": "T3"
+      "owner": "T3",
+      "range": [
+        115,
+        143
+      ],
+      "nameRange": [
+        124,
+        128
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T3::Cell::elec",
       "name": "elec",
-      "owner": "T3::Cell"
+      "owner": "T3::Cell",
+      "range": [
+        131,
+        141
+      ],
+      "nameRange": [
+        136,
+        140
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "T3::Pack",
       "name": "Pack",
-      "owner": "T3"
+      "owner": "T3",
+      "range": [
+        148,
+        223
+      ],
+      "nameRange": [
+        157,
+        161
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T3::Pack::charger",
       "name": "charger",
       "owner": "T3::Pack",
+      "range": [
+        164,
+        188
+      ],
+      "nameRange": [
+        173,
+        180
+      ],
       "types": [
         "T3::Cell"
       ],
@@ -38,6 +78,14 @@
       "qualifiedName": "T3::Pack::cells",
       "name": "cells",
       "owner": "T3::Pack",
+      "range": [
+        189,
+        211
+      ],
+      "nameRange": [
+        194,
+        199
+      ],
       "types": [
         "T3::Cell"
       ],
@@ -47,25 +95,57 @@
       "kind": "PartUsage",
       "qualifiedName": "T3::Pack::bms",
       "name": "bms",
-      "owner": "T3::Pack"
+      "owner": "T3::Pack",
+      "range": [
+        212,
+        221
+      ],
+      "nameRange": [
+        217,
+        220
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "T3::Car",
       "name": "Car",
-      "owner": "T3"
+      "owner": "T3",
+      "range": [
+        228,
+        293
+      ],
+      "nameRange": [
+        237,
+        240
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T3::Car::aux",
       "name": "aux",
-      "owner": "T3::Car"
+      "owner": "T3::Car",
+      "range": [
+        243,
+        273
+      ],
+      "nameRange": [
+        248,
+        251
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T3::Car::aux::pack",
       "name": "pack",
       "owner": "T3::Car::aux",
+      "range": [
+        254,
+        271
+      ],
+      "nameRange": [
+        259,
+        263
+      ],
       "types": [
         "T3::Pack"
       ]
@@ -75,6 +155,14 @@
       "qualifiedName": "T3::Car::main",
       "name": "main",
       "owner": "T3::Car",
+      "range": [
+        274,
+        291
+      ],
+      "nameRange": [
+        279,
+        283
+      ],
       "types": [
         "T3::Pack"
       ]
@@ -84,6 +172,14 @@
       "qualifiedName": "T3::car1",
       "name": "car1",
       "owner": "T3",
+      "range": [
+        298,
+        347
+      ],
+      "nameRange": [
+        303,
+        307
+      ],
       "types": [
         "T3::Car"
       ]
@@ -92,6 +188,10 @@
       "kind": "PartUsage",
       "qualifiedName": "T3::car1::main",
       "owner": "T3::car1",
+      "range": [
+        316,
+        345
+      ],
       "supertypes": [
         "T3::Car::main"
       ],
@@ -104,19 +204,43 @@
       "kind": "PartUsage",
       "qualifiedName": "T3::car1::main::extra",
       "name": "extra",
-      "owner": "T3::car1::main"
+      "owner": "T3::car1::main",
+      "range": [
+        332,
+        343
+      ],
+      "nameRange": [
+        337,
+        342
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "T3::r1",
       "name": "r1",
-      "owner": "T3"
+      "owner": "T3",
+      "range": [
+        352,
+        387
+      ],
+      "nameRange": [
+        364,
+        366
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "T3::r1::sub",
       "name": "sub",
-      "owner": "T3::r1"
+      "owner": "T3::r1",
+      "range": [
+        369,
+        385
+      ],
+      "nameRange": [
+        381,
+        384
+      ]
     }
   ],
   "dependencies": [],

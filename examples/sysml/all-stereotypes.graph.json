@@ -3,133 +3,309 @@
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes",
-      "name": "AllStereotypes"
+      "name": "AllStereotypes",
+      "range": [
+        0,
+        4335
+      ],
+      "nameRange": [
+        8,
+        22
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::Architecture",
       "name": "Architecture",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        58,
+        482
+      ],
+      "nameRange": [
+        66,
+        78
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS",
       "name": "SYS",
-      "owner": "AllStereotypes::Architecture"
+      "owner": "AllStereotypes::Architecture",
+      "range": [
+        89,
+        476
+      ],
+      "nameRange": [
+        94,
+        99
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-A'",
       "name": "SYS-A",
-      "owner": "AllStereotypes::Architecture::SYS"
+      "owner": "AllStereotypes::Architecture::SYS",
+      "range": [
+        177,
+        256
+      ],
+      "nameRange": [
+        182,
+        189
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-B'",
       "name": "SYS-B",
-      "owner": "AllStereotypes::Architecture::SYS"
+      "owner": "AllStereotypes::Architecture::SYS",
+      "range": [
+        269,
+        374
+      ],
+      "nameRange": [
+        274,
+        281
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-C'",
       "name": "SYS-C",
-      "owner": "AllStereotypes::Architecture::SYS"
+      "owner": "AllStereotypes::Architecture::SYS",
+      "range": [
+        387,
+        466
+      ],
+      "nameRange": [
+        392,
+        399
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::Requirements",
       "name": "Requirements",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        488,
+        956
+      ],
+      "nameRange": [
+        496,
+        508
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "AllStereotypes::Requirements::'R-1'",
       "name": "R-1",
-      "owner": "AllStereotypes::Requirements"
+      "owner": "AllStereotypes::Requirements",
+      "range": [
+        519,
+        639
+      ],
+      "nameRange": [
+        531,
+        536
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "AllStereotypes::Requirements::'R-2'",
       "name": "R-2",
-      "owner": "AllStereotypes::Requirements"
+      "owner": "AllStereotypes::Requirements",
+      "range": [
+        648,
+        770
+      ],
+      "nameRange": [
+        660,
+        665
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "AllStereotypes::Requirements::'R-3'",
       "name": "R-3",
-      "owner": "AllStereotypes::Requirements"
+      "owner": "AllStereotypes::Requirements",
+      "range": [
+        779,
+        859
+      ],
+      "nameRange": [
+        791,
+        796
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "AllStereotypes::Requirements::'X-IN'",
       "name": "X-IN",
-      "owner": "AllStereotypes::Requirements"
+      "owner": "AllStereotypes::Requirements",
+      "range": [
+        868,
+        950
+      ],
+      "nameRange": [
+        880,
+        886
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::Constraints",
       "name": "Constraints",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        962,
+        1293
+      ],
+      "nameRange": [
+        970,
+        981
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "AllStereotypes::Constraints::'NF-1'",
       "name": "NF-1",
-      "owner": "AllStereotypes::Constraints"
+      "owner": "AllStereotypes::Constraints",
+      "range": [
+        992,
+        1109
+      ],
+      "nameRange": [
+        1004,
+        1010
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "AllStereotypes::Constraints::'NF-2'",
       "name": "NF-2",
-      "owner": "AllStereotypes::Constraints"
+      "owner": "AllStereotypes::Constraints",
+      "range": [
+        1118,
+        1198
+      ],
+      "nameRange": [
+        1130,
+        1136
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "AllStereotypes::Constraints::'NF-3'",
       "name": "NF-3",
-      "owner": "AllStereotypes::Constraints"
+      "owner": "AllStereotypes::Constraints",
+      "range": [
+        1207,
+        1287
+      ],
+      "nameRange": [
+        1219,
+        1225
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::Groups",
       "name": "Groups",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        1299,
+        1637
+      ],
+      "nameRange": [
+        1307,
+        1313
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::Interactions",
       "name": "Interactions",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        1643,
+        2021
+      ],
+      "nameRange": [
+        1651,
+        1663
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::GroupPairings",
       "name": "GroupPairings",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        2027,
+        2203
+      ],
+      "nameRange": [
+        2035,
+        2048
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::RequirementPairings",
       "name": "RequirementPairings",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        2209,
+        2399
+      ],
+      "nameRange": [
+        2217,
+        2236
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::Coexistences",
       "name": "Coexistences",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        2405,
+        2907
+      ],
+      "nameRange": [
+        2413,
+        2425
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::ConstraintPairings",
       "name": "ConstraintPairings",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        2913,
+        3724
+      ],
+      "nameRange": [
+        2921,
+        2939
+      ]
     },
     {
       "kind": "Package",
       "qualifiedName": "AllStereotypes::Allocations",
       "name": "Allocations",
-      "owner": "AllStereotypes"
+      "owner": "AllStereotypes",
+      "range": [
+        3730,
+        4333
+      ],
+      "nameRange": [
+        3738,
+        3749
+      ]
     }
   ],
   "dependencies": [
@@ -138,6 +314,14 @@
       "qualifiedName": "AllStereotypes::Interactions::'I-1'",
       "name": "I-1",
       "owner": "AllStereotypes::Interactions",
+      "range": [
+        1674,
+        1831
+      ],
+      "nameRange": [
+        1685,
+        1690
+      ],
       "client": [
         "AllStereotypes::Requirements::'X-IN'"
       ],
@@ -150,6 +334,14 @@
       "qualifiedName": "AllStereotypes::Interactions::'I-2'",
       "name": "I-2",
       "owner": "AllStereotypes::Interactions",
+      "range": [
+        1840,
+        2015
+      ],
+      "nameRange": [
+        1851,
+        1856
+      ],
       "client": [
         "AllStereotypes::Requirements::'R-1'"
       ],
@@ -163,6 +355,14 @@
       "qualifiedName": "AllStereotypes::GroupPairings::'P-1'",
       "name": "P-1",
       "owner": "AllStereotypes::GroupPairings",
+      "range": [
+        2059,
+        2197
+      ],
+      "nameRange": [
+        2070,
+        2075
+      ],
       "client": [
         "AllStereotypes::Groups::'G-1'"
       ],
@@ -175,6 +375,14 @@
       "qualifiedName": "AllStereotypes::RequirementPairings::'RP-1'",
       "name": "RP-1",
       "owner": "AllStereotypes::RequirementPairings",
+      "range": [
+        2247,
+        2393
+      ],
+      "nameRange": [
+        2258,
+        2264
+      ],
       "client": [
         "AllStereotypes::Requirements::'R-1'"
       ],
@@ -187,6 +395,14 @@
       "qualifiedName": "AllStereotypes::Coexistences::'CX-1'",
       "name": "CX-1",
       "owner": "AllStereotypes::Coexistences",
+      "range": [
+        2436,
+        2584
+      ],
+      "nameRange": [
+        2447,
+        2453
+      ],
       "client": [
         "AllStereotypes::Architecture::SYS::'SYS-A'"
       ],
@@ -199,6 +415,14 @@
       "qualifiedName": "AllStereotypes::Coexistences::'CX-2'",
       "name": "CX-2",
       "owner": "AllStereotypes::Coexistences",
+      "range": [
+        2593,
+        2735
+      ],
+      "nameRange": [
+        2604,
+        2610
+      ],
       "client": [
         "AllStereotypes::Architecture::SYS::'SYS-A'"
       ],
@@ -211,6 +435,14 @@
       "qualifiedName": "AllStereotypes::Coexistences::'CX-3'",
       "name": "CX-3",
       "owner": "AllStereotypes::Coexistences",
+      "range": [
+        2744,
+        2901
+      ],
+      "nameRange": [
+        2755,
+        2761
+      ],
       "client": [
         "AllStereotypes::Architecture::SYS::'SYS-C'"
       ],
@@ -223,6 +455,14 @@
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-1'",
       "name": "C-1",
       "owner": "AllStereotypes::ConstraintPairings",
+      "range": [
+        2950,
+        3095
+      ],
+      "nameRange": [
+        2961,
+        2966
+      ],
       "client": [
         "AllStereotypes::Constraints::'NF-1'"
       ],
@@ -235,6 +475,14 @@
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-2'",
       "name": "C-2",
       "owner": "AllStereotypes::ConstraintPairings",
+      "range": [
+        3104,
+        3256
+      ],
+      "nameRange": [
+        3115,
+        3120
+      ],
       "client": [
         "AllStereotypes::Constraints::'NF-2'"
       ],
@@ -247,6 +495,14 @@
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-3'",
       "name": "C-3",
       "owner": "AllStereotypes::ConstraintPairings",
+      "range": [
+        3265,
+        3410
+      ],
+      "nameRange": [
+        3276,
+        3281
+      ],
       "client": [
         "AllStereotypes::Constraints::'NF-3'"
       ],
@@ -259,6 +515,14 @@
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-4'",
       "name": "C-4",
       "owner": "AllStereotypes::ConstraintPairings",
+      "range": [
+        3419,
+        3564
+      ],
+      "nameRange": [
+        3430,
+        3435
+      ],
       "client": [
         "AllStereotypes::Constraints::'NF-3'"
       ],
@@ -271,6 +535,14 @@
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-5'",
       "name": "C-5",
       "owner": "AllStereotypes::ConstraintPairings",
+      "range": [
+        3573,
+        3718
+      ],
+      "nameRange": [
+        3584,
+        3589
+      ],
       "client": [
         "AllStereotypes::Constraints::'NF-3'"
       ],
@@ -284,6 +556,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS/@ScdlElement#1",
       "owner": "AllStereotypes::Architecture::SYS",
+      "range": [
+        114,
+        164
+      ],
       "type": "ScdlElement",
       "annotated": [
         "AllStereotypes::Architecture::SYS"
@@ -297,6 +573,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-A'/@ScdlElement#1",
       "owner": "AllStereotypes::Architecture::SYS::'SYS-A'",
+      "range": [
+        208,
+        242
+      ],
       "type": "ScdlElement",
       "annotated": [
         "AllStereotypes::Architecture::SYS::'SYS-A'"
@@ -309,6 +589,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-B'/@ScdlElement#1",
       "owner": "AllStereotypes::Architecture::SYS::'SYS-B'",
+      "range": [
+        300,
+        360
+      ],
       "type": "ScdlElement",
       "annotated": [
         "AllStereotypes::Architecture::SYS::'SYS-B'"
@@ -322,6 +606,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Architecture::SYS::'SYS-C'/@ScdlElement#1",
       "owner": "AllStereotypes::Architecture::SYS::'SYS-C'",
+      "range": [
+        418,
+        452
+      ],
       "type": "ScdlElement",
       "annotated": [
         "AllStereotypes::Architecture::SYS::'SYS-C'"
@@ -334,6 +622,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Requirements::'R-1'/@ScdlRequirement#1",
       "owner": "AllStereotypes::Requirements::'R-1'",
+      "range": [
+        551,
+        629
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "AllStereotypes::Requirements::'R-1'"
@@ -348,6 +640,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Requirements::'R-2'/@ScdlRequirement#1",
       "owner": "AllStereotypes::Requirements::'R-2'",
+      "range": [
+        680,
+        760
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "AllStereotypes::Requirements::'R-2'"
@@ -362,6 +658,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Requirements::'R-3'/@ScdlRequirement#1",
       "owner": "AllStereotypes::Requirements::'R-3'",
+      "range": [
+        811,
+        849
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "AllStereotypes::Requirements::'R-3'"
@@ -374,6 +674,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Requirements::'X-IN'/@ScdlRequirement#1",
       "owner": "AllStereotypes::Requirements::'X-IN'",
+      "range": [
+        901,
+        940
+      ],
       "type": "ScdlRequirement",
       "annotated": [
         "AllStereotypes::Requirements::'X-IN'"
@@ -386,6 +690,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Constraints::'NF-1'/@ScdlConstraint#1",
       "owner": "AllStereotypes::Constraints::'NF-1'",
+      "range": [
+        1025,
+        1099
+      ],
       "type": "ScdlConstraint",
       "annotated": [
         "AllStereotypes::Constraints::'NF-1'"
@@ -399,6 +707,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Constraints::'NF-2'/@ScdlConstraint#1",
       "owner": "AllStereotypes::Constraints::'NF-2'",
+      "range": [
+        1151,
+        1188
+      ],
       "type": "ScdlConstraint",
       "annotated": [
         "AllStereotypes::Constraints::'NF-2'"
@@ -411,6 +723,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Constraints::'NF-3'/@ScdlConstraint#1",
       "owner": "AllStereotypes::Constraints::'NF-3'",
+      "range": [
+        1240,
+        1277
+      ],
       "type": "ScdlConstraint",
       "annotated": [
         "AllStereotypes::Constraints::'NF-3'"
@@ -424,6 +740,14 @@
       "qualifiedName": "AllStereotypes::Groups::'G-1'",
       "name": "G-1",
       "owner": "AllStereotypes::Groups",
+      "range": [
+        1324,
+        1472
+      ],
+      "nameRange": [
+        1333,
+        1338
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "AllStereotypes::Requirements::'R-1'"
@@ -438,6 +762,14 @@
       "qualifiedName": "AllStereotypes::Groups::'G-2'",
       "name": "G-2",
       "owner": "AllStereotypes::Groups",
+      "range": [
+        1481,
+        1631
+      ],
+      "nameRange": [
+        1490,
+        1495
+      ],
       "type": "ScdlRequirementGroup",
       "annotated": [
         "AllStereotypes::Requirements::'R-2'"
@@ -451,6 +783,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Interactions::'I-1'/@ScdlInteraction#1",
       "owner": "AllStereotypes::Interactions::'I-1'",
+      "range": [
+        1786,
+        1821
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "AllStereotypes::Interactions::'I-1'"
@@ -463,6 +799,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Interactions::'I-2'/@ScdlInteraction#1",
       "owner": "AllStereotypes::Interactions::'I-2'",
+      "range": [
+        1988,
+        2005
+      ],
       "type": "ScdlInteraction",
       "annotated": [
         "AllStereotypes::Interactions::'I-2'"
@@ -473,6 +813,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::GroupPairings::'P-1'/@ScdlRequirementGroupPairing#1",
       "owner": "AllStereotypes::GroupPairings::'P-1'",
+      "range": [
+        2158,
+        2187
+      ],
       "type": "ScdlRequirementGroupPairing",
       "annotated": [
         "AllStereotypes::GroupPairings::'P-1'"
@@ -483,6 +827,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::RequirementPairings::'RP-1'/@ScdlRequirementPairing#1",
       "owner": "AllStereotypes::RequirementPairings::'RP-1'",
+      "range": [
+        2359,
+        2383
+      ],
       "type": "ScdlRequirementPairing",
       "annotated": [
         "AllStereotypes::RequirementPairings::'RP-1'"
@@ -493,6 +841,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Coexistences::'CX-1'/@ScdlCoexistence#1",
       "owner": "AllStereotypes::Coexistences::'CX-1'",
+      "range": [
+        2557,
+        2574
+      ],
       "type": "ScdlCoexistence",
       "annotated": [
         "AllStereotypes::Coexistences::'CX-1'"
@@ -503,6 +855,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Coexistences::'CX-2'/@ScdlCoexistence#1",
       "owner": "AllStereotypes::Coexistences::'CX-2'",
+      "range": [
+        2708,
+        2725
+      ],
       "type": "ScdlCoexistence",
       "annotated": [
         "AllStereotypes::Coexistences::'CX-2'"
@@ -513,6 +869,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::Coexistences::'CX-3'/@ScdlCoexistence#1",
       "owner": "AllStereotypes::Coexistences::'CX-3'",
+      "range": [
+        2874,
+        2891
+      ],
       "type": "ScdlCoexistence",
       "annotated": [
         "AllStereotypes::Coexistences::'CX-3'"
@@ -523,6 +883,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-1'/@ScdlConstraintPairing#1",
       "owner": "AllStereotypes::ConstraintPairings::'C-1'",
+      "range": [
+        3062,
+        3085
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "AllStereotypes::ConstraintPairings::'C-1'"
@@ -533,6 +897,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-2'/@ScdlConstraintPairing#1",
       "owner": "AllStereotypes::ConstraintPairings::'C-2'",
+      "range": [
+        3223,
+        3246
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "AllStereotypes::ConstraintPairings::'C-2'"
@@ -543,6 +911,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-3'/@ScdlConstraintPairing#1",
       "owner": "AllStereotypes::ConstraintPairings::'C-3'",
+      "range": [
+        3377,
+        3400
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "AllStereotypes::ConstraintPairings::'C-3'"
@@ -553,6 +925,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-4'/@ScdlConstraintPairing#1",
       "owner": "AllStereotypes::ConstraintPairings::'C-4'",
+      "range": [
+        3531,
+        3554
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "AllStereotypes::ConstraintPairings::'C-4'"
@@ -563,6 +939,10 @@
       "kind": "MetadataUsage",
       "qualifiedName": "AllStereotypes::ConstraintPairings::'C-5'/@ScdlConstraintPairing#1",
       "owner": "AllStereotypes::ConstraintPairings::'C-5'",
+      "range": [
+        3685,
+        3708
+      ],
       "type": "ScdlConstraintPairing",
       "annotated": [
         "AllStereotypes::ConstraintPairings::'C-5'"

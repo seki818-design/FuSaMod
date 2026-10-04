@@ -1,6 +1,7 @@
 import { levelLabel } from "@fusamod/analysis";
 import { openTab, select, setMainView, useStore, type TabKey } from "../store.js";
 import { last } from "../ui.js";
+import { ElementActions } from "./ElementActions.js";
 
 export function Explorer() {
   const a = useStore((s) => s.analysis);
@@ -70,6 +71,7 @@ export function Explorer() {
         </details>
         <details open>
           <summary>構造({a.net.elements.length})</summary>
+          <ElementActions compact />
           <ul>{(kids.get(undefined) ?? []).map(tree)}</ul>
         </details>
         <details>

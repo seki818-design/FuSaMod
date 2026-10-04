@@ -33,6 +33,10 @@ export interface GraphElement {
   multiplicityUpper?: number;
   /** `ref part`(参照。構造の入れ子ではない) */
   isRef?: boolean;
+  /** 元のテキスト上の宣言全体の位置 [start, end)（文字数。図からのモデルの書き換えに使う） */
+  range?: [number, number];
+  /** 宣言された名前の位置 [start, end)（引用符つきの名前は引用符を含む） */
+  nameRange?: [number, number];
 }
 
 export interface GraphDependency extends GraphElement {

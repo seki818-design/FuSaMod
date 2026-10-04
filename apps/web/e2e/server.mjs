@@ -12,7 +12,7 @@ cpSync(join(repo, "projects/ev-powertrain"), join(dir, "ev-powertrain"), { recur
 const child = spawn("pnpm", ["--filter", "@fusamod/server", "exec", "tsx", "src/main.ts"], {
   cwd: repo,
   stdio: "inherit",
-  env: { ...process.env, PORT: process.env.E2E_PORT ?? "8799", FUSAMOD_PROJECTS: dir, FUSAMOD_SYSML: "snapshot", FUSAMOD_AI_PROVIDER: "rule" },
+  env: { ...process.env, PORT: process.env.E2E_PORT ?? "8799", FUSAMOD_PROJECTS: dir, FUSAMOD_SYSML: process.env.E2E_SYSML ?? "snapshot", FUSAMOD_AI_PROVIDER: "rule" },
 });
 const stop = () => { child.kill("SIGTERM"); try { rmSync(dir, { recursive: true, force: true }); } catch { /* 無視 */ } };
 process.on("SIGTERM", stop);

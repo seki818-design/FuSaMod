@@ -3,13 +3,29 @@
     {
       "kind": "Package",
       "qualifiedName": "T2",
-      "name": "T2"
+      "name": "T2",
+      "range": [
+        86,
+        661
+      ],
+      "nameRange": [
+        94,
+        96
+      ]
     },
     {
       "kind": "ActionDefinition",
       "qualifiedName": "T2::Drive",
       "name": "Drive",
       "owner": "T2",
+      "range": [
+        139,
+        178
+      ],
+      "nameRange": [
+        150,
+        155
+      ],
       "parameters": [
         {
           "name": "torque",
@@ -22,13 +38,29 @@
       "kind": "PartDefinition",
       "qualifiedName": "T2::Motor",
       "name": "Motor",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        183,
+        241
+      ],
+      "nameRange": [
+        192,
+        197
+      ]
     },
     {
       "kind": "ActionUsage",
       "qualifiedName": "T2::Motor::gen",
       "name": "gen",
       "owner": "T2::Motor",
+      "range": [
+        200,
+        227
+      ],
+      "nameRange": [
+        215,
+        218
+      ],
       "types": [
         "T2::Drive"
       ],
@@ -38,19 +70,43 @@
       "kind": "PartUsage",
       "qualifiedName": "T2::Motor::rotor",
       "name": "rotor",
-      "owner": "T2::Motor"
+      "owner": "T2::Motor",
+      "range": [
+        228,
+        239
+      ],
+      "nameRange": [
+        233,
+        238
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "T2::Car",
       "name": "Car",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        246,
+        310
+      ],
+      "nameRange": [
+        255,
+        258
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::Car::front",
       "name": "front",
       "owner": "T2::Car",
+      "range": [
+        261,
+        280
+      ],
+      "nameRange": [
+        266,
+        271
+      ],
       "types": [
         "T2::Motor"
       ]
@@ -60,6 +116,14 @@
       "qualifiedName": "T2::Car::rear",
       "name": "rear",
       "owner": "T2::Car",
+      "range": [
+        281,
+        299
+      ],
+      "nameRange": [
+        286,
+        290
+      ],
       "types": [
         "T2::Motor"
       ]
@@ -68,13 +132,29 @@
       "kind": "PartUsage",
       "qualifiedName": "T2::Car::ax",
       "name": "ax",
-      "owner": "T2::Car"
+      "owner": "T2::Car",
+      "range": [
+        300,
+        308
+      ],
+      "nameRange": [
+        305,
+        307
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::car1",
       "name": "car1",
       "owner": "T2",
+      "range": [
+        315,
+        359
+      ],
+      "nameRange": [
+        320,
+        324
+      ],
       "types": [
         "T2::Car"
       ]
@@ -83,6 +163,10 @@
       "kind": "PartUsage",
       "qualifiedName": "T2::car1::ax",
       "owner": "T2::car1",
+      "range": [
+        333,
+        357
+      ],
       "supertypes": [
         "T2::Car::ax"
       ],
@@ -95,13 +179,29 @@
       "kind": "PartUsage",
       "qualifiedName": "T2::car1::ax::w1",
       "name": "w1",
-      "owner": "T2::car1::ax"
+      "owner": "T2::car1::ax",
+      "range": [
+        347,
+        355
+      ],
+      "nameRange": [
+        352,
+        354
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::car2",
       "name": "car2",
       "owner": "T2",
+      "range": [
+        364,
+        380
+      ],
+      "nameRange": [
+        369,
+        373
+      ],
       "types": [
         "T2::Car"
       ]
@@ -110,19 +210,43 @@
       "kind": "PartUsage",
       "qualifiedName": "T2::base",
       "name": "base",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        385,
+        407
+      ],
+      "nameRange": [
+        390,
+        394
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::base::b1",
       "name": "b1",
-      "owner": "T2::base"
+      "owner": "T2::base",
+      "range": [
+        397,
+        405
+      ],
+      "nameRange": [
+        402,
+        404
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::sub1",
       "name": "sub1",
       "owner": "T2",
+      "range": [
+        412,
+        442
+      ],
+      "nameRange": [
+        417,
+        421
+      ],
       "supertypes": [
         "T2::base"
       ]
@@ -131,19 +255,43 @@
       "kind": "PartUsage",
       "qualifiedName": "T2::sub1::d1",
       "name": "d1",
-      "owner": "T2::sub1"
+      "owner": "T2::sub1",
+      "range": [
+        432,
+        440
+      ],
+      "nameRange": [
+        437,
+        439
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::holder",
       "name": "holder",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        447,
+        482
+      ],
+      "nameRange": [
+        452,
+        458
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::holder::r",
       "name": "r",
       "owner": "T2::holder",
+      "range": [
+        461,
+        480
+      ],
+      "nameRange": [
+        470,
+        471
+      ],
       "types": [
         "T2::Motor"
       ],
@@ -153,31 +301,71 @@
       "kind": "RequirementUsage",
       "qualifiedName": "T2::r1",
       "name": "r1",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        487,
+        502
+      ],
+      "nameRange": [
+        499,
+        501
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "T2::r2",
       "name": "r2",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        503,
+        518
+      ],
+      "nameRange": [
+        515,
+        517
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "T2::outer",
       "name": "outer",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        523,
+        563
+      ],
+      "nameRange": [
+        535,
+        540
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "T2::outer::inner",
       "name": "inner",
-      "owner": "T2::outer"
+      "owner": "T2::outer",
+      "range": [
+        543,
+        561
+      ],
+      "nameRange": [
+        555,
+        560
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "T2::sat1",
       "name": "sat1",
-      "owner": "T2"
+      "owner": "T2",
+      "range": [
+        634,
+        659
+      ],
+      "nameRange": [
+        639,
+        643
+      ]
     }
   ],
   "dependencies": [],

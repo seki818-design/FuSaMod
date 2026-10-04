@@ -4,6 +4,8 @@ export interface NestedNode {
   label: string;
   /** 箱の中に表示する行(機能名など) */
   lines?: string[];
+  /** lines の各行に対応する ID(機能の ID など。無い行は undefined) */
+  lineIds?: (string | undefined)[];
   /** true なら、ラベルだけの葉として固定サイズで描く(要求など) */
   fixed?: { w: number; h: number };
   children: NestedNode[];
@@ -14,6 +16,7 @@ export interface Box {
   parentId?: string;
   label: string;
   lines: string[];
+  lineIds?: (string | undefined)[];
   x: number;
   y: number;
   w: number;
@@ -57,6 +60,7 @@ function place(s: Sized, x: number, y: number, depth: number, parentId: string |
     ...(parentId !== undefined ? { parentId } : {}),
     label: s.node.label,
     lines: s.node.lines ?? [],
+    lineIds: s.node.lineIds ?? [],
     x, y, w: s.w, h: s.h, depth,
     leaf: s.kids.length === 0,
   });

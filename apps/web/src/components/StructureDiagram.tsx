@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { clearHighlight, moveBoxes, resetLayout, select, setDiagramFocus, setDiagramLevel, useStore } from "../store.js";
+import { clearHighlight, editBlockReason, getState, toast, moveBoxes, renameElementTo, resetLayout, select, setDiagramFocus, setDiagramLevel, useStore } from "../store.js";
+import { ElementActions } from "./ElementActions.js";
 import { fit } from "../ui.js";
 import { layoutNested, type Box } from "../lib/layout.js";
 import { GROUP_PREFIX, LEVEL_CHOICES, structureTree, type DiagramLevel } from "../lib/structure.js";
@@ -44,6 +45,8 @@ export function StructureDiagram() {
   const [manual, setManual] = useState<number | undefined>(undefined); // undefined = 幅に合わせる
   const [width, setWidth] = useState(0);
   const [drag, setDrag] = useState<Drag | undefined>(undefined);
+  /** 図の中で名前を直接書き換えている最中の要素・機能 */
+  const [editing, setEditing] = useState<{ id: string; value: string; x: number; y: number; w: number } | undefined>(undefined);
   const box = useRef<HTMLDivElement>(null);
   const base = useMemo(() => (a ? layoutNested(structureTree(a, { level, ...(focus && sel ? { focusId: sel } : {}) })) : undefined), [a, level, focus, sel]);
   const ready = base !== undefined;
@@ -78,6 +81,24 @@ export function StructureDiagram() {
   const emph = highlight ? new Set(highlight.emphasis) : undefined;
   const isGroup = (id: string) => id.startsWith(GROUP_PREFIX);
 
+  /** ダブルクリックで、その場で名前を書き換える。編集できない要素（型から展開されたもの等）は理由を出す。 */
+  const startEdit = (id: string, current: string, x: number, y: number, w: number) => {
+    if (isGroup(id)) return;
+    const why = editBlockReason(getState(), id);
+    if (why) {
+      toast("info", why);
+      return;
+    }
+    setEditing({ id, value: current, x, y, w });
+  };
+  const commitEdit = () => {
+    if (!editing) return;
+    const cur = editing;
+    setEditing(undefined);
+    const name = cur.value.trim();
+    const old = a.net.elements.find((e) => e.id === cur.id)?.name ?? a.net.functions.find((f) => f.id === cur.id)?.name ?? "";
+    if (name && name !== old) renameElementTo(cur.id, name, true);
+  };
   const onDown = (e: React.PointerEvent, b: Box) => {
     e.stopPropagation();
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
@@ -129,9 +150,10 @@ export function StructureDiagram() {
         </label>
         <button className="btn small" onClick={resetLayout} disabled={!moved} title="手動で動かした箱の位置を、自動配置に戻します">配置を戻す</button>
         <div className="legend" aria-label="凡例">
-          <span>枠: 灰=指摘なし</span><span style={{ color: "var(--warn)" }}>橙=警告あり</span><span style={{ color: "var(--err)" }}>赤=エラーあり</span><span>ƒ=担当する機能</span><span>箱はドラッグで移動(Alt+矢印でも可)</span>
+          <span>枠: 灰=指摘なし</span><span style={{ color: "var(--warn)" }}>橙=警告あり</span><span style={{ color: "var(--err)" }}>赤=エラーあり</span><span>ƒ=担当する機能</span><span>箱はドラッグで移動(Alt+矢印でも可)、ダブルクリック/F2 で名前を変更</span>
         </div>
       </div>
+      <ElementActions />
       {highlight && (
         <div className="banner" role="status">
           ハイライト: {highlight.label}({highlight.ids.length} 要素{highlight.emphasis.length > 0 ? `、うち指摘あり ${highlight.emphasis.length}` : ""})
@@ -147,14 +169,32 @@ export function StructureDiagram() {
             return (
               <g key={b.id} role="button" tabIndex={0} data-box={b.id} aria-label={`${b.label}${worst(b.id) === "err" ? "、エラーあり" : worst(b.id) === "warn" ? "、警告あり" : ""}${on ? "、ハイライト中" : ""}`} aria-pressed={sel === b.id}
                  style={{ cursor: drag?.id === b.id && drag.moved ? "grabbing" : "grab", opacity: dim ? 0.35 : 1 }}
-                 onPointerDown={(e) => onDown(e, b)} onKeyDown={(e) => onKey(e, b)}>
+                 onPointerDown={(e) => onDown(e, b)} onKeyDown={(e) => { if (e.key === "F2") { e.preventDefault(); startEdit(b.id, a.net.elements.find((x) => x.id === b.id)?.name ?? "", b.x + 6, b.y + 4, b.w - 12); } else onKey(e, b); }}
+                 onDoubleClick={(e) => { e.stopPropagation(); startEdit(b.id, a.net.elements.find((x) => x.id === b.id)?.name ?? "", b.x + 6, b.y + 4, b.w - 12); }}>
                 <rect className={`box-el ${group ? "group" : worst(b.id)} ${sel === b.id ? "sel" : ""} ${on ? (emph?.has(b.id) ? "hl hl-strong" : "hl") : ""}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={8} />
                 <title>{b.label}</title>
                 <text x={b.x + 10} y={b.y + 18} fontSize={13} fontWeight={700}>{fit(b.label, Math.floor((b.w - 20) / 7))}</text>
-                {b.lines.map((l, i) => <text key={i} className="svg-muted" x={b.x + 12} y={b.y + 36 + i * 16} fontSize={12}>{fit(l, Math.floor((b.w - 24) / 6.5))}</text>)}
+                {b.lines.map((l, i) => {
+                  const fnId = b.lineIds?.[i];
+                  const fn = fnId ? a.net.functions.find((f) => f.id === fnId) : undefined;
+                  return (
+                    <text key={i} className="svg-muted" x={b.x + 12} y={b.y + 36 + i * 16} fontSize={12}
+                      onDoubleClick={fn ? (e) => { e.stopPropagation(); startEdit(fn.id, fn.name, b.x + 6, b.y + 24 + i * 16, b.w - 12); } : undefined}>
+                      {fit(l, Math.floor((b.w - 24) / 6.5))}{fn ? <title>ダブルクリックで機能名を変更</title> : null}
+                    </text>
+                  );
+                })}
               </g>
             );
           })}
+          {editing && (
+            <foreignObject x={editing.x} y={editing.y} width={Math.max(120, editing.w)} height={26}>
+              <input className="svg-input" ref={(el) => el?.focus()} aria-label="名前の変更（Enter で確定、Esc で取り消し）" value={editing.value}
+                onChange={(e) => setEditing({ ...editing, value: e.target.value })} onFocus={(e) => e.currentTarget.select()}
+                onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") commitEdit(); else if (e.key === "Escape") setEditing(undefined); }}
+                onBlur={commitEdit} onPointerDown={(e) => e.stopPropagation()} />
+            </foreignObject>
+          )}
         </svg>
       </div>
     </div>

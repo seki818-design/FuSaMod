@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { analyzeProject, recomputePuzzle, type ProjectAnalysis, type Puzzle, type SafetyData } from "@fusamod/analysis";
-import type { ElementGraph } from "@fusamod/sysml-graph";
+import { addChild, editability, removeElement, renameElement, remapIds, type EditResult, type ElementGraph, type NewKind } from "@fusamod/sysml-graph";
 import { api, ApiError, download, setToken, type ChatResult, type Citation, type Diagnostic, type Proposal, type ProjectView, type RevisionMeta } from "./api.js";
 
 export type TabKey = "fmea" | "net" | "fta" | "hara" | "concept" | "scdl" | "trace" | "issues" | "history" | "data";
@@ -35,6 +35,8 @@ export interface State {
   draftModel: string;
   draftSafety?: SafetyData;
   graph: ElementGraph | null;
+  /** graph が対応するモデルのテキスト（図からの編集は、draftModel と一致しているときだけ行う） */
+  graphModel: string | null;
   diagnostics: Diagnostic[];
   modelOk: boolean;
   sysmlError?: string;
@@ -73,6 +75,7 @@ const initial: State = {
   projects: [],
   draftModel: "",
   graph: null,
+  graphModel: null,
   diagnostics: [],
   modelOk: true,
   analysis: null,
@@ -167,6 +170,7 @@ function applyView(v: ProjectView, keepDrafts = false) {
       draftModel,
       draftSafety,
       graph,
+      graphModel: v.graph ? draftModel : keepDrafts ? s.graphModel : null,
       diagnostics: v.diagnostics,
       modelOk: v.modelOk,
       ...(v.sysmlError ? { sysmlError: v.sysmlError } : { sysmlError: undefined as unknown as string }),
@@ -267,15 +271,17 @@ export async function analyzeModelNow() {
   const id = state.projectId;
   if (!id) return;
   const seq = ++analyzeSeq;
+  const sent = state.draftModel;
   set((s) => ({ busy: { ...s.busy, analyzing: true } }));
   try {
-    const v = await api.analyze(id, { model: state.draftModel });
+    const v = await api.analyze(id, { model: sent });
     if (seq !== analyzeSeq) return; // 古い結果は捨てる
     set((s) => ({
       diagnostics: v.diagnostics,
       modelOk: v.modelOk,
       sysmlError: v.sysmlError as string,
       graph: v.graph ?? (v.modelOk ? s.graph : null),
+      graphModel: v.graph ? sent : v.modelOk ? s.graphModel : null,
       ...(v.graph ? recompute(v.graph, s.draftSafety) : { analysis: v.modelOk ? s.analysis : null }),
     }));
   } catch (e) {
@@ -298,6 +304,72 @@ export function updateSafety(fn: (draft: SafetyData) => void) {
 export function replaceSafety(next: SafetyData) {
   if (denyReadOnly()) return;
   set((s) => ({ draftSafety: next, ...recompute(s.graph, next) }));
+}
+
+// ----- 図・エクスプローラからのモデルの編集（テキストを書き換えて、すぐ再解析する） -----
+
+/** 図から編集できない理由（編集できるなら undefined）。 */
+export function editBlockReason(s: State, id: string | undefined): string | undefined {
+  if (s.me?.role === "viewer") return "読み取り専用の利用者は編集できません";
+  if (s.health && s.health.sysml !== "java") return "Java(公式実装)が使えないため、モデルを編集できません";
+  if (!s.graph || s.graphModel === null) return "モデルを解析できていないため、図から編集できません。テキストで修正してください";
+  if (s.draftModel !== s.graphModel || s.busy.analyzing) return "解析中です。終わってからもう一度操作してください";
+  if (id === undefined) return undefined;
+  const r = editability(s.draftModel, s.graph, id);
+  return r.ok ? undefined : r.reason;
+}
+
+function commitEdit(r: EditResult, after?: { select?: string }) {
+  if (!r.ok) {
+    toast("error", r.reason);
+    return false;
+  }
+  clearTimeout(analyzeTimer);
+  set((s) => {
+    let draftSafety = s.draftSafety;
+    let sel = after?.select ?? s.selectedElementId;
+    if (r.idChange && draftSafety) {
+      draftSafety = remapIds(draftSafety, r.idChange.from, r.idChange.to);
+      if (sel && (sel === r.idChange.from || sel.startsWith(`${r.idChange.from}::`))) sel = `${r.idChange.to}${sel.slice(r.idChange.from.length)}`;
+    }
+    return { draftModel: r.text, ...(draftSafety ? { draftSafety } : {}), selectedElementId: sel as string };
+  });
+  toast("success", `${r.summary}（保存すると確定します）`);
+  void analyzeModelNow();
+  return true;
+}
+
+export function addElement(parentId: string | undefined, kind: NewKind, name: string): boolean {
+  if (denyReadOnly()) return false;
+  const why = editBlockReason(state, parentId);
+  if (why) {
+    toast("error", why);
+    return false;
+  }
+  const r = addChild(state.draftModel, state.graph!, parentId, kind, name);
+  return commitEdit(r, r.ok && r.createdQn && kind === "part" ? { select: r.createdQn } : undefined);
+}
+
+export function renameElementTo(id: string, name: string, updateReferences = true): boolean {
+  if (denyReadOnly()) return false;
+  const why = editBlockReason(state, id);
+  if (why) {
+    toast("error", why);
+    return false;
+  }
+  return commitEdit(renameElement(state.draftModel, state.graph!, id, name, updateReferences));
+}
+
+export function deleteElement(id: string): boolean {
+  if (denyReadOnly()) return false;
+  const why = editBlockReason(state, id);
+  if (why) {
+    toast("error", why);
+    return false;
+  }
+  const ok = commitEdit(removeElement(state.draftModel, state.graph!, id));
+  if (ok && state.selectedElementId && (state.selectedElementId === id || state.selectedElementId.startsWith(`${id}::`))) set({ selectedElementId: undefined as unknown as string });
+  return ok;
 }
 
 export async function save(message?: string) {

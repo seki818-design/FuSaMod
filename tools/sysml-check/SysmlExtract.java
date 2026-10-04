@@ -3,6 +3,9 @@ import java.nio.file.*;
 import java.util.*;
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.xtext.nodemodel.ICompositeNode;
+import org.eclipse.xtext.nodemodel.INode;
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.omg.sysml.interactive.*;
 import org.omg.sysml.lang.sysml.*;
 
@@ -43,7 +46,24 @@ public class SysmlExtract {
         for (Documentation d : e.getDocumentation())
             if (d.getBody() != null) doc.append(doc.length() > 0 ? "\n" : "").append(d.getBody().strip());
         if (doc.length() > 0) m.put("doc", doc.toString());
+        putRange(m, e);
         return m;
+    }
+
+    /**
+     * 元のテキスト上の位置（文字数の位置。start 以上 end 未満）。図からのモデルの書き換え（追加・名前変更・削除）に使う。
+     * range = 要素の宣言全体、nameRange = 宣言された名前（引用符つきの名前は引用符を含む）。
+     */
+    static void putRange(Map<String, Object> m, Element e) {
+        try {
+            ICompositeNode node = NodeModelUtils.findActualNodeFor(e);
+            if (node == null) return;
+            m.put("range", List.of(node.getOffset(), node.getOffset() + node.getLength()));
+            List<INode> names = NodeModelUtils.findNodesForFeature(e, org.omg.sysml.lang.sysml.SysMLPackage.Literals.ELEMENT__DECLARED_NAME);
+            if (!names.isEmpty()) m.put("nameRange", List.of(names.get(0).getOffset(), names.get(0).getOffset() + names.get(0).getLength()));
+        } catch (RuntimeException ex) {
+            // 位置を取れない要素は、位置なしで出力する（図からの編集の対象外になる）
+        }
     }
 
     /** satisfy の `by` に書かれた特徴の連鎖(`car.front` なら [car, Car::front])。連鎖でなければ空。 */

@@ -3,31 +3,71 @@
     {
       "kind": "Package",
       "qualifiedName": "RequirementPaths",
-      "name": "RequirementPaths"
+      "name": "RequirementPaths",
+      "range": [
+        88,
+        668
+      ],
+      "nameRange": [
+        96,
+        112
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "RequirementPaths::Axle",
       "name": "Axle",
-      "owner": "RequirementPaths"
+      "owner": "RequirementPaths",
+      "range": [
+        156,
+        197
+      ],
+      "nameRange": [
+        165,
+        169
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RequirementPaths::Axle::brake",
       "name": "brake",
-      "owner": "RequirementPaths::Axle"
+      "owner": "RequirementPaths::Axle",
+      "range": [
+        180,
+        191
+      ],
+      "nameRange": [
+        185,
+        190
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "RequirementPaths::Vehicle",
       "name": "Vehicle",
-      "owner": "RequirementPaths"
+      "owner": "RequirementPaths",
+      "range": [
+        202,
+        279
+      ],
+      "nameRange": [
+        211,
+        218
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "RequirementPaths::Vehicle::front",
       "name": "front",
       "owner": "RequirementPaths::Vehicle",
+      "range": [
+        229,
+        247
+      ],
+      "nameRange": [
+        234,
+        239
+      ],
       "types": [
         "RequirementPaths::Axle"
       ]
@@ -37,6 +77,14 @@
       "qualifiedName": "RequirementPaths::Vehicle::rear",
       "name": "rear",
       "owner": "RequirementPaths::Vehicle",
+      "range": [
+        256,
+        273
+      ],
+      "nameRange": [
+        261,
+        265
+      ],
       "types": [
         "RequirementPaths::Axle"
       ]
@@ -46,6 +94,14 @@
       "qualifiedName": "RequirementPaths::v",
       "name": "v",
       "owner": "RequirementPaths",
+      "range": [
+        284,
+        301
+      ],
+      "nameRange": [
+        289,
+        290
+      ],
       "types": [
         "RequirementPaths::Vehicle"
       ]
@@ -54,31 +110,71 @@
       "kind": "RequirementDefinition",
       "qualifiedName": "RequirementPaths::ReqD",
       "name": "ReqD",
-      "owner": "RequirementPaths"
+      "owner": "RequirementPaths",
+      "range": [
+        307,
+        428
+      ],
+      "nameRange": [
+        323,
+        327
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RequirementPaths::ReqD::subA",
       "name": "subA",
-      "owner": "RequirementPaths::ReqD"
+      "owner": "RequirementPaths::ReqD",
+      "range": [
+        338,
+        355
+      ],
+      "nameRange": [
+        350,
+        354
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RequirementPaths::ReqD::subB",
       "name": "subB",
-      "owner": "RequirementPaths::ReqD"
+      "owner": "RequirementPaths::ReqD",
+      "range": [
+        364,
+        422
+      ],
+      "nameRange": [
+        376,
+        380
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RequirementPaths::ReqD::subB::deep",
       "name": "deep",
-      "owner": "RequirementPaths::ReqD::subB"
+      "owner": "RequirementPaths::ReqD::subB",
+      "range": [
+        395,
+        412
+      ],
+      "nameRange": [
+        407,
+        411
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "RequirementPaths::r1",
       "name": "r1",
       "owner": "RequirementPaths",
+      "range": [
+        433,
+        455
+      ],
+      "nameRange": [
+        445,
+        447
+      ],
       "types": [
         "RequirementPaths::ReqD"
       ]
@@ -88,6 +184,14 @@
       "qualifiedName": "RequirementPaths::r2",
       "name": "r2",
       "owner": "RequirementPaths",
+      "range": [
+        460,
+        482
+      ],
+      "nameRange": [
+        472,
+        474
+      ],
       "types": [
         "RequirementPaths::ReqD"
       ]
@@ -97,6 +201,14 @@
       "qualifiedName": "RequirementPaths::wheels",
       "name": "wheels",
       "owner": "RequirementPaths",
+      "range": [
+        589,
+        612
+      ],
+      "nameRange": [
+        594,
+        600
+      ],
       "types": [
         "RequirementPaths::Axle"
       ],
@@ -107,6 +219,14 @@
       "qualifiedName": "RequirementPaths::none",
       "name": "none",
       "owner": "RequirementPaths",
+      "range": [
+        617,
+        638
+      ],
+      "nameRange": [
+        622,
+        626
+      ],
       "types": [
         "RequirementPaths::Axle"
       ],
@@ -117,6 +237,14 @@
       "qualifiedName": "RequirementPaths::opt",
       "name": "opt",
       "owner": "RequirementPaths",
+      "range": [
+        643,
+        666
+      ],
+      "nameRange": [
+        648,
+        651
+      ],
       "types": [
         "RequirementPaths::Axle"
       ],

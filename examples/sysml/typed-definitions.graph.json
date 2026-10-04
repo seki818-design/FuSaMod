@@ -3,13 +3,29 @@
     {
       "kind": "Package",
       "qualifiedName": "TypedDefinitions",
-      "name": "TypedDefinitions"
+      "name": "TypedDefinitions",
+      "range": [
+        71,
+        555
+      ],
+      "nameRange": [
+        79,
+        95
+      ]
     },
     {
       "kind": "ActionDefinition",
       "qualifiedName": "TypedDefinitions::Drive",
       "name": "Drive",
       "owner": "TypedDefinitions",
+      "range": [
+        139,
+        190
+      ],
+      "nameRange": [
+        150,
+        155
+      ],
       "parameters": [
         {
           "name": "torque",
@@ -22,13 +38,29 @@
       "kind": "PartDefinition",
       "qualifiedName": "TypedDefinitions::Motor",
       "name": "Motor",
-      "owner": "TypedDefinitions"
+      "owner": "TypedDefinitions",
+      "range": [
+        196,
+        279
+      ],
+      "nameRange": [
+        205,
+        210
+      ]
     },
     {
       "kind": "ActionUsage",
       "qualifiedName": "TypedDefinitions::Motor::generate",
       "name": "generate",
       "owner": "TypedDefinitions::Motor",
+      "range": [
+        221,
+        253
+      ],
+      "nameRange": [
+        236,
+        244
+      ],
       "types": [
         "TypedDefinitions::Drive"
       ],
@@ -38,19 +70,43 @@
       "kind": "PartUsage",
       "qualifiedName": "TypedDefinitions::Motor::rotor",
       "name": "rotor",
-      "owner": "TypedDefinitions::Motor"
+      "owner": "TypedDefinitions::Motor",
+      "range": [
+        262,
+        273
+      ],
+      "nameRange": [
+        267,
+        272
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "TypedDefinitions::Car",
       "name": "Car",
-      "owner": "TypedDefinitions"
+      "owner": "TypedDefinitions",
+      "range": [
+        285,
+        395
+      ],
+      "nameRange": [
+        294,
+        297
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "TypedDefinitions::Car::front",
       "name": "front",
       "owner": "TypedDefinitions::Car",
+      "range": [
+        308,
+        327
+      ],
+      "nameRange": [
+        313,
+        318
+      ],
       "types": [
         "TypedDefinitions::Motor"
       ]
@@ -60,6 +116,14 @@
       "qualifiedName": "TypedDefinitions::Car::rear",
       "name": "rear",
       "owner": "TypedDefinitions::Car",
+      "range": [
+        336,
+        354
+      ],
+      "nameRange": [
+        341,
+        345
+      ],
       "types": [
         "TypedDefinitions::Motor"
       ]
@@ -69,6 +133,14 @@
       "qualifiedName": "TypedDefinitions::Car::go",
       "name": "go",
       "owner": "TypedDefinitions::Car",
+      "range": [
+        363,
+        389
+      ],
+      "nameRange": [
+        378,
+        380
+      ],
       "types": [
         "TypedDefinitions::Drive"
       ],
@@ -79,6 +151,14 @@
       "qualifiedName": "TypedDefinitions::car",
       "name": "car",
       "owner": "TypedDefinitions",
+      "range": [
+        401,
+        416
+      ],
+      "nameRange": [
+        406,
+        409
+      ],
       "types": [
         "TypedDefinitions::Car"
       ]
@@ -88,13 +168,29 @@
       "qualifiedName": "TypedDefinitions::TorqueDef",
       "name": "TorqueDef",
       "owner": "TypedDefinitions",
-      "doc": "駆動トルクを出力する"
+      "doc": "駆動トルクを出力する",
+      "range": [
+        422,
+        484
+      ],
+      "nameRange": [
+        438,
+        447
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "TypedDefinitions::torque",
       "name": "torque",
       "owner": "TypedDefinitions",
+      "range": [
+        489,
+        520
+      ],
+      "nameRange": [
+        501,
+        507
+      ],
       "types": [
         "TypedDefinitions::TorqueDef"
       ]

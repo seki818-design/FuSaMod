@@ -3,31 +3,71 @@
     {
       "kind": "Package",
       "qualifiedName": "DefOwnedReq",
-      "name": "DefOwnedReq"
+      "name": "DefOwnedReq",
+      "range": [
+        0,
+        461
+      ],
+      "nameRange": [
+        8,
+        19
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "DefOwnedReq::Axle",
       "name": "Axle",
-      "owner": "DefOwnedReq"
+      "owner": "DefOwnedReq",
+      "range": [
+        26,
+        55
+      ],
+      "nameRange": [
+        35,
+        39
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "DefOwnedReq::Axle::brake",
       "name": "brake",
-      "owner": "DefOwnedReq::Axle"
+      "owner": "DefOwnedReq::Axle",
+      "range": [
+        42,
+        53
+      ],
+      "nameRange": [
+        47,
+        52
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "DefOwnedReq::Car",
       "name": "Car",
-      "owner": "DefOwnedReq"
+      "owner": "DefOwnedReq",
+      "range": [
+        60,
+        296
+      ],
+      "nameRange": [
+        69,
+        72
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "DefOwnedReq::Car::front",
       "name": "front",
       "owner": "DefOwnedReq::Car",
+      "range": [
+        83,
+        101
+      ],
+      "nameRange": [
+        88,
+        93
+      ],
       "types": [
         "DefOwnedReq::Axle"
       ]
@@ -36,19 +76,43 @@
       "kind": "RequirementUsage",
       "qualifiedName": "DefOwnedReq::Car::inCar",
       "name": "inCar",
-      "owner": "DefOwnedReq::Car"
+      "owner": "DefOwnedReq::Car",
+      "range": [
+        110,
+        128
+      ],
+      "nameRange": [
+        122,
+        127
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "DefOwnedReq::Car::inCar2",
       "name": "inCar2",
-      "owner": "DefOwnedReq::Car"
+      "owner": "DefOwnedReq::Car",
+      "range": [
+        206,
+        225
+      ],
+      "nameRange": [
+        218,
+        224
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "DefOwnedReq::c1",
       "name": "c1",
       "owner": "DefOwnedReq",
+      "range": [
+        301,
+        315
+      ],
+      "nameRange": [
+        306,
+        308
+      ],
       "types": [
         "DefOwnedReq::Car"
       ]
@@ -58,6 +122,14 @@
       "qualifiedName": "DefOwnedReq::c2",
       "name": "c2",
       "owner": "DefOwnedReq",
+      "range": [
+        320,
+        334
+      ],
+      "nameRange": [
+        325,
+        327
+      ],
       "types": [
         "DefOwnedReq::Car"
       ]
@@ -67,6 +139,14 @@
       "qualifiedName": "DefOwnedReq::c3",
       "name": "c3",
       "owner": "DefOwnedReq",
+      "range": [
+        339,
+        459
+      ],
+      "nameRange": [
+        344,
+        346
+      ],
       "types": [
         "DefOwnedReq::Car"
       ]
@@ -75,7 +155,15 @@
       "kind": "RequirementUsage",
       "qualifiedName": "DefOwnedReq::c3::extra",
       "name": "extra",
-      "owner": "DefOwnedReq::c3"
+      "owner": "DefOwnedReq::c3",
+      "range": [
+        363,
+        381
+      ],
+      "nameRange": [
+        375,
+        380
+      ]
     }
   ],
   "dependencies": [],

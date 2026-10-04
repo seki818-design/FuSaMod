@@ -3,26 +3,58 @@
     {
       "kind": "Package",
       "qualifiedName": "ExhibitState",
-      "name": "ExhibitState"
+      "name": "ExhibitState",
+      "range": [
+        0,
+        139
+      ],
+      "nameRange": [
+        8,
+        20
+      ]
     },
     {
       "kind": "ActionDefinition",
       "qualifiedName": "ExhibitState::S",
       "name": "S",
       "owner": "ExhibitState",
+      "range": [
+        27,
+        39
+      ],
+      "nameRange": [
+        37,
+        38
+      ],
       "parameters": []
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "ExhibitState::h2",
       "name": "h2",
-      "owner": "ExhibitState"
+      "owner": "ExhibitState",
+      "range": [
+        44,
+        137
+      ],
+      "nameRange": [
+        49,
+        51
+      ]
     },
     {
       "kind": "ExhibitStateUsage",
       "qualifiedName": "ExhibitState::h2::st2",
       "name": "st2",
       "owner": "ExhibitState::h2",
+      "range": [
+        62,
+        84
+      ],
+      "nameRange": [
+        76,
+        79
+      ],
       "types": [
         "ExhibitState::S"
       ]
@@ -32,6 +64,14 @@
       "qualifiedName": "ExhibitState::h2::st1",
       "name": "st1",
       "owner": "ExhibitState::h2",
+      "range": [
+        117,
+        131
+      ],
+      "nameRange": [
+        123,
+        126
+      ],
       "types": [
         "ExhibitState::S"
       ]

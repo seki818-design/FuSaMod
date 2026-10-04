@@ -21,7 +21,8 @@
     "sysml:check": "tools/sysml-check/run.sh",
     "evidence": "node tools/quality/coverage.mjs --write && node --import tsx tools/quality/bench.ts --write",
     "quality": "pnpm typecheck && pnpm lint && pnpm test && pnpm coverage && pnpm bench",
-    "shots": "SHOTS=1 pnpm --filter @fusamod/web e2e shots"
+    "shots": "SHOTS=1 pnpm --filter @fusamod/web e2e shots",
+    "e2e:java": "pnpm --filter @fusamod/web e2e:java"
   },
   "devDependencies": {
     "@eslint/js": "^9.12.0",

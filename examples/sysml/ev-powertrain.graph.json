@@ -3,14 +3,30 @@
     {
       "kind": "Package",
       "qualifiedName": "'EV Powertrain'",
-      "name": "EV Powertrain"
+      "name": "EV Powertrain",
+      "range": [
+        319,
+        1703
+      ],
+      "nameRange": [
+        327,
+        342
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "'EV Powertrain'::vehicle",
       "name": "vehicle",
       "owner": "'EV Powertrain'",
-      "doc": "車両(最上位のシステム)"
+      "doc": "車両(最上位のシステム)",
+      "range": [
+        386,
+        1448
+      ],
+      "nameRange": [
+        391,
+        398
+      ]
     },
     {
       "kind": "ActionUsage",
@@ -18,6 +34,14 @@
       "name": "drive vehicle",
       "owner": "'EV Powertrain'::vehicle",
       "doc": "運転者の要求に従って車両を駆動する",
+      "range": [
+        441,
+        1010
+      ],
+      "nameRange": [
+        448,
+        463
+      ],
       "parameters": [
         {
           "name": "accelerator request",
@@ -32,6 +56,14 @@
       "name": "output drive torque",
       "owner": "'EV Powertrain'::vehicle::'drive vehicle'",
       "doc": "要求に応じた駆動トルクを出力する",
+      "range": [
+        564,
+        1000
+      ],
+      "nameRange": [
+        571,
+        592
+      ],
       "parameters": [
         {
           "name": "drive torque",
@@ -46,6 +78,14 @@
       "name": "convert power",
       "owner": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'",
       "doc": "直流電力を三相交流に変換する",
+      "range": [
+        698,
+        833
+      ],
+      "nameRange": [
+        705,
+        720
+      ],
       "parameters": [
         {
           "name": "phase current",
@@ -60,6 +100,14 @@
       "name": "generate torque",
       "owner": "'EV Powertrain'::vehicle::'drive vehicle'::'output drive torque'",
       "doc": "三相交流からトルクを発生する",
+      "range": [
+        850,
+        986
+      ],
+      "nameRange": [
+        857,
+        874
+      ],
       "parameters": [
         {
           "name": "motor torque",
@@ -73,35 +121,75 @@
       "qualifiedName": "'EV Powertrain'::vehicle::powertrain",
       "name": "powertrain",
       "owner": "'EV Powertrain'::vehicle",
-      "doc": "パワートレイン"
+      "doc": "パワートレイン",
+      "range": [
+        1020,
+        1442
+      ],
+      "nameRange": [
+        1025,
+        1035
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "'EV Powertrain'::vehicle::powertrain::inverter",
       "name": "inverter",
       "owner": "'EV Powertrain'::vehicle::powertrain",
-      "doc": "インバータ"
+      "doc": "インバータ",
+      "range": [
+        1140,
+        1280
+      ],
+      "nameRange": [
+        1145,
+        1153
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "'EV Powertrain'::vehicle::powertrain::motor",
       "name": "motor",
       "owner": "'EV Powertrain'::vehicle::powertrain",
-      "doc": "駆動モータ"
+      "doc": "駆動モータ",
+      "range": [
+        1293,
+        1432
+      ],
+      "nameRange": [
+        1298,
+        1303
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "'EV Powertrain'::'REQ-001'",
       "name": "REQ-001",
       "owner": "'EV Powertrain'",
-      "doc": "加速要求に対して、意図しない過大トルクを出力しないこと"
+      "doc": "加速要求に対して、意図しない過大トルクを出力しないこと",
+      "range": [
+        1454,
+        1529
+      ],
+      "nameRange": [
+        1466,
+        1475
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "'EV Powertrain'::'REQ-002'",
       "name": "REQ-002",
       "owner": "'EV Powertrain'",
-      "doc": "モータは要求トルクに従ってトルクを発生すること"
+      "doc": "モータは要求トルクに従ってトルクを発生すること",
+      "range": [
+        1534,
+        1605
+      ],
+      "nameRange": [
+        1546,
+        1555
+      ]
     }
   ],
   "dependencies": [],

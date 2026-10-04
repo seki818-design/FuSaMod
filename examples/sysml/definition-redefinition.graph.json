@@ -3,25 +3,57 @@
     {
       "kind": "Package",
       "qualifiedName": "DefRedefinition",
-      "name": "DefRedefinition"
+      "name": "DefRedefinition",
+      "range": [
+        65,
+        530
+      ],
+      "nameRange": [
+        73,
+        88
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "DefRedefinition::Cell",
       "name": "Cell",
-      "owner": "DefRedefinition"
+      "owner": "DefRedefinition",
+      "range": [
+        132,
+        146
+      ],
+      "nameRange": [
+        141,
+        145
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "DefRedefinition::Pack",
       "name": "Pack",
-      "owner": "DefRedefinition"
+      "owner": "DefRedefinition",
+      "range": [
+        151,
+        221
+      ],
+      "nameRange": [
+        160,
+        164
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "DefRedefinition::Pack::cells",
       "name": "cells",
       "owner": "DefRedefinition::Pack",
+      "range": [
+        175,
+        197
+      ],
+      "nameRange": [
+        180,
+        185
+      ],
       "types": [
         "DefRedefinition::Cell"
       ],
@@ -31,13 +63,29 @@
       "kind": "PartUsage",
       "qualifiedName": "DefRedefinition::Pack::bms",
       "name": "bms",
-      "owner": "DefRedefinition::Pack"
+      "owner": "DefRedefinition::Pack",
+      "range": [
+        206,
+        215
+      ],
+      "nameRange": [
+        211,
+        214
+      ]
     },
     {
       "kind": "PartDefinition",
       "qualifiedName": "DefRedefinition::BigPack",
       "name": "BigPack",
       "owner": "DefRedefinition",
+      "range": [
+        226,
+        317
+      ],
+      "nameRange": [
+        235,
+        242
+      ],
       "supertypes": [
         "DefRedefinition::Pack"
       ]
@@ -46,6 +94,10 @@
       "kind": "PartUsage",
       "qualifiedName": "DefRedefinition::BigPack::cells",
       "owner": "DefRedefinition::BigPack",
+      "range": [
+        261,
+        311
+      ],
       "supertypes": [
         "DefRedefinition::Pack::cells"
       ],
@@ -58,13 +110,29 @@
       "kind": "PartUsage",
       "qualifiedName": "DefRedefinition::BigPack::cells::extra",
       "name": "extra",
-      "owner": "DefRedefinition::BigPack::cells"
+      "owner": "DefRedefinition::BigPack::cells",
+      "range": [
+        290,
+        301
+      ],
+      "nameRange": [
+        295,
+        300
+      ]
     },
     {
       "kind": "PartUsage",
       "qualifiedName": "DefRedefinition::v",
       "name": "v",
       "owner": "DefRedefinition",
+      "range": [
+        322,
+        339
+      ],
+      "nameRange": [
+        327,
+        328
+      ],
       "types": [
         "DefRedefinition::BigPack"
       ]
@@ -74,6 +142,14 @@
       "qualifiedName": "DefRedefinition::v2",
       "name": "v2",
       "owner": "DefRedefinition",
+      "range": [
+        344,
+        362
+      ],
+      "nameRange": [
+        349,
+        351
+      ],
       "types": [
         "DefRedefinition::BigPack"
       ]
@@ -83,6 +159,14 @@
       "qualifiedName": "DefRedefinition::wheels",
       "name": "wheels",
       "owner": "DefRedefinition",
+      "range": [
+        367,
+        390
+      ],
+      "nameRange": [
+        372,
+        378
+      ],
       "types": [
         "DefRedefinition::Cell"
       ],
@@ -93,6 +177,14 @@
       "qualifiedName": "DefRedefinition::spares",
       "name": "spares",
       "owner": "DefRedefinition",
+      "range": [
+        395,
+        421
+      ],
+      "nameRange": [
+        400,
+        406
+      ],
       "types": [
         "DefRedefinition::Cell"
       ],
@@ -104,19 +196,43 @@
       "qualifiedName": "DefRedefinition::Rd",
       "name": "Rd",
       "owner": "DefRedefinition",
-      "doc": "定義の本文"
+      "doc": "定義の本文",
+      "range": [
+        427,
+        503
+      ],
+      "nameRange": [
+        443,
+        445
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "DefRedefinition::Rd::subA",
       "name": "subA",
-      "owner": "DefRedefinition::Rd"
+      "owner": "DefRedefinition::Rd",
+      "range": [
+        480,
+        497
+      ],
+      "nameRange": [
+        492,
+        496
+      ]
     },
     {
       "kind": "RequirementUsage",
       "qualifiedName": "DefRedefinition::ra",
       "name": "ra",
       "owner": "DefRedefinition",
+      "range": [
+        508,
+        528
+      ],
+      "nameRange": [
+        520,
+        522
+      ],
       "types": [
         "DefRedefinition::Rd"
       ]

@@ -28,8 +28,10 @@ export function structureTree(a: ProjectAnalysis, opts: TreeOptions = {}): Neste
     const w = weightOf(id);
     return `${e.name}  〔${levelLabel(a.levelOf[id] ?? "system")}${w ? ` / ASIL ${w}` : ""}〕`;
   };
-  const fnLines = (id: string) => a.net.functions.filter((f) => f.ownerId === id).map((f) => `ƒ ${f.name}`);
-  const build = (id: string): NestedNode => ({ id, label: label(id), lines: fnLines(id), children: (kids.get(id) ?? []).map(build) });
+  const fns = (id: string) => a.net.functions.filter((f) => f.ownerId === id);
+  const fnLines = (id: string) => fns(id).map((f) => `ƒ ${f.name}`);
+  const fnIds = (id: string) => fns(id).map((f) => f.id);
+  const build = (id: string): NestedNode => ({ id, label: label(id), lines: fnLines(id), lineIds: fnIds(id), children: (kids.get(id) ?? []).map(build) });
 
   const focus = opts.focusId && byId.has(opts.focusId) ? opts.focusId : undefined;
   const level = opts.level ?? "all";
@@ -44,7 +46,7 @@ export function structureTree(a: ProjectAnalysis, opts: TreeOptions = {}): Neste
   const count = (id: string): number => (kids.get(id) ?? []).reduce((n, k) => n + 1 + count(k), 0);
   const leaf = (id: string): NestedNode => {
     const inner = count(id);
-    return { id, label: label(id), lines: [...fnLines(id), ...(inner > 0 ? [`内部 ${inner} 要素`] : [])], children: [] };
+    return { id, label: label(id), lines: [...fnLines(id), ...(inner > 0 ? [`内部 ${inner} 要素`] : [])], lineIds: fnIds(id), children: [] };
   };
   const at = a.net.elements.filter((e) => (a.levelOf[e.id] ?? "system") === level && inScope(e.id));
   const groups = new Map<string | undefined, string[]>();

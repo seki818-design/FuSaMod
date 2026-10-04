@@ -5,3 +5,8 @@ coverage/
 .DS_Store
 test-results/
 playwright-report/
+
+# runtime data written by the app
+projects/*/.history/
+projects/*/audit.jsonl
+projects/*/refs/

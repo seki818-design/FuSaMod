@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AiPanel } from "./components/AiPanel.js";
 import { AnalysisTabs } from "./components/AnalysisTabs.js";
-import { LoginDialog, Toasts } from "./components/Chrome.js";
+import { ErrorBoundary, LoginDialog, Toasts } from "./components/Chrome.js";
 import { Explorer } from "./components/Explorer.js";
 import { PuzzleView } from "./components/PuzzleView.js";
 import { TopBar } from "./components/TopBar.js";
@@ -49,15 +49,17 @@ export function App() {
       <TopBar />
       <main id="main" className={`main ${viewMax ? "viewmax" : ""}`} aria-busy={loading}>
         {!ready ? <div className="empty" role="status">読み込み中…</div> : !hasProject ? <div className="empty">プロジェクトがありません。右上の「＋ 新規」で作成してください。</div> : (
-          viewMax ? (
-            <div className="center viewmax"><ViewSpace /></div>
-          ) : (
-            <>
-              <Explorer />
-              <div className={`center ${max ? "max" : ""}`}>{!max && <ViewSpace />}<AnalysisTabs /></div>
-              <div className="right"><AiPanel /><PuzzleView /></div>
-            </>
-          )
+          <ErrorBoundary>
+            {viewMax ? (
+              <div className="center viewmax"><ViewSpace /></div>
+            ) : (
+              <>
+                <Explorer />
+                <div className={`center ${max ? "max" : ""}`}>{!max && <ViewSpace />}<AnalysisTabs /></div>
+                <div className="right"><AiPanel /><PuzzleView /></div>
+              </>
+            )}
+          </ErrorBoundary>
         )}
       </main>
       <Toasts />

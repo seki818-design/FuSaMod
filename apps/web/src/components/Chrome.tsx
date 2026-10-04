@@ -1,5 +1,33 @@
-import { useEffect, useRef, useState } from "react";
-import { dismissToast, login, useStore } from "../store.js";
+import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
+import { dismissToast, exitViewMax, login, useStore } from "../store.js";
+
+/** 画面の描画中に起きた予期しないエラーを捕まえ、真っ白にせず、原因と戻り方を表示する。 */
+export class ErrorBoundary extends Component<{ children: ReactNode }, { error?: Error; info?: string }> {
+  override state: { error?: Error; info?: string } = {};
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  override componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("画面の描画でエラー", error, info.componentStack);
+    this.setState({ info: info.componentStack?.split("\n").slice(0, 8).join("\n") });
+  }
+  override render() {
+    const { error, info } = this.state;
+    if (!error) return this.props.children;
+    return (
+      <div className="empty" role="alert" style={{ padding: 16, textAlign: "left" }}>
+        <h2>画面の表示中にエラーが発生しました</h2>
+        <p>{error.message}</p>
+        <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: 220, overflow: "auto" }}>{error.stack?.split("\n").slice(0, 6).join("\n")}{info ? `\n--\n${info}` : ""}</pre>
+        <div className="row">
+          <button className="btn primary" onClick={() => { exitViewMax(); this.setState({ error: undefined, info: undefined }); }}>画面を元に戻す</button>
+          <button className="btn" onClick={() => location.reload()}>再読み込み</button>
+          <span className="muted">このメッセージ（上の文面）を、開発者に伝えてください。</span>
+        </div>
+      </div>
+    );
+  }
+}
 
 export function Toasts() {
   const toasts = useStore((s) => s.toasts);
